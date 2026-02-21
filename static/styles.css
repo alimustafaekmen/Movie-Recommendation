@@ -1,0 +1,632 @@
+/* --- Reset & Base Styles --- */
+:root {
+    /* Renk Paleti */
+    --primary-color: #2563EB; 
+    --primary-light: #93C5FD; 
+    --primary-dark: #1D4ED8; 
+    --primary-light-bg: #EFF6FF; 
+    --primary-dark-text: #1E3A8A; 
+
+    --secondary-color: #4B5563; 
+    --secondary-light: #D1D5DB; 
+    --secondary-dark: #1F2937; 
+
+    --header-bg-start: #111827; 
+    --header-bg-end: #1F2937;   
+    
+    --background-color: #F3F4F6; 
+    --background-color-darker: #E5E7EB; 
+    --surface-color: #ffffff; 
+    
+    --text-color: #1F2937; 
+    --text-color-richer: #111827; 
+    --text-light: #6B7280; 
+    --text-on-primary: #FFFFFF; 
+    --text-on-dark-bg: #F9FAFB; 
+
+    --border-color: #D1D5DB; 
+    --border-color-light: #E5E7EB; 
+    --border-color-strong: #9CA3AF; 
+
+    --success-color: #059669; 
+    --warning-color: #F59E0B; 
+    --warning-bg: #FFFBEB;    
+    --warning-text: #B45309;   
+    --danger-color: #DC2626;  
+    --info-color: #3B82F6; 
+
+    /* Font ve Ölçüler */
+    --font-family-primary: 'Poppins', 'Segoe UI', 'Roboto', 'Helvetica Neue', Arial, sans-serif;
+    --font-family-secondary: 'Roboto', 'Helvetica Neue', Arial, sans-serif; 
+    --font-size-base: 16px;
+    --font-size-sm: 0.875rem; 
+    --font-size-md: 1rem;    
+    --font-size-lg: 1.125rem;
+    --font-size-xl: 1.25rem; 
+
+    --border-radius-sm: 0.25rem;  
+    --border-radius-md: 0.375rem; 
+    --border-radius-lg: 0.5rem;   
+    --border-radius-xl: 0.75rem;  
+    --border-radius-pill: 50px;
+
+    --box-shadow-sm: 0 1px 2px 0 rgb(0 0 0 / 0.05);
+    --box-shadow: 0 1px 3px 0 rgb(0 0 0 / 0.1), 0 1px 2px -1px rgb(0 0 0 / 0.1);
+    --box-shadow-md: 0 4px 6px -1px rgb(0 0 0 / 0.1), 0 2px 4px -2px rgb(0 0 0 / 0.1);
+    --box-shadow-lg: 0 10px 15px -3px rgb(0 0 0 / 0.1), 0 4px 6px -4px rgb(0 0 0 / 0.1);
+    --box-shadow-xl: 0 20px 25px -5px rgb(0 0 0 / 0.1), 0 8px 10px -6px rgb(0 0 0 / 0.1);
+    --box-shadow-focus: 0 0 0 3px rgba(37, 99, 235, 0.2); 
+
+    --transition-speed: 0.2s;
+    --transition-speed-fast: 0.15s;
+    --transition-speed-slow: 0.3s;
+    --transition-easing: ease-in-out;
+    --transition-cubic: cubic-bezier(0.645, 0.045, 0.355, 1); 
+}
+
+*, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+body {
+    font-family: var(--font-family-primary);
+    background-color: var(--background-color);
+    color: var(--text-color);
+    line-height: 1.6;
+    font-size: var(--font-size-base);
+    -webkit-font-smoothing: antialiased;
+    -moz-osx-font-smoothing: grayscale;
+    overflow-x: hidden; 
+}
+
+img { max-width: 100%; height: auto; display: block; }
+a { color: var(--primary-color); text-decoration: none; transition: color var(--transition-speed-fast) var(--transition-easing); }
+a:hover { color: var(--primary-dark); text-decoration: none; }
+
+/* --- Animasyonlar --- */
+@keyframes fadeIn {
+    from { opacity: 0; }
+    to { opacity: 1; }
+}
+
+.fade-in {
+    animation: fadeIn var(--transition-speed-slow) var(--transition-easing) forwards;
+}
+
+.film-list .film-card,
+.similar-movies-grid .similar-movie-card,
+.filmography-grid .filmography-item {
+    opacity: 0; 
+    animation: fadeIn 0.6s var(--transition-cubic) forwards; 
+}
+
+/* --- Layout & Container --- */
+.container { max-width: 1400px; width: 92%; margin: 0 auto; padding: 0 1rem; }
+.page-wrapper { min-height: 100vh; display: flex; flex-direction: column; }
+.content-container { display: grid; grid-template-columns: 1fr; gap: 1.75rem; padding-top: 2.5rem; padding-bottom: 3.5rem; flex-grow: 1; }
+@media (min-width: 992px) { .content-container { grid-template-columns: 1fr 400px; gap: 2.75rem; } .main-content { order: 1; } .sidebar { order: 2; } }
+
+/* --- Header --- */
+.header {
+    background: linear-gradient(135deg, var(--header-bg-start), var(--header-bg-end));
+    color: var(--text-on-dark-bg);
+    padding: 2rem 0; /* Üst ve alt padding'i biraz azalttım */
+    text-align: center;
+    box-shadow: var(--box-shadow-md);
+}
+
+.header-link {
+    text-decoration: none;
+    color: inherit;
+    display: inline-block;
+    transition: opacity var(--transition-speed-fast) ease;
+}
+.header-link:hover {
+    opacity: 0.9;
+}
+
+.header h1 {
+    font-size: 2.2rem; /* Biraz küçülttüm */
+    font-weight: 700;
+    margin-bottom: 0.25rem; /* p'ye olan mesafeyi azalttım */
+    display: inline-flex;
+    align-items: center;
+    gap: 0.7rem; /* İkon ve yazı arası boşluk */
+    letter-spacing: -0.5px;
+}
+.header .header-icon {
+    opacity: 0.95;
+    font-size: 2rem; /* Başlıkla daha orantılı */
+}
+
+.header p { /* Slogan */
+    margin-top: 0;
+    font-size: 0.9rem; /* Biraz küçülttüm */
+    color: var(--text-on-dark-bg-muted, #A9B4C4); /* Daha yumuşak bir renk */
+    max-width: 500px; /* Genişliği sınırladım */
+    margin-left: auto;
+    margin-right: auto;
+    font-weight: 300;
+    line-height: 1.4;
+}
+
+/* Header Navigasyon */
+.header-nav {
+    margin-top: 0.75rem; /* Slogandan sonraki boşluk */
+}
+
+.nav-link {
+    color: var(--text-on-dark-bg, #E0E7FF);
+    font-size: 0.85rem; /* Biraz daha küçük ve zarif */
+    font-weight: 500;
+    text-decoration: none;
+    padding: 0.6rem 1rem; /* İç boşlukları ayarladım */
+    border-radius: var(--border-radius-pill); /* Daha yuvarlak kenarlar */
+    transition: background-color var(--transition-speed) ease, color var(--transition-speed) ease, transform var(--transition-speed) ease;
+    display: inline-flex;
+    align-items: center;
+    gap: 0.5rem; /* İkon ve yazı arası */
+    background-color: rgba(255, 255, 255, 0.05); /* Hafif bir arka plan */
+    border: 1px solid rgba(255, 255, 255, 0.1); /* Çok ince bir sınır */
+}
+
+.nav-link:hover {
+    background-color: rgba(255, 255, 255, 0.15);
+    color: #FFFFFF; /* Daha parlak beyaz */
+    transform: translateY(-2px); /* Hafif yukarı kalkma efekti */
+    border-color: rgba(255, 255, 255, 0.2);
+}
+
+.nav-link i {
+    font-size: 1em; /* Yazı ile aynı boyutta veya çok az büyük */
+    opacity: 0.9;
+}
+
+/* Responsive ayarlar için header düzenlemesi */
+@media (min-width: 768px) {
+    .header {
+        padding: 1.5rem 0; /* Masaüstünde padding'i biraz daha azalttım */
+        text-align: left; /* İçeriği sola yasladım */
+    }
+    .header .container {
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+    }
+    .header-content { /* Logo ve sloganı gruplamak için bir sarmalayıcı (HTML'de eklenecek) */
+        display: flex;
+        flex-direction: column;
+        align-items: flex-start;
+    }
+    .header h1 {
+        font-size: 2rem; /* Masaüstü için ideal boyut */
+        margin-bottom: 0.1rem; /* Slogana daha yakın */
+    }
+    .header .header-icon {
+        font-size: 1.8rem;
+    }
+    .header p { /* Slogan */
+        margin-left: 0; /* Sola yaslı */
+        margin-right: 0;
+        max-width: none; /* Genişlik sınırını kaldırdım, flex-basis ile yönetilecek */
+        font-size: 0.85rem;
+        margin-top: 0.2rem;
+    }
+    .header-nav {
+        margin-top: 0; /* Flex ile hizalandığı için */
+        margin-left: 1.5rem; /* Logo/slogan ile arasına boşluk */
+    }
+    .nav-link {
+        padding: 0.7rem 1.2rem;
+        font-size: 0.9rem;
+    }
+}
+
+@media (max-width: 767px) { /* Mobil için sloganı navigasyonun altına alabiliriz veya gizleyebiliriz */
+    .header .container {
+        display: flex;
+        flex-direction: column; /* Mobil için alt alta */
+        align-items: center;
+    }
+    .header h1 {
+        font-size: 1.8rem; /* Mobil için başlık boyutu */
+    }
+    .header .header-icon {
+        font-size: 1.6rem;
+    }
+    .header p { /* Slogan */
+        font-size: 0.8rem;
+        margin-bottom: 0.75rem; /* Navigasyon ile arasına boşluk */
+        order: 1; /* H1'den sonra, Nav'dan önce */
+    }
+    .header-nav {
+        order: 2; /* Slogandan sonra */
+        margin-top: 0;
+    }
+}
+
+/* --- Header Arama Formu --- */
+.header-search-form {
+    display: flex;
+    align-items: center;
+    margin-left: 20px;
+}
+.header-search-form input[type="search"] {
+    padding: 8px 12px;
+    border-radius: var(--border-radius-md);
+    border: 1px solid var(--border-color);
+    font-size: 0.9rem;
+    min-width: 250px;
+    background-color: var(--surface-color);
+    color: var(--text-color);
+}
+.header-search-form input[type="search"]::placeholder {
+    color: var(--text-light);
+}
+.header-search-form button[type="submit"] {
+    background-color: var(--primary-color);
+    color: white;
+    border: none;
+    padding: 8px 12px;
+    border-radius: var(--border-radius-md);
+    margin-left: 5px;
+    cursor: pointer;
+    transition: background-color 0.2s ease;
+}
+.header-search-form button[type="submit"]:hover {
+    background-color: var(--primary-dark);
+}
+@media (max-width: 768px) {
+    .header-search-form {
+        margin-left: 0;
+        margin-top: 10px;
+        width: 100%;
+    }
+    .header-search-form input[type="search"] {
+        flex-grow: 1;
+    }
+}
+
+/* --- Genel Kart Stili --- */
+.card-style { background-color: var(--surface-color); border-radius: var(--border-radius-xl); box-shadow: var(--box-shadow-md); padding: 1.75rem; border: 1px solid var(--border-color-light); margin-bottom: 1.75rem; transition: box-shadow var(--transition-speed-slow) var(--transition-cubic); }
+.card-style:hover { box-shadow: var(--box-shadow-lg); }
+.sidebar > .card-style { padding: 1.5rem; }
+.sidebar > *:last-child, .main-content > *:last-child { margin-bottom: 0; }
+
+/* --- Sidebar & Forms --- */
+.sidebar { display: flex; flex-direction: column; gap: 1.75rem; }
+.filter-section { box-shadow: none; border: 1px solid var(--border-color); border-radius: var(--border-radius-lg); transition: all var(--transition-speed-slow) var(--transition-cubic); }
+.filter-section:hover { border-color: var(--border-color-strong); box-shadow: var(--box-shadow-sm); }
+.filter-section h2 { font-size: 1.15rem; color: var(--text-color-richer); margin-bottom: 1.25rem; padding-bottom: 0.85rem; border-bottom: 1px solid var(--border-color-light); display: flex; align-items: center; gap: 0.7rem; font-weight: 600; letter-spacing: -0.2px; }
+.filter-section h2 i { color: var(--primary-color); opacity: 1; font-size: 1rem; transition: transform var(--transition-speed-fast) ease; }
+.filter-section:hover h2 i { transform: scale(1.1); }
+.form-group { margin-bottom: 1.2rem; }
+.form-group label:not(.toggle-label):not(.genre-checkbox-item label) { display: block; margin-bottom: 0.6rem; font-weight: 500; font-size: var(--font-size-sm); color: var(--secondary-dark); font-family: var(--font-family-secondary); }
+.form-control { width: 100%; padding: 0.75rem 1rem; border: 1px solid var(--border-color); border-radius: var(--border-radius-md); font-size: var(--font-size-sm); background-color: var(--surface-color); color: var(--text-color); transition: border-color var(--transition-speed-fast) var(--transition-easing), box-shadow var(--transition-speed-fast) var(--transition-easing); appearance: none; line-height: 1.5; font-family: var(--font-family-secondary); }
+.form-control::placeholder { color: var(--text-light); opacity: 0.9; }
+.form-control:focus { outline: none; border-color: var(--primary-color); box-shadow: var(--box-shadow-focus); }
+.select-wrapper { position: relative; }
+.select-wrapper::after { content: "\f078"; font-family: "Font Awesome 6 Free"; font-weight: 900; position: absolute; right: 1rem; top: 50%; transform: translateY(-50%); color: var(--text-light); pointer-events: none; font-size: 0.8rem; transition: color var(--transition-speed-fast) ease, transform var(--transition-speed-fast) ease; }
+.select-wrapper:has(select:focus)::after { color: var(--primary-color); transform: translateY(-50%) rotate(180deg); }
+.num-input, .year-input { max-width: 100px; text-align: center; }
+.year-input { flex-grow: 1;}
+.input-toggle { display: flex; align-items: center; margin: 0.4rem 0 0.85rem 0; }
+.toggle-input { margin-right: 0.6rem; cursor: pointer; height: 1.2em; width: 1.2em; accent-color: var(--primary-color); transform: translateY(1px); transition: box-shadow var(--transition-speed-fast) ease; }
+.toggle-input:focus { box-shadow: var(--box-shadow-focus); border-radius: 2px; }
+.toggle-label { font-size: var(--font-size-sm); color: var(--text-light); cursor: pointer; margin-bottom: 0; font-weight: 400; font-family: var(--font-family-secondary); }
+.genre-checkbox-group { display: flex; flex-wrap: wrap; gap: 0.5rem 0.6rem; padding-top: 0.1rem; }
+.genre-checkbox-item input[type="checkbox"] { opacity: 0; position: absolute; width: 1px; height: 1px; }
+.genre-checkbox-item label { display: inline-block; padding: 0.5rem 1rem; border: 1px solid var(--border-color-light); border-radius: var(--border-radius-pill); cursor: pointer; font-size: var(--font-size-sm); color: var(--secondary-dark); background-color: var(--surface-color); transition: all var(--transition-speed-fast) var(--transition-cubic); user-select: none; font-weight: 400; font-family: var(--font-family-secondary); }
+.genre-checkbox-item label:hover { border-color: var(--primary-light); background-color: var(--primary-light-bg); color: var(--primary-dark); transform: translateY(-2px); }
+.genre-checkbox-item input[type="checkbox"]:checked + label { background-color: var(--primary-color); color: var(--text-on-primary); border-color: var(--primary-color); font-weight: 500; box-shadow: 0 1px 2px rgba(0,0,0,0.1); }
+.genre-checkbox-item input[type="checkbox"]:focus-visible + label { outline: 2px solid var(--primary-color); outline-offset: 2px; border-color: var(--primary-color); }
+.year-range-inputs { display: flex; align-items: center; gap: 0.6rem; }
+.year-range-inputs input { -moz-appearance: textfield; }
+.year-range-inputs input::-webkit-outer-spin-button,
+.year-range-inputs input::-webkit-inner-spin-button { -webkit-appearance: none; margin: 0; }
+.year-range-inputs span { color: var(--text-light); font-weight: 500; font-size: 1.2rem; }
+.button-container { margin-top: 1.75rem; text-align: center; }
+.btn { display: inline-flex; width: 100%; align-items: center; justify-content: center; gap: 0.6rem; padding: 0.8rem 1.5rem; border-radius: var(--border-radius-md); font-weight: 500; font-size: var(--font-size-sm); cursor: pointer; border: 1px solid transparent; transition: all var(--transition-speed-fast) var(--transition-cubic); box-shadow: var(--box-shadow-sm); text-align: center; letter-spacing: 0.2px; font-family: var(--font-family-primary); }
+.btn i { line-height: 1; font-size: 0.9em; transition: transform var(--transition-speed-fast) ease; }
+.btn:hover i { transform: scale(1.1); }
+.btn-primary { background-color: var(--primary-color); color: var(--text-on-primary); border-color: var(--primary-color); }
+.btn-primary:hover { background-color: var(--primary-dark); border-color: var(--primary-dark); transform: translateY(-2px); box-shadow: var(--box-shadow); }
+.btn-primary:active { transform: translateY(0); background-color: var(--primary-dark); }
+.btn-secondary { background-color: var(--secondary-color); color: white; border-color: var(--secondary-color); }
+.btn-secondary:hover { background-color: var(--secondary-dark); border-color: var(--secondary-dark); transform: translateY(-2px); box-shadow: var(--box-shadow); }
+
+/* --- Main Content & Results --- */
+.alert { padding: 1.1rem 1.35rem; margin-bottom: 1.75rem; border: 1px solid transparent; border-radius: var(--border-radius-lg); font-size: var(--font-size-sm); animation: fadeIn 0.3s ease forwards; }
+.alert-warning { color: var(--warning-text); background-color: var(--warning-bg); border-color: var(--warning-color); }
+.alert-warning h5 { color: var(--warning-text); margin-bottom: 0.6rem; display: flex; align-items: center; gap: 0.6rem; font-weight: 600; font-size: 1rem; }
+.alert-warning ul { list-style-position: inside; padding-left: 0.25rem; margin-bottom: 0; }
+.alert-warning li { margin-bottom: 0.3rem; }
+.results-container { margin-bottom: 2.5rem; animation: fadeIn 0.4s ease forwards; }
+.results-title { font-size: 1.5rem; font-weight: 600; color: var(--text-color-richer); margin-bottom: 1.5rem; padding-bottom: 1rem; border-bottom: 1px solid var(--border-color); display: flex; align-items: center; gap: 0.75rem; }
+.results-title i { color: var(--success-color); font-size: 1.3rem; }
+ul.film-list { list-style-type: none; padding: 0; display: grid; grid-template-columns: 1fr; gap: 1.5rem; }
+@media (min-width: 600px) { ul.film-list { grid-template-columns: repeat(auto-fill, minmax(300px, 1fr)); } }
+@media (min-width: 1200px) { ul.film-list { gap: 1.75rem; } }
+
+.film-card { background-color: var(--surface-color); border-radius: var(--border-radius-lg); box-shadow: var(--box-shadow); border: 1px solid var(--border-color-light); overflow: hidden; transition: transform var(--transition-speed-slow) var(--transition-cubic), box-shadow var(--transition-speed-slow) var(--transition-cubic); display: flex; flex-direction: column; }
+.film-card:hover { transform: translateY(-6px) scale(1.02); box-shadow: var(--box-shadow-lg); }
+.film-card-link { text-decoration: none; color: inherit; display: flex; flex-direction: column; height: 100%; }
+.film-content { display: flex; padding: 1rem; gap: 1rem; width: 100%; align-items: flex-start; flex-grow: 1; }
+.film-poster { width: 90px; height: 135px; object-fit: cover; border-radius: var(--border-radius-md); flex-shrink: 0; background-color: var(--border-color-light); border: 1px solid var(--border-color-light); transition: transform var(--transition-speed-slow) var(--transition-cubic); }
+.film-card:hover .film-poster { transform: scale(1.05); }
+.film-poster-placeholder { width: 90px; height: 135px; background-color: var(--border-color-light); color: var(--text-light); display: flex; flex-direction: column; align-items: center; justify-content: center; font-size: var(--font-size-sm); text-align: center; border-radius: var(--border-radius-md); flex-shrink: 0; line-height: 1.3; padding: 0.5rem; }
+.film-poster-placeholder i { font-size: 1.8rem; margin-bottom: 0.5rem; opacity: 0.7; }
+.film-info { flex-grow: 1; display: flex; flex-direction: column; justify-content: space-between; }
+.film-title { font-size: 1.05rem; font-weight: 600; margin-bottom: 0.4rem; color: var(--text-color-richer); line-height: 1.35; transition: color var(--transition-speed-fast) var(--transition-easing); font-family: var(--font-family-primary); }
+.film-card-link:hover .film-title { color: var(--primary-color); }
+.film-meta { font-size: 0.8rem; color: var(--text-light); margin-bottom: 0.6rem; display: flex; gap: 0.8rem; flex-wrap: wrap; font-family: var(--font-family-secondary); }
+.film-meta span { display: inline-flex; align-items: center; gap: 0.35rem; }
+.film-meta .rating i { color: var(--warning-color); }
+.film-details { font-size: 0.8rem; color: var(--text-light); margin-top: 0.6rem; padding-top: 0.6rem; border-top: 1px solid var(--border-color-light); font-family: var(--font-family-secondary); }
+.film-details p { margin-bottom: 0.3rem; line-height: 1.4; }
+.film-details strong { color: var(--secondary-dark); font-weight: 500; margin-right: 0.3rem; }
+
+.welcome-message { border-left: 4px solid var(--primary-color); animation: fadeIn 0.5s ease forwards; }
+.welcome-message h2 { font-size: 1.5rem; color: var(--primary-dark); margin-bottom: 1rem; display: flex; align-items: center; gap: 0.75rem; font-weight: 600; }
+.welcome-message h2 i { color: var(--primary-color); opacity: 0.9; }
+.welcome-message p { margin-bottom: 0.8rem; line-height: 1.7; color: var(--text-color); font-size: var(--font-size-md); }
+.welcome-message ul { list-style-type: none; padding-left: 0; margin-bottom: 1rem; }
+.welcome-message ul li { margin-bottom: 0.6rem; padding-left: 1.75rem; position: relative; line-height: 1.6; font-size: var(--font-size-sm); }
+.welcome-message ul li strong { color: var(--text-color-richer); }
+.welcome-message ul li i { position: absolute; left: 0; top: 5px; color: var(--secondary-color); width: 1.25rem; text-align: center; font-size: 0.9rem; }
+.empty-state { text-align: center; padding: 2.5rem 1.5rem; color: var(--text-light); border: 2px dashed var(--border-color); background-color: var(--surface-color); border-radius: var(--border-radius-lg); animation: fadeIn 0.5s ease forwards; }
+.empty-state i.fa-ghost { margin-bottom: 1.2rem; color: var(--border-color-strong); font-size: 2.5rem; animation: floatGhost 3s ease-in-out infinite; }
+
+@keyframes floatGhost {
+    0%, 100% { transform: translateY(0); }
+    50% { transform: translateY(-10px); }
+}
+
+.empty-state p { font-size: 1.05rem; margin-bottom: 0.5rem; color: var(--text-color); }
+.empty-state p small { font-size: var(--font-size-sm); color: var(--text-light); }
+
+/* --- Movie Detail Page Specific Styles --- */
+.movie-detail-page-wrapper { background-color: var(--background-color-darker); padding-bottom: 3rem; }
+.movie-detail-container { display: flex; flex-direction: column; gap: 25px; padding: 25px; background-color: var(--surface-color); border-radius: var(--border-radius-xl); box-shadow: var(--box-shadow-xl); margin-top: 2.5rem; animation: fadeIn 0.4s var(--transition-cubic) forwards; }
+.movie-detail-poster-trailer-section { display: flex; flex-direction: column; gap: 25px; }
+.movie-detail-poster { text-align: center; }
+.movie-detail-poster img { max-width: 360px; width: 100%; height: auto; border-radius: var(--border-radius-lg); box-shadow: var(--box-shadow-lg); display: inline-block; border: 4px solid var(--surface-color); transition: transform var(--transition-speed-slow) var(--transition-cubic); }
+.movie-detail-poster img:hover { transform: scale(1.03); }
+.movie-detail-poster-placeholder { max-width: 360px; width: 100%; min-height: 540px; background-color: var(--border-color); color: var(--text-light); display: inline-flex; flex-direction: column; align-items: center; justify-content: center; font-size: 1.1rem; text-align: center; border-radius: var(--border-radius-lg); padding: 20px; box-sizing: border-box; }
+.movie-detail-poster-placeholder i { font-size: 4.5rem; margin-bottom: 1rem; opacity: 0.6; }
+.movie-trailer-section { margin-top: 1rem; }
+.movie-trailer-section h3 { font-size: 1.5rem; font-weight: 600; margin-bottom: 1rem; color: var(--primary-dark); display: flex; align-items: center; gap: 0.6rem; }
+.movie-trailer-section h3 i { font-size: 1.3rem; }
+.trailer-responsive-container { position: relative; overflow: hidden; width: 100%; padding-top: 56.25%; border-radius: var(--border-radius-lg); box-shadow: var(--box-shadow-md); border: 1px solid var(--border-color-light); }
+.trailer-responsive-container iframe { position: absolute; top: 0; left: 0; bottom: 0; right: 0; width: 100%; height: 100%; border: none; }
+.no-trailer-message { font-size: 1rem; color: var(--text-light); background-color: var(--primary-light-bg); padding: 1.25rem; border-radius: var(--border-radius-lg); text-align: center; border: 1px dashed var(--primary-light); }
+.no-trailer-message i { margin-right: 0.5rem; }
+.movie-detail-info { flex-grow: 1; }
+.movie-detail-info h1 { font-size: 2.8rem; font-weight: 700; margin-bottom: 0.5rem; color: var(--text-color-richer); line-height: 1.25; letter-spacing: -0.5px; }
+.movie-detail-tagline { font-size: 1.2rem; font-style: italic; color: var(--text-light); margin-bottom: 1.5rem; display: block; font-weight: 400; }
+.movie-detail-meta { display: flex; flex-wrap: wrap; gap: 0.8rem 1.25rem; margin-bottom: 1.5rem; color: var(--text-light); font-size: 0.9rem; border-bottom: 1px solid var(--border-color-light); padding-bottom: 1.5rem; }
+.movie-detail-meta span { display: inline-flex; align-items: center; gap: 0.5rem; background-color: var(--primary-light-bg); color: var(--primary-dark-text); padding: 0.4rem 0.8rem; border-radius: var(--border-radius-md); border: 1px solid transparent; font-weight: 500; transition: background-color var(--transition-speed-fast) ease, color var(--transition-speed-fast) ease; }
+.movie-detail-meta span:hover { background-color: var(--primary-color); color: var(--text-on-primary); }
+.movie-detail-meta .rating i { color: var(--warning-color); }
+.movie-detail-meta .votes i { color: var(--secondary-color); }
+.movie-detail-meta .year i { color: var(--success-color); }
+.movie-detail-section { margin-bottom: 1.75rem; }
+.movie-detail-section h3 { font-size: 1.3rem; font-weight: 600; margin-bottom: 0.8rem; color: var(--primary-dark); border-bottom: 1px solid var(--border-color-light); padding-bottom: 0.7rem; display: flex; align-items: center; gap: 0.7rem; }
+.movie-detail-section h3 i { font-size: 1.1rem; opacity: 0.9; }
+.movie-detail-section p, .movie-detail-section ul { margin-bottom: 0; line-height: 1.7; color: var(--text-color); font-size: 0.95rem; font-family: var(--font-family-secondary); }
+.movie-detail-section ul { list-style: none; padding-left: 0; }
+.movie-detail-section li { margin-bottom: 0.4rem; }
+.movie-detail-tags .tag-item, .movie-detail-cast .cast-item { display: inline-block; background-color: var(--primary-light-bg); color: var(--primary-dark-text); padding: 0.45rem 0.9rem; border-radius: var(--border-radius-pill); margin-right: 0.5rem; margin-bottom: 0.5rem; font-size: var(--font-size-sm); border: 1px solid transparent; transition: all var(--transition-speed-fast) var(--transition-cubic); text-decoration: none; font-weight: 500; }
+.movie-detail-tags .tag-item:hover, .movie-detail-cast .cast-item:hover { background-color: var(--primary-color); color: var(--text-on-primary); border-color: var(--primary-dark); transform: translateY(-2px) scale(1.03); box-shadow: var(--box-shadow-sm); }
+.director-link { color: var(--primary-dark-text); font-weight: 500; text-decoration: none; border-bottom: 1px dashed var(--primary-color); transition: all var(--transition-speed-fast) ease; padding-bottom: 1px; }
+.director-link:hover { color: var(--primary-color); border-bottom-style: solid; }
+.back-button-container { text-align: center; margin-top: 2rem; padding-top: 1.5rem; border-top: 1px solid var(--border-color-light); }
+.back-button-container .btn-secondary { width: auto; padding: 0.7rem 1.5rem; }
+
+/* Benzer Filmler Stilleri (movie_detail.html) */
+.similar-movies-section { margin-top: 2.5rem; padding-top: 1.5rem; border-top: 1px solid var(--border-color); }
+.similar-movies-section h3 { font-size: 1.5rem; font-weight: 600; margin-bottom: 1.25rem; color: var(--primary-dark); display: flex; align-items: center; gap: 0.6rem; }
+.similar-movies-section h3 i { font-size: 1.3rem; }
+.similar-movies-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(140px, 1fr)); gap: 1rem; }
+.similar-movie-card { background-color: var(--surface-color); border-radius: var(--border-radius-lg); box-shadow: var(--box-shadow-sm); overflow: hidden; transition: transform var(--transition-speed-slow) var(--transition-cubic), box-shadow var(--transition-speed-slow) var(--transition-cubic); text-decoration: none; color: inherit; display: flex; flex-direction: column; border: 1px solid var(--border-color-light); }
+.similar-movie-card:hover { transform: translateY(-5px) scale(1.03); box-shadow: var(--box-shadow-md); }
+.similar-movie-card img { width: 100%; height: auto; aspect-ratio: 2/3; object-fit: cover; transition: transform var(--transition-speed-slow) var(--transition-cubic); }
+.similar-movie-card:hover img { transform: scale(1.05); }
+.similar-movie-card .poster-placeholder { width: 100%; height: 210px; background-color: var(--border-color); display: flex; align-items: center; justify-content: center; font-size: 1.5rem; color: var(--text-light); }
+.similar-movie-info { padding: 0.75rem; text-align: center; flex-grow: 1; display: flex; flex-direction: column; justify-content: center; }
+.similar-movie-title { font-size: 0.85rem; font-weight: 500; color: var(--text-color); margin-bottom: 0.2rem; line-height: 1.3; display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; overflow: hidden; text-overflow: ellipsis; min-height: 2.2em; }
+.similar-movie-year { font-size: 0.75rem; color: var(--text-light); }
+
+
+/* --- Person Detail Page Specific Styles (person_detail.html) --- */
+.person-detail-page-wrapper { background-color: var(--background-color); padding-bottom: 3rem; }
+.person-detail-container { display: flex; flex-direction: column; gap: 2rem; padding: 2rem; background-color: var(--surface-color); border-radius: var(--border-radius-xl); box-shadow: var(--box-shadow-lg); margin-top: 2rem; animation: fadeIn 0.4s var(--transition-cubic) forwards; }
+.person-main-info { display: flex; flex-direction: column; gap: 1.5rem; }
+.person-profile-image-section { text-align: center; flex-shrink: 0; }
+.person-profile-image { max-width: 300px; width: 100%; height: auto; border-radius: var(--border-radius-lg); box-shadow: var(--box-shadow-md); object-fit: cover; border: 3px solid var(--surface-color); transition: transform var(--transition-speed-slow) var(--transition-cubic), box-shadow var(--transition-speed-slow) var(--transition-cubic); }
+.person-profile-image:hover { transform: scale(1.03); box-shadow: var(--box-shadow-lg); }
+.person-profile-placeholder { width: 100%; max-width:300px; height: 450px; background-color: var(--border-color-light); color: var(--text-light); display: inline-flex; flex-direction: column; align-items: center; justify-content: center; font-size: 1rem; text-align: center; border-radius: var(--border-radius-lg); padding: 1.5rem; box-sizing: border-box; }
+.person-profile-placeholder i { font-size: 3.5rem; margin-bottom: 1rem; opacity: 0.7; }
+.person-text-info { flex-grow: 1; }
+.person-text-info h1 { font-size: 2.4rem; font-weight: 700; margin-bottom: 0.5rem; color: var(--text-color-richer); line-height: 1.2; letter-spacing: -0.3px; }
+.person-known-for { font-size: 1.05rem; color: var(--primary-color); font-weight: 500; margin-bottom: 1.25rem; display: block; font-family: var(--font-family-secondary); }
+.person-meta-details { margin-bottom: 1.5rem; padding-bottom: 1.5rem; border-bottom: 1px solid var(--border-color-light); }
+.person-meta-details p { font-size: 0.9rem; color: var(--text-light); margin-bottom: 0.6rem; line-height: 1.6; font-family: var(--font-family-secondary); }
+.person-meta-details strong { font-weight: 500; color: var(--secondary-dark); margin-right: 0.4rem; }
+.person-meta-details a { color: var(--primary-color); text-decoration: none; border-bottom: 1px dotted var(--primary-light); transition: color var(--transition-speed-fast) ease, border-color var(--transition-speed-fast) ease; }
+.person-meta-details a:hover { color: var(--primary-dark); border-bottom-style: solid; border-color: var(--primary-dark); }
+.person-biography { margin-bottom: 1.75rem; } 
+.person-biography h3 { font-size: 1.4rem; font-weight: 600; margin-bottom: 0.8rem; color: var(--primary-dark); border-bottom: 1px solid var(--border-color-light); padding-bottom: 0.8rem; display: flex; align-items: center; gap: 0.7rem; }
+.person-biography h3 i { font-size: 1.1rem; opacity: 0.9; }
+.person-biography p { white-space: pre-line; line-height: 1.7; color: var(--text-color); font-size: 0.95rem; font-family: var(--font-family-secondary); }
+.biography-read-more { color: var(--primary-color); cursor: pointer; font-weight: 500; display: inline-block; margin-top: 0.75rem; font-size: 0.9rem; transition: color var(--transition-speed-fast) ease; }
+.biography-read-more:hover { text-decoration: underline; color: var(--primary-dark); }
+
+.person-filmography { margin-top: 2rem; }
+.person-filmography h3 { font-size: 1.5rem; font-weight: 600; margin-bottom: 1.25rem; color: var(--primary-dark); border-bottom: 1px solid var(--border-color); padding-bottom: 0.8rem; }
+.filmography-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(150px, 1fr)); gap: 1.25rem; }
+.filmography-item { background-color: var(--surface-color); border-radius: var(--border-radius-lg); box-shadow: var(--box-shadow-sm); overflow: hidden; transition: transform var(--transition-speed-slow) var(--transition-cubic), box-shadow var(--transition-speed-slow) var(--transition-cubic); text-decoration: none; color: inherit; display: flex; flex-direction: column; border: 1px solid var(--border-color-light); }
+.filmography-item:hover { transform: translateY(-5px) scale(1.03); box-shadow: var(--box-shadow-md); }
+.filmography-item img { width: 100%; height: auto; aspect-ratio: 2/3; object-fit: cover; transition: transform var(--transition-speed-slow) var(--transition-cubic); }
+.filmography-item:hover img { transform: scale(1.05); }
+.filmography-item-placeholder { width: 100%; height: 225px; background-color: var(--border-color); display: flex; align-items: center; justify-content: center; color: var(--text-light); font-size: 2rem; border-radius: var(--border-radius-lg) var(--border-radius-lg) 0 0; }
+.filmography-info { padding: 0.75rem; text-align: center; flex-grow: 1; display: flex; flex-direction: column; justify-content: space-between; background-color: var(--primary-light-bg); }
+.filmography-title { font-size: 0.85rem; font-weight: 600; color: var(--primary-dark-text); margin-bottom: 0.25rem; line-height: 1.3; }
+.filmography-character, .filmography-job { font-size: 0.75rem; color: var(--secondary-color); font-style: italic; }
+.filmography-date { font-size: 0.7rem; color: var(--text-light); margin-top: 0.3rem; }
+.no-content-message { padding: 1.5rem; text-align: center; color: var(--text-light); font-size: 1rem; background-color: var(--primary-light-bg); border-radius: var(--border-radius-lg); border: 1px dashed var(--primary-light); animation: fadeIn 0.3s ease; }
+.no-content-message i { margin-right: 0.5rem; }
+
+/* --- Footer --- */
+.footer { background-color: var(--secondary-dark); color: var(--secondary-light); padding: 2.5rem 0; margin-top: auto; text-align: center; font-size: var(--font-size-sm); border-top: 1px solid var(--border-color); }
+.footer p { margin-bottom: 0.4rem; opacity: 0.9; }
+.footer a { color: var(--primary-light); }
+.footer a:hover { color: white; }
+.footer a img { display: inline-block; vertical-align: middle; height: 15px; margin-right: 5px; filter: brightness(0) invert(1); opacity: 0.8; transition: opacity var(--transition-speed-fast) ease; }
+.footer a:hover img { opacity: 1; }
+
+
+@media (min-width: 768px) {
+    .movie-detail-container { flex-direction: row; align-items: flex-start; gap: 30px; padding: 30px; }
+    .movie-detail-poster-trailer-section { flex-basis: 360px; flex-shrink: 0; }
+    .movie-detail-poster img, .movie-detail-poster-placeholder { display: block; }
+    .movie-detail-info { flex-grow: 1; }
+    .movie-detail-info h1 { font-size: 2.8rem; }
+    .similar-movies-grid { grid-template-columns: repeat(auto-fill, minmax(160px, 1fr)); gap: 20px; }
+
+    .person-main-info { flex-direction: row; align-items: flex-start; gap: 2rem; }
+    .person-profile-image-section { flex-basis: 320px; position: sticky; top: 1.5rem; }
+    .person-text-info h1 { font-size: 2.8rem; }
+    .filmography-grid { grid-template-columns: repeat(auto-fill, minmax(160px, 1fr)); gap: 1.5rem; }
+}
+@media (min-width: 992px) {
+    .movie-detail-info h1 { font-size: 3.2rem; }
+    .movie-detail-container { gap: 40px; padding: 35px; }
+    .movie-detail-poster-trailer-section { flex-basis: 380px; }
+
+    .person-profile-image-section { flex-basis: 350px; }
+    .person-text-info h1 { font-size: 3rem; }
+}
+
+
+/* --- Responsive Adjustments --- */
+.d-block { display: block !important; }
+.d-none { display: none !important; }
+@media (min-width: 992px) { .d-lg-inline { display: inline !important; } .d-lg-none { display: none !important; } }
+@media (max-width: 991px) { .d-lg-inline { display: none !important; } .d-lg-none { display: block !important;} .content-container { grid-template-columns: 1fr; } .sidebar { order: 1; } .main-content { order: 2; } }
+@media (max-width: 767px) { .container { width: 95%; } .header { padding: 2rem 0; } .card-style, .sidebar > .card-style { padding: 1.25rem; } .film-content { padding: 0.8rem; gap: 0.8rem; } .film-poster, .film-poster-placeholder { width: 75px; height: 112px; } .film-title { font-size: 1rem; } .film-meta, .film-details { font-size: 0.75rem; } .year-range-inputs { flex-direction: column; gap: 0.6rem; align-items: stretch; } .year-range-inputs span { display: none; } .btn { padding: 0.7rem 1.2rem; font-size: 0.85rem; }
+    .movie-detail-info h1 { font-size: 2rem; } .movie-detail-tagline { font-size: 1.1rem; }
+    .person-text-info h1 { font-size: 2rem; }
+}
+
+/* --- Utility Classes --- */
+.mb-0 { margin-bottom: 0 !important; }
+.mt-3 { margin-top: 1.5rem !important; }
+
+/* Flash mesajları için stil */
+.flash-messages-container {
+    position: fixed;
+    top: 20px;
+    right: 20px;
+    z-index: 1050; 
+    width: auto;
+    max-width: 400px;
+}
+.alert.alert-dismissible {
+    padding-right: 3rem; 
+    box-shadow: var(--box-shadow-lg);
+    opacity: 0; 
+    animation: fadeInRight 0.5s var(--transition-cubic) forwards;
+}
+@keyframes fadeInRight {
+    from {
+        opacity: 0;
+        transform: translateX(100%);
+    }
+    to {
+        opacity: 1;
+        transform: translateX(0);
+    }
+}
+.alert .close-button {
+    position: absolute;
+    top: 50%;
+    right: 1rem;
+    transform: translateY(-50%);
+    font-size: 1.5rem;
+    font-weight: bold;
+    color: inherit;
+    background: none;
+    border: none;
+    opacity: 0.5;
+    cursor: pointer;
+    padding: 0.5rem;
+    line-height: 1;
+    transition: opacity var(--transition-speed-fast) ease;
+}
+.alert .close-button:hover {
+    opacity: 1;
+}
+
+/* Hata mesajları için (JS ile eklenen) */
+.error-message {
+    color: var(--danger-color);
+    font-size: var(--font-size-sm);
+    display: block;
+    margin-top: 0.35rem;
+    font-weight: 500;
+}
+
+/* Film Detay Sayfası Aksiyon Butonları */
+.movie-actions {
+    display: flex;
+    gap: 10px;
+    margin-top: 15px; /* Poster ile butonlar arası boşluk */
+    justify-content: center; /* Butonları ortala */
+}
+
+.action-btn {
+    padding: 10px 15px;
+    border: 1px solid var(--border-color);
+    border-radius: var(--border-radius-md);
+    background-color: var(--surface-color);
+    color: var(--text-color);
+    cursor: pointer;
+    transition: all var(--transition-speed) ease;
+    font-size: 0.9rem;
+    display: inline-flex;
+    align-items: center;
+    gap: 8px;
+}
+
+.action-btn:hover {
+    background-color: var(--primary-light-bg);
+    border-color: var(--primary-color);
+    color: var(--primary-dark);
+}
+
+.action-btn i {
+    font-size: 1.1em;
+}
+
+/* Beğeni Butonu Özel Stili */
+.btn-like.liked {
+    background-color: var(--danger-color);
+    border-color: var(--danger-color);
+    color: white;
+}
+
+.btn-like.liked:hover {
+    background-color: #c82333; /* Daha koyu kırmızı */
+    border-color: #bd2130;
+}
+
+/* Daha Sonra İzle Butonu Özel Stili */
+.btn-watchlist.added {
+    background-color: var(--info-color);
+    border-color: var(--info-color);
+    color: white;
+}
+
+.btn-watchlist.added:hover {
+    background-color: #17a2b8; /* Daha koyu mavi */
+    border-color: #1593a5;
+}

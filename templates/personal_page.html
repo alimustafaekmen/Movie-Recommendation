@@ -1,0 +1,254 @@
+{% extends "base.html" %}
+
+{% block title %}Kişisel Sayfam | Film Öneri Motoru{% endblock %}
+
+{% block nav_personal_active %}active{% endblock %}
+
+{% block extra_head %}
+<style>
+    .personal-page-title {
+        font-size: 2rem;
+        font-weight: 600;
+        color: var(--text-color-richer);
+        margin-bottom: 1.5rem;
+        padding-bottom: 1rem;
+        border-bottom: 1px solid var(--border-color);
+        display: flex;
+        align-items: center;
+        gap: 0.75rem;
+    }
+
+    .personal-page-title i {
+        color: var(--primary-color);
+    }
+
+    .movies-grid-section {
+        margin-bottom: 3rem;
+    }
+
+    .movies-grid-section h2 {
+        font-size: 1.5rem;
+        font-weight: 500;
+        color: var(--primary-dark);
+        margin-bottom: 1.5rem;
+        display: flex;
+        align-items: center;
+        gap: 10px;
+    }
+
+    .movies-grid {
+        display: grid;
+        grid-template-columns: repeat(auto-fill, minmax(160px, 1fr));
+        gap: 20px;
+    }
+
+    .movie-card-personal {
+        background-color: var(--surface-color);
+        border-radius: var(--border-radius-lg);
+        box-shadow: var(--box-shadow);
+        overflow: hidden;
+        transition: transform 0.2s ease, box-shadow 0.2s ease;
+        text-decoration: none;
+        color: inherit;
+        display: flex;
+        flex-direction: column;
+        border: 1px solid var(--border-color-light);
+    }
+
+    .movie-card-personal:hover {
+        transform: translateY(-5px) scale(1.03);
+        box-shadow: var(--box-shadow-md);
+    }
+
+    .movie-card-personal img {
+        width: 100%;
+        height: auto;
+        aspect-ratio: 2/3;
+        object-fit: cover;
+        border-bottom: 1px solid var(--border-color-light);
+    }
+
+    .movie-card-personal .poster-placeholder {
+        width: 100%;
+        min-height: 240px;
+        background-color: var(--border-color);
+        display: flex;
+        flex-direction: column;
+        align-items: center;
+        justify-content: center;
+        font-size: 1.5rem;
+        color: var(--text-light);
+        padding: 10px;
+        text-align: center;
+    }
+
+    .movie-card-personal .poster-placeholder i {
+        font-size: 3rem;
+        margin-bottom: 10px;
+    }
+
+    .movie-card-personal-info {
+        padding: 12px;
+        text-align: center;
+        flex-grow: 1;
+        display: flex;
+        flex-direction: column;
+        justify-content: space-between;
+    }
+
+    .movie-card-personal-title {
+        font-size: 0.95rem;
+        font-weight: 600;
+        color: var(--text-color-richer);
+        margin-bottom: 5px;
+        line-height: 1.3;
+        display: -webkit-box;
+        -webkit-line-clamp: 2;
+        -webkit-box-orient: vertical;
+        overflow: hidden;
+        text-overflow: ellipsis;
+        min-height: 2.6em;
+    }
+
+    .movie-card-personal-rating {
+        font-size: 0.85rem;
+        color: var(--text-light);
+        display: inline-flex;
+        align-items: center;
+        gap: 5px;
+    }
+
+    .movie-card-personal-rating i {
+        color: var(--warning-color);
+    }
+
+    .empty-list-message {
+        padding: 20px;
+        background-color: var(--primary-light-bg);
+        border: 1px dashed var(--primary-light);
+        border-radius: var(--border-radius-md);
+        text-align: center;
+        color: var(--primary-dark-text);
+        font-size: 1rem;
+    }
+
+    .empty-list-message i {
+        margin-right: 8px;
+    }
+
+    .toggle-button {
+        cursor: pointer;
+        transition: transform 0.2s ease;
+    }
+
+    .toggle-button.collapsed .toggle-icon {
+        transform: rotate(-90deg);
+    }
+
+    .toggle-icon {
+        transition: transform 0.2s ease;
+        display: inline-block;
+        margin-left: 8px;
+    }
+
+    .movies-grid.collapsed {
+        display: none;
+    }
+</style>
+{% endblock %}
+
+{% block header_search %}
+{% include '_header_search_form.html' %}
+{% endblock %}
+
+{% block content %}
+<div class="container" style="padding-top: 2rem; padding-bottom: 2rem;">
+    <h1 class="personal-page-title"><i class="fas fa-bookmark"></i> Kişisel Film Listelerim</h1>
+
+    <section class="movies-grid-section">
+        <h2 class="toggle-button" data-target="#liked-movies-grid"><i class="fas fa-heart"></i> Beğendiğim Filmler <span
+                class="toggle-icon"><i class="fas fa-chevron-down"></i></span></h2>
+        {% if liked_movies_details and liked_movies_details|length > 0 %}
+        <div class="movies-grid" id="liked-movies-grid">
+            {% for movie in liked_movies_details %}
+            <a href="{{ url_for('movie_details_page', movie_id=movie.id) }}" class="movie-card-personal"
+                title="{{ movie.title }}">
+                {% if movie.poster_url_large %}
+                <img src="{{ movie.poster_url_large }}" alt="{{ movie.title }} Posteri" loading="lazy">
+                {% else %}
+                <div class="poster-placeholder">
+                    <i class="fas fa-film"></i>
+                    <span>Poster Yok</span>
+                </div>
+                {% endif %}
+                <div class="movie-card-personal-info">
+                    <p class="movie-card-personal-title">{{ movie.title }}</p>
+                    {% if movie.vote_average and movie.vote_average > 0 %}
+                    <span class="movie-card-personal-rating">
+                        <i class="fas fa-star"></i> {{ "%.1f"|format(movie.vote_average) }}/10
+                    </span>
+                    {% endif %}
+                </div>
+            </a>
+            {% endfor %}
+        </div>
+        {% else %}
+        <p class="empty-list-message"><i class="fas fa-info-circle"></i> Henüz beğendiğiniz bir film bulunmuyor.</p>
+        {% endif %}
+    </section>
+
+    <section class="movies-grid-section">
+        <h2 class="toggle-button" data-target="#watchlist-movies-grid"><i class="fas fa-clock"></i> Daha Sonra
+            İzleyeceklerim <span class="toggle-icon"><i class="fas fa-chevron-down"></i></span></h2>
+        {% if watchlist_movies_details and watchlist_movies_details|length > 0 %}
+        <div class="movies-grid" id="watchlist-movies-grid">
+            {% for movie in watchlist_movies_details %}
+            <a href="{{ url_for('movie_details_page', movie_id=movie.id) }}" class="movie-card-personal"
+                title="{{ movie.title }}">
+                {% if movie.poster_url_large %}
+                <img src="{{ movie.poster_url_large }}" alt="{{ movie.title }} Posteri" loading="lazy">
+                {% else %}
+                <div class="poster-placeholder">
+                    <i class="fas fa-film"></i>
+                    <span>Poster Yok</span>
+                </div>
+                {% endif %}
+                <div class="movie-card-personal-info">
+                    <p class="movie-card-personal-title">{{ movie.title }}</p>
+                    {% if movie.vote_average and movie.vote_average > 0 %}
+                    <span class="movie-card-personal-rating">
+                        <i class="fas fa-star"></i> {{ "%.1f"|format(movie.vote_average) }}/10
+                    </span>
+                    {% endif %}
+                </div>
+            </a>
+            {% endfor %}
+        </div>
+        {% else %}
+        <p class="empty-list-message"><i class="fas fa-info-circle"></i> İzleme listenizde henüz bir film bulunmuyor.
+        </p>
+        {% endif %}
+    </section>
+
+</div>
+{% endblock %}
+
+{% block scripts %}{% endblock %}{# scripts.js gerekmez #}
+
+{% block extra_scripts %}
+<script>
+    document.addEventListener('DOMContentLoaded', function () {
+        const toggleButtons = document.querySelectorAll('.toggle-button');
+        toggleButtons.forEach(button => {
+            button.addEventListener('click', function () {
+                const targetId = this.dataset.target;
+                const targetGrid = document.querySelector(targetId);
+                if (targetGrid) {
+                    targetGrid.classList.toggle('collapsed');
+                    this.classList.toggle('collapsed');
+                }
+            });
+        });
+    });
+</script>
+{% endblock %}

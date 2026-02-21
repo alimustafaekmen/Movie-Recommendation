@@ -1,0 +1,262 @@
+{% extends "base.html" %}
+
+{% block title %}"{{ query }}" Arama Sonuçları | Film Öneri Motoru{% endblock %}
+
+{% block extra_head %}
+<style>
+    .search-results-page {
+        padding-top: 1rem;
+        padding-bottom: 3rem;
+    }
+
+    .search-query-title {
+        font-size: 1.8rem;
+        font-weight: 600;
+        color: var(--text-color-richer);
+        margin-bottom: 2rem;
+        text-align: center;
+    }
+
+    .search-query-title span {
+        color: var(--primary-color);
+    }
+
+    .results-section {
+        margin-bottom: 2.5rem;
+    }
+
+    .results-section-title {
+        font-size: 1.5rem;
+        font-weight: 600;
+        color: var(--primary-dark);
+        margin-bottom: 1.25rem;
+        padding-bottom: 0.75rem;
+        border-bottom: 2px solid var(--primary-light-bg);
+        display: flex;
+        align-items: center;
+        gap: 0.75rem;
+    }
+
+    .results-section-title i {
+        font-size: 1.3rem;
+    }
+
+    .search-film-list {
+        list-style-type: none;
+        padding: 0;
+        display: grid;
+        grid-template-columns: repeat(auto-fill, minmax(160px, 1fr));
+        gap: 1.25rem;
+    }
+
+    .search-film-card {
+        background-color: var(--surface-color);
+        border-radius: var(--border-radius-lg);
+        box-shadow: var(--box-shadow-sm);
+        overflow: hidden;
+        transition: transform var(--transition-speed-slow) var(--transition-cubic), box-shadow var(--transition-speed-slow) var(--transition-cubic);
+        text-decoration: none;
+        color: inherit;
+        display: flex;
+        flex-direction: column;
+        border: 1px solid var(--border-color-light);
+    }
+
+    .search-film-card:hover {
+        transform: translateY(-5px) scale(1.03);
+        box-shadow: var(--box-shadow-md);
+    }
+
+    .search-film-card img {
+        width: 100%;
+        height: auto;
+        aspect-ratio: 2/3;
+        object-fit: cover;
+        border-bottom: 1px solid var(--border-color-light);
+    }
+
+    .search-film-card .poster-placeholder {
+        width: 100%;
+        height: 240px;
+        background-color: var(--border-color);
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        font-size: 2rem;
+        color: var(--text-light);
+    }
+
+    .search-film-info {
+        padding: 0.75rem;
+        text-align: center;
+        flex-grow: 1;
+    }
+
+    .search-film-title {
+        font-size: 0.9rem;
+        font-weight: 600;
+        color: var(--text-color);
+        margin-bottom: 0.25rem;
+        line-height: 1.3;
+        display: -webkit-box;
+        -webkit-line-clamp: 2;
+        -webkit-box-orient: vertical;
+        overflow: hidden;
+        text-overflow: ellipsis;
+        min-height: 2.4em;
+    }
+
+    .search-film-year {
+        font-size: 0.8rem;
+        color: var(--text-light);
+    }
+
+    .person-list {
+        list-style-type: none;
+        padding: 0;
+        display: flex;
+        flex-direction: column;
+        gap: 0.75rem;
+    }
+
+    .person-list-item a {
+        display: block;
+        padding: 0.75rem 1rem;
+        background-color: var(--primary-light-bg);
+        border-radius: var(--border-radius-md);
+        color: var(--primary-dark-text);
+        font-weight: 500;
+        text-decoration: none;
+        transition: background-color var(--transition-speed-fast) ease, color var(--transition-speed-fast) ease;
+    }
+
+    .person-list-item a:hover {
+        background-color: var(--primary-color);
+        color: var(--text-on-primary);
+    }
+
+    .no-results-message {
+        padding: 1.5rem;
+        text-align: center;
+        color: var(--text-light);
+        font-size: 1.1rem;
+        background-color: var(--surface-color);
+        border: 1px dashed var(--border-color);
+        border-radius: var(--border-radius-lg);
+    }
+</style>
+{% endblock %}
+
+{% block page_wrapper_class %}search-results-page{% endblock %}
+
+{% block header_search %}
+{% include '_header_search_form.html' %}
+{% endblock %}
+
+{% block content %}
+<div class="container">
+    <h2 class="search-query-title">"<span>{{ query }}</span>" için Arama Sonuçları</h2>
+
+    {# Flash Mesajları #}
+    {% with messages = get_flashed_messages(with_categories=true) %}
+    {% if messages %}
+    <div class="flash-messages-container" style="position: static; margin-bottom: 1.5rem;">
+        {% for category, message in messages %}
+        <div class="alert alert-{{ category if category != 'message' else 'info' }} alert-dismissible fade-in"
+            role="alert">
+            {{ message }}
+            <button type="button" class="close-button" data-dismiss="alert" aria-label="Kapat"
+                onclick="this.parentElement.style.display='none';">&times;</button>
+        </div>
+        {% endfor %}
+    </div>
+    {% endif %}
+    {% endwith %}
+
+    {% if not movies and not directors and not actors %}
+    <div class="no-results-message">
+        <i class="fas fa-search-minus fa-2x" style="margin-bottom: 0.75rem; color: var(--secondary-light);"></i>
+        <p>"{{ query }}" ile eşleşen film, yönetmen veya oyuncu bulunamadı.</p>
+        <p><small>Lütfen farklı bir arama terimi deneyin veya ana sayfaya dönün.</small></p>
+        <a href="{{ url_for('home') }}" class="btn btn-primary"
+            style="margin-top: 1rem; width: auto; padding: 0.6rem 1.2rem;">Ana Sayfa</a>
+    </div>
+    {% else %}
+    {# Bulunan Filmler #}
+    {% if movies %}
+    <section class="results-section">
+        <h3 class="results-section-title"><i class="fas fa-film"></i> Bulunan Filmler ({{ movies|length }})</h3>
+        <ul class="search-film-list">
+            {% for movie in movies %}
+            <li class="search-film-card">
+                <a href="{{ url_for('movie_details_page', movie_id=movie.id) }}">
+                    {% if movie.poster_url %}
+                    <img src="{{ movie.poster_url }}" alt="{{ movie.title }} Posteri" loading="lazy">
+                    {% else %}
+                    <div class="poster-placeholder"><i class="fas fa-image"></i></div>
+                    {% endif %}
+                    <div class="search-film-info">
+                        <p class="search-film-title">{{ movie.title }}</p>
+                        {% if movie.year and movie.year != 0 %}
+                        <p class="search-film-year">{{ movie.year }}</p>
+                        {% endif %}
+                    </div>
+                </a>
+            </li>
+            {% endfor %}
+        </ul>
+    </section>
+    {% elif query %}
+    <section class="results-section">
+        <h3 class="results-section-title"><i class="fas fa-film"></i> Bulunan Filmler</h3>
+        <p class="no-content-message">"{{ query }}" ile eşleşen film bulunamadı.</p>
+    </section>
+    {% endif %}
+
+    {# Bulunan Yönetmenler #}
+    {% if directors %}
+    <section class="results-section">
+        <h3 class="results-section-title"><i class="fas fa-user-tie"></i> Bulunan Yönetmenler ({{ directors|length }})
+        </h3>
+        <ul class="person-list">
+            {% for director in directors %}
+            <li class="person-list-item">
+                <a href="{{ url_for('director_details_route', director_name_url=quote_plus(director.name)) }}">
+                    {{ director.name }}
+                </a>
+            </li>
+            {% endfor %}
+        </ul>
+    </section>
+    {% elif query %}
+    <section class="results-section">
+        <h3 class="results-section-title"><i class="fas fa-user-tie"></i> Bulunan Yönetmenler</h3>
+        <p class="no-content-message">"{{ query }}" ile eşleşen yönetmen bulunamadı.</p>
+    </section>
+    {% endif %}
+
+    {# Bulunan Oyuncular #}
+    {% if actors %}
+    <section class="results-section">
+        <h3 class="results-section-title"><i class="fas fa-users"></i> Bulunan Oyuncular ({{ actors|length }})</h3>
+        <ul class="person-list">
+            {% for actor in actors %}
+            <li class="person-list-item">
+                <a href="{{ url_for('actor_details_route', actor_name_url=quote_plus(actor.name)) }}">
+                    {{ actor.name }}
+                </a>
+            </li>
+            {% endfor %}
+        </ul>
+    </section>
+    {% elif query %}
+    <section class="results-section">
+        <h3 class="results-section-title"><i class="fas fa-users"></i> Bulunan Oyuncular</h3>
+        <p class="no-content-message">"{{ query }}" ile eşleşen oyuncu bulunamadı.</p>
+    </section>
+    {% endif %}
+    {% endif %}
+</div>
+{% endblock %}
+
+{% block scripts %}{% endblock %}

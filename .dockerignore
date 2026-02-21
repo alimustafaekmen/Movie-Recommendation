@@ -1,0 +1,24 @@
+# Yoksayılacak dosyalar / Files to ignore
+
+# Git
+.git
+.gitignore
+
+# Python
+__pycache__/
+*.py[cod]
+*$py.class
+venv/
+env/
+.env
+
+# MacOS
+.DS_Store
+
+# IDEs
+.vscode/
+.idea/
+
+# Veritabanı ve Loglar (Gerekirse) / Database and Logs (If needed)
+*.db
+*.log

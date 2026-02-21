@@ -1,0 +1,136 @@
+{% extends "base.html" %}
+
+{% block title %}Giriş Yap | Film Öneri Motoru{% endblock %}
+
+{% block nav_login_active %}active{% endblock %}
+
+{% block extra_head %}
+<style>
+    .auth-container {
+        max-width: 450px;
+        margin: 4rem auto;
+        padding: 2.5rem;
+        background-color: var(--surface-color);
+        border-radius: var(--border-radius-lg);
+        box-shadow: var(--box-shadow-lg);
+        border: 1px solid var(--border-color-light);
+    }
+
+    .auth-title {
+        font-size: 1.8rem;
+        font-weight: 600;
+        color: var(--text-color-richer);
+        text-align: center;
+        margin-bottom: 2rem;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        gap: 0.75rem;
+    }
+
+    .auth-title i {
+        color: var(--primary-color);
+    }
+
+    .form-group {
+        margin-bottom: 1.5rem;
+    }
+
+    .form-group label {
+        display: block;
+        font-weight: 500;
+        color: var(--text-light);
+        margin-bottom: 0.5rem;
+    }
+
+    .form-control {
+        width: 100%;
+        padding: 0.8rem 1rem;
+        font-size: 1rem;
+        border: 1px solid var(--border-color);
+        border-radius: var(--border-radius-md);
+        background-color: var(--bg-color);
+        color: var(--text-color);
+        transition: border-color 0.2s ease;
+    }
+
+    .form-control:focus {
+        outline: none;
+        border-color: var(--primary-color);
+        box-shadow: 0 0 0 0.2rem var(--primary-light-bg);
+    }
+
+    .btn-auth {
+        width: 100%;
+        padding: 0.9rem;
+        font-size: 1.1rem;
+        font-weight: 500;
+        color: #fff;
+        background-color: var(--primary-color);
+        border: none;
+        border-radius: var(--border-radius-md);
+        cursor: pointer;
+        transition: background-color 0.2s ease;
+        display: inline-flex;
+        align-items: center;
+        justify-content: center;
+        gap: 8px;
+    }
+
+    .btn-auth:hover {
+        background-color: var(--primary-dark);
+    }
+
+    .auth-switch-link {
+        display: block;
+        text-align: center;
+        margin-top: 1.5rem;
+        color: var(--text-light);
+        font-size: 0.9rem;
+    }
+
+    .auth-switch-link a {
+        color: var(--primary-color);
+        text-decoration: none;
+        font-weight: 500;
+    }
+
+    .auth-switch-link a:hover {
+        text-decoration: underline;
+    }
+</style>
+{% endblock %}
+
+{% block content %}
+<div class="container">
+    <div class="auth-container">
+        <h2 class="auth-title"><i class="fas fa-sign-in-alt"></i> Kullanıcı Girişi</h2>
+
+        {% with messages = get_flashed_messages(with_categories=true) %}
+        {% if messages %}
+        {% for category, message in messages %}
+        <div class="alert alert-{{ category if category != 'message' else 'info' }}">{{ message }}</div>
+        {% endfor %}
+        {% endif %}
+        {% endwith %}
+
+        <form method="POST" action="{{ url_for('login_route') }}">
+            <div class="form-group">
+                <label for="username">Kullanıcı Adı</label>
+                <input type="text" class="form-control" id="username" name="username" required
+                    value="{{ request.form.username }}">
+            </div>
+            <div class="form-group">
+                <label for="password">Şifre</label>
+                <input type="password" class="form-control" id="password" name="password" required>
+            </div>
+            <button type="submit" class="btn-auth"><i class="fas fa-sign-in-alt"></i> Giriş Yap</button>
+        </form>
+        <p class="auth-switch-link">
+            Hesabınız yok mu? <a href="{{ url_for('register_route') }}">Hemen Üye Olun</a>
+        </p>
+    </div>
+</div>
+{% endblock %}
+
+{% block scripts %}{% endblock %}
