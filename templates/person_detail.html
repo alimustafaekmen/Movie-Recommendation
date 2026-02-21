@@ -1,0 +1,155 @@
+{% extends "base.html" %}
+
+{% block title %}{{ person.name | default(person.person_type_tr + ' Detayı') }} | {{ person.person_type_tr }}
+Detayları{% endblock %}
+
+{% block page_wrapper_class %}person-detail-page-wrapper{% endblock %}
+
+{% block content %}
+<div class="container">
+    {% if person %}
+    <script id="personBiographyData" type="application/json">
+                {{ {"fullBio": person.biography} | tojson | safe }}
+            </script>
+
+    <div class="person-detail-container">
+        <div class="person-main-info">
+            <div class="person-profile-image-section">
+                {% if person.profile_image_url %}
+                <img src="{{ person.profile_image_url }}" alt="{{ person.name }} Profil Fotoğrafı"
+                    class="person-profile-image">
+                {% else %}
+                <div class="person-profile-placeholder">
+                    <i class="fas fa-user"></i>
+                    <span>Fotoğraf Yok</span>
+                </div>
+                {% endif %}
+            </div>
+
+            <div class="person-text-info">
+                <h1>{{ person.name }}</h1>
+                {% if person.known_for_department %}
+                <span class="person-known-for">{{ person.known_for_department }}</span>
+                {% endif %}
+
+                <div class="person-meta-details">
+                    {% if person.birthday and person.birthday != "Bilinmiyor" %}
+                    <p><strong>Doğum Tarihi:</strong> {{ person.birthday | format_date }}
+                        {% if person.place_of_birth %}
+                        ({{ person.place_of_birth }})
+                        {% endif %}
+                    </p>
+                    {% endif %}
+                    {% if person.deathday and person.deathday != "Bilinmiyor" %}
+                    <p><strong>Ölüm Tarihi:</strong> {{ person.deathday | format_date }}</p>
+                    {% endif %}
+                    {% if person.homepage %}
+                    <p><strong>Web Sitesi:</strong> <a href="{{ person.homepage }}" target="_blank"
+                            rel="noopener noreferrer">{{ person.homepage }}</a></p>
+                    {% endif %}
+                </div>
+
+                {% if person.biography and person.biography != "Biyografi bilgisi bulunmamaktadır." %}
+                <div class="person-biography">
+                    <h3><i class="fas fa-book-open"></i> Biyografi</h3>
+                    <p id="biographyText">{{ person.biography[:600] }}{% if person.biography|length > 600 %}...{% endif
+                        %}</p>
+                    {% if person.biography|length > 600 %}
+                    <span class="biography-read-more" onclick="toggleBiography()">Devamını Oku</span>
+                    {% endif %}
+                </div>
+                {% elif person.biography == "Biyografi bilgisi bulunmamaktadır." %}
+                <div class="person-biography">
+                    <h3><i class="fas fa-book-open"></i> Biyografi</h3>
+                    <p>{{ person.biography }}</p>
+                </div>
+                {% endif %}
+            </div>
+        </div>
+
+        {% if person.movies %}
+        <div class="person-filmography">
+            <h3><i class="fas fa-video"></i> Filmografi (Popüler)</h3>
+            <div class="filmography-grid">
+                {% for movie in person.movies %}
+                <a href="{{ url_for('movie_details_page', movie_id=movie.id) }}" class="filmography-item"
+                    title="{{ movie.title }}">
+                    {% if movie.poster_url %}
+                    <img src="{{ movie.poster_url }}" alt="{{ movie.title }} Posteri" loading="lazy">
+                    {% else %}
+                    <div class="filmography-item-placeholder"><i class="fas fa-film"></i></div>
+                    {% endif %}
+                    <div class="filmography-info">
+                        <span class="filmography-title">{{ movie.title }}</span>
+                        <div>
+                            {% if movie.character %}
+                            <span class="filmography-character">({{ movie.character }})</span>
+                            {% elif movie.job %}
+                            <span class="filmography-job">({{ movie.job }})</span>
+                            {% endif %}
+                            {% if movie.release_date %}
+                            <span class="filmography-date">{{ movie.release_date[:4] }}</span>
+                            {% endif %}
+                        </div>
+                    </div>
+                </a>
+                {% endfor %}
+            </div>
+        </div>
+        {% else %}
+        <div class="person-filmography">
+            <h3><i class="fas fa-video"></i> Filmografi</h3>
+            <p class="no-content-message">Bu {{ person.person_type_tr.lower() }} için filmografi bilgisi bulunamadı.</p>
+        </div>
+        {% endif %}
+
+        <div class="back-button-container">
+            <button onclick="window.history.back();" class="btn btn-secondary">
+                <i class="fas fa-arrow-left"></i> Önceki Sayfaya Dön
+            </button>
+        </div>
+    </div>
+    {% else %}
+    <div class="alert alert-danger card-style" role="alert" style="margin-top: 2rem;">
+        <h4 class="alert-heading"><i class="fas fa-exclamation-circle"></i> Hata!</h4>
+        <p>{{ person.person_type_tr }} detayları yüklenirken bir sorun oluştu veya bu kişi bulunamadı.</p>
+        <hr>
+        <p class="mb-0"><a href="{{ url_for('home') }}" class="alert-link">Ana sayfaya dönmek için tıklayın.</a></p>
+    </div>
+    {% endif %}
+</div>
+{% endblock %}
+
+{% block scripts %}{% endblock %}{# scripts.js gerekmez #}
+
+{% block extra_scripts %}
+<script>
+    function toggleBiography() {
+        const bioText = document.getElementById('biographyText');
+        const biographyDataElement = document.getElementById('personBiographyData');
+        const readMoreSpan = document.querySelector('.biography-read-more');
+        let fullBio = '';
+        if (biographyDataElement) {
+            try {
+                const jsonData = JSON.parse(biographyDataElement.textContent);
+                fullBio = jsonData.fullBio || "Biyografi bilgisi bulunmamaktadır.";
+            } catch (e) {
+                console.error("Biyografi JSON parse hatası:", e);
+                fullBio = "Biyografi bilgisi yüklenirken bir sorun oluştu.";
+            }
+        } else {
+            fullBio = "Biyografi bilgisi bulunamadı.";
+        }
+        if (bioText && readMoreSpan) {
+            if (readMoreSpan.textContent === 'Devamını Oku') {
+                bioText.textContent = fullBio;
+                readMoreSpan.textContent = 'Daha Az Göster';
+            } else {
+                const truncatedBio = fullBio.substring(0, 600);
+                bioText.textContent = truncatedBio + (fullBio.length > 600 ? '...' : '');
+                readMoreSpan.textContent = 'Devamını Oku';
+            }
+        }
+    }
+</script>
+{% endblock %}

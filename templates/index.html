@@ -1,0 +1,286 @@
+{% extends "base.html" %}
+
+{% block title %}Film Öneri Motoru | Akıllı Film Tavsiyeleri{% endblock %}
+
+{% block meta_description %}
+<meta name="description"
+    content="Gelişmiş filtreleme ve benzerlik analizi ile kişiselleştirilmiş film önerileri alın. En iyi filmleri keşfedin.">
+{% endblock %}
+
+{% block header_subtitle %}
+<p>Size en uygun filmleri keşfedin: Benzerlerini bulun veya detaylı filtreleyin.</p>
+{% endblock %}
+
+{% block header_search %}
+{% include '_header_search_form.html' %}
+{% endblock %}
+
+{% block content %}
+<div class="container content-container">
+    <main class="main-content">
+        {# Flash Mesajları #}
+        {% with messages = get_flashed_messages(with_categories=true) %}
+        {% if messages %}
+        <div class="flash-messages-container">
+            {% for category, message in messages %}
+            <div class="alert alert-{{ category if category != 'message' else 'info' }} alert-dismissible fade-in"
+                role="alert">
+                {{ message }}
+                <button type="button" class="close-button" data-dismiss="alert" aria-label="Kapat"
+                    onclick="this.parentElement.style.display='none';">&times;</button>
+            </div>
+            {% endfor %}
+        </div>
+        {% endif %}
+        {% endwith %}
+
+        {# Uyarılar Bölümü #}
+        {% if warnings %}
+        <div class="warnings-container alert alert-warning">
+            <h5><i class="fas fa-exclamation-triangle"></i> Bilgilendirme</h5>
+            <ul>
+                {% for warning in warnings %}
+                <li>{{ warning }}</li>
+                {% endfor %}
+            </ul>
+        </div>
+        {% endif %}
+
+        {# Sonuçlar Bölümü #}
+        {% if suggestions %}
+        <div class="results-container card-style">
+            <h3 class="results-title">
+                <i class="fas fa-check-circle"></i>
+                {% if recommendation_type == 'similarity' and search_term %}
+                "{{ search_term }}" için Benzer Öneriler ({{ suggestions|length }} film):
+                {% elif recommendation_type == 'features' and search_term %}
+                Filtre Sonuçları ({{ search_term }}) ({{ suggestions|length }} film):
+                {% elif suggestions %}
+                Önerilen Filmler ({{ suggestions|length }} film):
+                {% else %}
+                Önerilen Filmler:
+                {% endif %}
+            </h3>
+            <ul class="film-list">
+                {% for film in suggestions %}
+                <li class="film-card">
+                    <a href="{{ url_for('movie_details_page', movie_id=film.id) }}" class="film-card-link"
+                        title="{{ film.title }} detayları için tıklayın">
+                        <div class="film-content">
+                            {% if film.poster_url %}
+                            <img src="{{ film.poster_url }}" alt="{{ film.title }} Posteri" class="film-poster"
+                                loading="lazy">
+                            {% else %}
+                            <div class="film-poster-placeholder">
+                                <i class="fas fa-image"></i>
+                                <span>Poster Yok</span>
+                            </div>
+                            {% endif %}
+                            <div class="film-info">
+                                <h4 class="film-title">{{ film.title | default('Başlık Yok') }}</h4>
+                                <div class="film-meta">
+                                    {% if film.year and film.year != 0 %}
+                                    <span class="year"><i class="fas fa-calendar-alt"></i> {{ film.year }}</span>
+                                    {% endif %}
+                                    {% if film.vote_average and film.vote_average > 0 %}
+                                    <span class="rating"><i class="fas fa-star"></i> {{ film.vote_average }}</span>
+                                    {% endif %}
+                                </div>
+                                <div class="film-details">
+                                    {% if film.director %}
+                                    <p><strong>Yönetmen:</strong> {{ film.director }}</p>
+                                    {% endif %}
+                                    {% if film.cast %}
+                                    <p><strong>Oyuncular:</strong> {{ film.cast }}</p>
+                                    {% endif %}
+                                </div>
+                            </div>
+                        </div>
+                    </a>
+                </li>
+                {% else %}
+                <p>Bu kriterlere uygun öneri bulunamadı.</p>
+                {% endfor %}
+            </ul>
+        </div>
+        {% endif %}
+
+        {# Hoşgeldin Mesajı #}
+        {% if not suggestions and request.method == 'GET' and not request.args.get('genre') %}
+        <div class="welcome-message card-style">
+            <h2><i class="fas fa-magic"></i> Film Keşfine Başlayın!</h2>
+            <p>Size en uygun filmleri bulmak için sağdaki (<i class="fas fa-arrow-right d-none d-lg-inline"></i><i
+                    class="fas fa-arrow-down d-lg-none"></i>) menüdeki formları kullanın:</p>
+            <ul>
+                <li><strong><i class="fas fa-search"></i> Benzer Film Bul:</strong> Beğendiğiniz bir filmin adını yazın
+                    veya popüler listelerden seçin.</li>
+                <li><strong><i class="fas fa-filter"></i> Filtreleyerek Öneri Al:</strong> Tür(ler), yönetmen, yayın
+                    yılı aralığı veya minimum puana göre arama yapın.</li>
+            </ul>
+            <p class="mt-3">İyi seyirler!</p>
+        </div>
+        {% endif %}
+
+        {# Sonuç Yok Mesajı (POST sonrası veya filtreden sonuç gelmezse) #}
+        {% if not suggestions and (request.method == 'POST' or request.args.get('genre')) %}
+        <div class="results-container empty-state card-style">
+            <i class="fas fa-ghost fa-3x"></i>
+            {% if recommendation_type == 'similarity' and search_term %}
+            <p>"{{ search_term }}" filmine benzer öneri bulunamadı.</p>
+            {% elif recommendation_type == 'features' or request.args.get('genre') %}
+            <p>Belirttiğiniz kriterlere uygun öneri bulunamadı.</p>
+            {% else %}
+            <p>Öneri bulunamadı.</p>
+            {% endif %}
+            <p class="mt-3"><small>Farklı bir film adı veya filtre kriterleri deneyebilirsiniz.</small></p>
+        </div>
+        {% endif %}
+    </main>
+
+    <aside class="sidebar">
+        <section class="filter-section card-style">
+            <h2><i class="fas fa-search"></i> Benzer Film Bul</h2>
+            <form method="POST" action="{{ url_for('home') }}" id="similarity-form">
+                <div class="form-group">
+                    <label for="film_ismi_custom">Film Adı:</label>
+                    <div class="input-toggle">
+                        <input type="checkbox" id="toggle_film" name="toggle_film" class="toggle-input" {% if
+                            form_data.get('toggle_film')=='on' %}checked{% endif %}>
+                        <label for="toggle_film" class="toggle-label">Listeden seçmek yerine kendim yazacağım</label>
+                    </div>
+
+                    <div class="select-wrapper {% if form_data.get('toggle_film') == 'on' %}d-none{% else %}d-block{% endif %}"
+                        id="film_select_wrapper">
+                        <select id="film_ismi" name="film_ismi" class="form-control">
+                            <option value="">-- Popüler Filmlerden Seçin --</option>
+                            {% for movie_title in popular_movies %}
+                            <option value="{{ movie_title }}" {% if not form_data.get('toggle_film') and
+                                form_data.get('film_ismi')==movie_title %}selected{% endif %}>
+                                {{ movie_title }}
+                            </option>
+                            {% endfor %}
+                        </select>
+                    </div>
+
+                    <div class="custom-input {% if form_data.get('toggle_film') == 'on' %}d-block{% else %}d-none{% endif %}"
+                        id="film_input_wrapper">
+                        <input type="text" id="film_ismi_custom" name="film_ismi_custom"
+                            placeholder="Film adını buraya yazın..." class="form-control" list="movieTitlesDatalist"
+                            value="{{ form_data.get('film_ismi_custom', '') if form_data.get('toggle_film') == 'on' else '' }}">
+                        <datalist id="movieTitlesDatalist">
+                            {% for title in all_movie_titles %} <option value="{{ title }}"> {% endfor %}
+                        </datalist>
+                    </div>
+                </div>
+                <div class="form-group">
+                    <label for="num_recommendations_sim">Öneri Sayısı (1-{{ max_recommendations }}):</label>
+                    <input type="number" id="num_recommendations_sim" name="num_recommendations"
+                        value="{{ form_data.get('num_recommendations', default_recommendations) }}" min="1"
+                        max="{{ max_recommendations }}" class="form-control num-input">
+                </div>
+                <div class="button-container">
+                    <button type="submit" name="submit_similarity" class="btn btn-primary btn-submit">
+                        <i class="fas fa-search"></i> Benzerlerini Bul
+                    </button>
+                </div>
+            </form>
+        </section>
+
+        <section class="filter-section card-style">
+            <h2><i class="fas fa-filter"></i> Filtreleyerek Öneri Al</h2>
+            <form method="POST" action="{{ url_for('home') }}" id="feature-form">
+                <div class="form-group">
+                    <label>Film Türü (Bir veya daha fazla seçin):</label>
+                    <div class="genre-checkbox-group">
+                        {% for genre in all_genres %}
+                        <div class="genre-checkbox-item">
+                            <input type="checkbox" id="genre-{{ genre|replace(' ', '-')|lower }}" name="tur"
+                                value="{{ genre }}" {% if genre in selected_genres %}checked{% endif %}>
+                            <label for="genre-{{ genre|replace(' ', '-')|lower }}">{{ genre }}</label>
+                        </div>
+                        {% endfor %}
+                    </div>
+                </div>
+
+                <div class="form-group">
+                    <label for="yonetmen_custom">Yönetmen Adı:</label>
+                    <div class="input-toggle">
+                        <input type="checkbox" id="toggle_yonetmen" name="toggle_yonetmen" class="toggle-input" {% if
+                            form_data.get('toggle_yonetmen')=='on' %}checked{% endif %}>
+                        <label for="toggle_yonetmen" class="toggle-label">Listeden seçmek yerine kendim
+                            yazacağım</label>
+                    </div>
+                    <div class="select-wrapper {% if form_data.get('toggle_yonetmen') == 'on' %}d-none{% else %}d-block{% endif %}"
+                        id="yonetmen_select_wrapper">
+                        <select id="yonetmen" name="yonetmen" class="form-control">
+                            <option value="">-- Popüler Yönetmenlerden Seçin --</option>
+                            {% for director_name in popular_directors %}
+                            <option value="{{ director_name }}" {% if not form_data.get('toggle_yonetmen') and
+                                form_data.get('yonetmen')==director_name %}selected{% endif %}>
+                                {{ director_name }}
+                            </option>
+                            {% endfor %}
+                        </select>
+                    </div>
+                    <div class="custom-input {% if form_data.get('toggle_yonetmen') == 'on' %}d-block{% else %}d-none{% endif %}"
+                        id="yonetmen_input_wrapper">
+                        <input type="text" id="yonetmen_custom" name="yonetmen_custom"
+                            placeholder="Yönetmen adını buraya yazın..." class="form-control"
+                            list="directorNamesDatalist"
+                            value="{{ form_data.get('yonetmen_custom', '') if form_data.get('toggle_yonetmen') == 'on' else '' }}">
+                        <datalist id="directorNamesDatalist">
+                            {% for director in all_director_names %} <option value="{{ director }}"> {% endfor %}
+                        </datalist>
+                    </div>
+                </div>
+
+                <div class="form-group">
+                    <label>Yayın Yılı Aralığı (İsteğe Bağlı):</label>
+                    <div class="year-range-inputs">
+                        <input type="number" id="min_yil" name="min_yil" placeholder="En Az" aria-label="Başlangıç Yılı"
+                            min="1900" max="{{ current_year }}" class="form-control year-input"
+                            value="{{ form_data.get('min_yil', '') }}">
+                        <span>–</span>
+                        <input type="number" id="max_yil" name="max_yil" placeholder="En Çok" aria-label="Bitiş Yılı"
+                            min="1900" max="{{ current_year }}" class="form-control year-input"
+                            value="{{ form_data.get('max_yil', '') }}">
+                    </div>
+                </div>
+
+                <div class="form-group">
+                    <label for="min_puan">Minimum Puan (IMDb):</label>
+                    <div class="select-wrapper">
+                        <select id="min_puan" name="min_puan" class="form-control">
+                            <option value="">-- Farketmez --</option>
+                            <option value="5.0" {% if form_data.get('min_puan')=='5.0' %}selected{% endif %}>5.0+
+                            </option>
+                            <option value="6.0" {% if form_data.get('min_puan')=='6.0' %}selected{% endif %}>6.0+
+                            </option>
+                            <option value="7.0" {% if form_data.get('min_puan')=='7.0' %}selected{% endif %}>7.0+
+                            </option>
+                            <option value="7.5" {% if form_data.get('min_puan')=='7.5' %}selected{% endif %}>7.5+
+                            </option>
+                            <option value="8.0" {% if form_data.get('min_puan')=='8.0' %}selected{% endif %}>8.0+
+                            </option>
+                            <option value="8.5" {% if form_data.get('min_puan')=='8.5' %}selected{% endif %}>8.5+
+                            </option>
+                        </select>
+                    </div>
+                </div>
+
+                <div class="form-group">
+                    <label for="num_recommendations_feat">Öneri Sayısı (1-{{ max_recommendations }}):</label>
+                    <input type="number" id="num_recommendations_feat" name="num_recommendations"
+                        value="{{ form_data.get('num_recommendations', default_recommendations) }}" min="1"
+                        max="{{ max_recommendations }}" class="form-control num-input">
+                </div>
+                <div class="button-container">
+                    <button type="submit" name="submit_features" class="btn btn-primary btn-submit">
+                        <i class="fas fa-sliders-h"></i> Filtrele & Öner
+                    </button>
+                </div>
+            </form>
+        </section>
+    </aside>
+</div>
+{% endblock %}

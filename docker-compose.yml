@@ -1,0 +1,12 @@
+services:
+  web:
+    build: .
+    container_name: movie_recommender_app
+    ports:
+      - "5001:5001"
+    volumes:
+      - .:/app
+    # .env dosyasındaki değişkenleri içeri aktarır / Imports variables from .env file
+    env_file:
+      - .env
+    restart: unless-stopped

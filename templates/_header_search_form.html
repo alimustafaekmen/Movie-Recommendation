@@ -1,0 +1,6 @@
+{# _header_search_form.html — Partial: Header arama formu #}
+{# Bu partial, arama formunu içeren sayfalara {% include '_header_search_form.html' %} ile dahil edilir. #}
+<form method="POST" action="{{ url_for('search_movie_redirect_route') }}" class="header-search-form">
+    <input type="search" name="search_query" placeholder="Film Ara..." aria-label="Film Ara" required>
+    <button type="submit" aria-label="Ara"><i class="fas fa-search"></i></button>
+</form>

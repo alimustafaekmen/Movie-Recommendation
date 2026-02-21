@@ -1,0 +1,263 @@
+{% extends "base.html" %}
+
+{% block title %}{{ movie.title | default('Film Detayı') }}{% if movie.year and movie.year != 0 %} ({{ movie.year }}){%
+endif %} | Film Öneri Motoru{% endblock %}
+
+{% block page_wrapper_class %}movie-detail-page-wrapper{% endblock %}
+
+{% block header_search %}
+{% include '_header_search_form.html' %}
+{% endblock %}
+
+{% block content %}
+<div class="container">
+    {% if movie %}
+    <div class="movie-detail-container">
+        <div class="movie-detail-poster-trailer-section">
+            <div class="movie-detail-poster">
+                {% if movie.poster_url_large %}
+                <img src="{{ movie.poster_url_large }}" alt="{{ movie.title }} Posteri" loading="lazy">
+                {% else %}
+                <div class="movie-detail-poster-placeholder">
+                    <i class="fas fa-film"></i>
+                    <span>Poster Bulunamadı</span>
+                </div>
+                {% endif %}
+            </div>
+            <div class="movie-actions" id="movie-interaction-data" data-movie-id="{{ movie.id | tojson }}"
+                data-is-liked="{{ is_liked | tojson }}" data-is-watchlisted="{{ is_watchlisted | tojson }}">
+                <button class="action-btn btn-like" title="Beğen">
+                    <i class="fas fa-heart"></i> <span>Beğen</span>
+                </button>
+                <button class="action-btn btn-watchlist" title="Daha Sonra İzle">
+                    <i class="fas fa-bookmark"></i> <span>Daha Sonra İzle</span>
+                </button>
+            </div>
+
+            {% if movie.trailer_key %}
+            <div class="movie-trailer-section">
+                <h3><i class="fas fa-video"></i> Fragman</h3>
+                <div class="trailer-responsive-container">
+                    <iframe src="https://www.youtube.com/embed/{{ movie.trailer_key }}" title="YouTube video player"
+                        allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture; web-share"
+                        allowfullscreen></iframe>
+                </div>
+            </div>
+            {% else %}
+            <div class="movie-trailer-section">
+                <h3><i class="fas fa-video"></i> Fragman</h3>
+                <div class="no-trailer-message">
+                    <p><i class="fas fa-info-circle"></i> Bu film için fragman bulunamadı.</p>
+                </div>
+            </div>
+            {% endif %}
+        </div>
+
+        <div class="movie-detail-info">
+            <h1>{{ movie.title | default('Başlık Yok') }}</h1>
+            {% if movie.tagline %}
+            <span class="movie-detail-tagline">"{{ movie.tagline }}"</span>
+            {% endif %}
+
+            <div class="movie-detail-meta">
+                {% if movie.year and movie.year != 0 %}
+                <span class="year"><i class="fas fa-calendar-alt"></i> {{ movie.year }}</span>
+                {% endif %}
+                {% if movie.runtime_formatted %}
+                <span class="runtime"><i class="fas fa-clock"></i> {{ movie.runtime_formatted }}</span>
+                {% endif %}
+                {% if movie.vote_average and movie.vote_average > 0 %}
+                <span class="rating"><i class="fas fa-star"></i> {{ movie.vote_average }}/10</span>
+                {% endif %}
+                {% if movie.vote_count and movie.vote_count > 0 %}
+                <span class="votes"><i class="fas fa-users"></i> {{ movie.vote_count | int }} Oy</span>
+                {% endif %}
+            </div>
+
+            {% if movie.overview %}
+            <div class="movie-detail-section">
+                <h3><i class="fas fa-file-alt"></i> Özet</h3>
+                <p>{{ movie.overview }}</p>
+            </div>
+            {% endif %}
+
+            {% if movie.genre_details_for_display %}
+            <div class="movie-detail-section movie-detail-tags">
+                <h3><i class="fas fa-tags"></i> Türler</h3>
+                <p>
+                    {% for genre_detail in movie.genre_details_for_display %}
+                    <a href="{{ url_for('home', genre=quote_plus(genre_detail.link_name)) }}" class="tag-item">{{
+                        genre_detail.display_name }}</a>
+                    {% if not loop.last %}{% endif %}
+                    {% endfor %}
+                </p>
+            </div>
+            {% elif movie.genres %}
+            <div class="movie-detail-section movie-detail-tags">
+                <h3><i class="fas fa-tags"></i> Türler</h3>
+                <p>
+                    {% set genres_list = movie.genres.split(' ') %}
+                    {% for genre_name in genres_list %}
+                    {% if genre_name.strip() and genre_name.strip().lower() not in ['tv', 'foreign', 'movie'] %}
+                    <a href="{{ url_for('home', genre=quote_plus(genre_name.strip())) }}" class="tag-item">{{
+                        genre_name.strip() }}</a>
+                    {% if not loop.last and (genres_list[loop.index] if loop.index < genres_list|length else ''
+                        ).strip() %}{% endif %} {% endif %} {% endfor %} </p>
+            </div>
+            {% endif %}
+
+            {% if movie.director %}
+            <div class="movie-detail-section">
+                <h3><i class="fas fa-user-tie"></i> Yönetmen</h3>
+                <p>
+                    <a href="{{ url_for('director_details_route', director_name_url=quote_plus(movie.director)) }}"
+                        class="director-link">{{ movie.director }}</a>
+                </p>
+            </div>
+            {% endif %}
+
+            {% if movie.cast %}
+            <div class="movie-detail-section movie-detail-cast">
+                <h3><i class="fas fa-users-cog"></i> Başlıca Oyuncular</h3>
+                <p>
+                    {% set actors = movie.cast.split(',') %}
+                    {% for actor in actors[:12] %}
+                    {% set actor_name = actor.strip() %}
+                    {% if actor_name %}
+                    <a href="{{ url_for('actor_details_route', actor_name_url=quote_plus(actor_name)) }}"
+                        class="cast-item">{{ actor_name }}</a>
+                    {% endif %}
+                    {% endfor %}
+                </p>
+            </div>
+            {% endif %}
+
+            {% if movie.similar_movies %}
+            <div class="similar-movies-section">
+                <h3><i class="fas fa-film-simple"></i> Benzer Filmler</h3>
+                {% if movie.similar_movies|length > 0 %}
+                <div class="similar-movies-grid">
+                    {% for sim_movie in movie.similar_movies %}
+                    <a href="{{ url_for('movie_details_page', movie_id=sim_movie.id) }}" class="similar-movie-card"
+                        title="{{ sim_movie.title }}">
+                        {% if sim_movie.poster_url %}
+                        <img src="{{ sim_movie.poster_url }}" alt="{{ sim_movie.title }} Posteri" loading="lazy">
+                        {% else %}
+                        <div class="poster-placeholder"><i class="fas fa-image"></i></div>
+                        {% endif %}
+                        <div class="similar-movie-info">
+                            <p class="similar-movie-title">{{ sim_movie.title }}</p>
+                            {% if sim_movie.year and sim_movie.year != 0 %}
+                            <p class="similar-movie-year">{{ sim_movie.year }}</p>
+                            {% endif %}
+                        </div>
+                    </a>
+                    {% endfor %}
+                </div>
+                {% else %}
+                <p>Bu filme benzer başka film bulunamadı.</p>
+                {% endif %}
+            </div>
+            {% endif %}
+
+            <div class="back-button-container">
+                <button onclick="window.history.back();" class="btn btn-secondary">
+                    <i class="fas fa-arrow-left"></i> Önceki Sayfaya Dön
+                </button>
+            </div>
+
+        </div>
+    </div>
+    {% else %}
+    <div class="alert alert-danger card-style" role="alert" style="margin-top: 2rem;">
+        <h4 class="alert-heading"><i class="fas fa-exclamation-circle"></i> Hata!</h4>
+        <p>Film detayları yüklenirken bir sorun oluştu veya bu film ID'si ile eşleşen bir kayıt bulunamadı.</p>
+        <hr>
+        <p class="mb-0"><a href="{{ url_for('home') }}" class="alert-link">Ana sayfaya dönmek için tıklayın.</a></p>
+    </div>
+    {% endif %}
+</div>
+{% endblock %}
+
+{% block scripts %}{% endblock %}{# index.html'in scripts.js'ini yüklemeye gerek yok #}
+
+{% block extra_scripts %}
+<script>
+    document.addEventListener('DOMContentLoaded', function () {
+        const likeButton = document.querySelector('.btn-like');
+        const watchlistButton = document.querySelector('.btn-watchlist');
+        const interactionDataElement = document.getElementById('movie-interaction-data');
+
+        if (!interactionDataElement) {
+            console.error('Film etkileşim verileri için element bulunamadı!');
+            if (likeButton) likeButton.disabled = true;
+            if (watchlistButton) watchlistButton.disabled = true;
+            return;
+        }
+
+        const movieIdStr = interactionDataElement.dataset.movieId;
+        const isLikedStr = interactionDataElement.dataset.isLiked;
+        const isWatchlistedStr = interactionDataElement.dataset.isWatchlisted;
+
+        const movieId = parseInt(movieIdStr);
+
+        let isLiked = isLikedStr === 'true';
+        let isWatchlisted = isWatchlistedStr === 'true';
+
+        function updateButtonState(button, isActive, activeClass, defaultText, activeText) {
+            if (!button) return;
+            if (isActive) {
+                button.classList.add(activeClass);
+                button.querySelector('span').textContent = activeText;
+            } else {
+                button.classList.remove(activeClass);
+                button.querySelector('span').textContent = defaultText;
+            }
+        }
+
+        if (likeButton) {
+            updateButtonState(likeButton, isLiked, 'liked', 'Beğen', 'Beğenildi');
+            likeButton.addEventListener('click', function () {
+                fetch(`/like_movie/${movieId}`, { method: 'POST' })
+                    .then(response => response.json())
+                    .then(data => {
+                        if (data.status === 'success') {
+                            isLiked = (data.action === 'liked');
+                            updateButtonState(likeButton, isLiked, 'liked', 'Beğen', 'Beğenildi');
+                            console.log('Beğeni durumu güncellendi:', data);
+                        } else {
+                            console.error('Beğeni işlemi başarısız.', data);
+                            alert('Bir hata oluştu, beğeni durumu güncellenemedi.');
+                        }
+                    })
+                    .catch(error => {
+                        console.error('Beğeni API hatası:', error);
+                        alert('Ağ hatası, beğeni durumu güncellenemedi.');
+                    });
+            });
+        }
+
+        if (watchlistButton) {
+            updateButtonState(watchlistButton, isWatchlisted, 'added', 'Daha Sonra İzle', 'Listede');
+            watchlistButton.addEventListener('click', function () {
+                fetch(`/watchlist_movie/${movieId}`, { method: 'POST' })
+                    .then(response => response.json())
+                    .then(data => {
+                        if (data.status === 'success') {
+                            isWatchlisted = (data.action === 'added');
+                            updateButtonState(watchlistButton, isWatchlisted, 'added', 'Daha Sonra İzle', 'Listede');
+                            console.log('İzleme listesi durumu güncellendi:', data);
+                        } else {
+                            console.error('İzleme listesi işlemi başarısız.', data);
+                            alert('Bir hata oluştu, izleme listesi durumu güncellenemedi.');
+                        }
+                    })
+                    .catch(error => {
+                        console.error('İzleme listesi API hatası:', error);
+                        alert('Ağ hatası, izleme listesi durumu güncellenemedi.');
+                    });
+            });
+        }
+    });
+</script>
+{% endblock %}
