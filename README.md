@@ -16,7 +16,6 @@
 
 İçerik tabanlı filtreleme (Content-Based Filtering) ve TMDb API kullanarak kişiselleştirilmiş film önerileri sunan, modern arayüze sahip bir web uygulaması.
 
-> 📚 **Eğitim Odaklı (Junior-Friendly) Mimari:**
 > Bu projenin kod tabanı (Python dosyaları) **tamamen çift dilli (Türkçe-İngilizce)** ayrıntılı yorumlarla donatılmış ve "Single Responsibility" prensibine göre basitleştirilmiştir.
 
 ### ✨ Özellikler
