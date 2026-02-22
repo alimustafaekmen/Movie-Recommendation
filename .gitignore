@@ -36,7 +36,5 @@ logs/
 Thumbs.db
 
 # Dataset
-# CSV files (too large for git)
 dataset/*.csv
-# User data (should not be committed)
 dataset/*.json

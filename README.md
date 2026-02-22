@@ -5,6 +5,16 @@
 [![Docker](https://img.shields.io/badge/Docker-Supported-2496ED?style=for-the-badge&logo=docker)](https://www.docker.com/)
 [![Machine Learning](https://img.shields.io/badge/ML-TF--IDF%20%2B%20Cosine%20Similarity-FF6F00?style=for-the-badge&logo=scikit-learn)](https://scikit-learn.org/)
 
+## 📸 Proje Önizlemesi / Project Preview
+
+<p align="center">
+  <img src="screenshots/1.png" width="400" alt="Home Page">
+  <img src="screenshots/2.png" width="400" alt="Search">
+  <img src="screenshots/3.png" width="400" alt="Details">
+  <img src="screenshots/4.png" width="400" alt="Watchlist">
+  <img src="screenshots/5.png" width="400" alt="Profile">
+</p>
+
 ## 🇹🇷 Türkçe
 
 İçerik tabanlı filtreleme (Content-Based Filtering) ve TMDb API kullanarak kişiselleştirilmiş film önerileri sunan, modern arayüze sahip bir web uygulaması.
