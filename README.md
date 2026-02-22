@@ -11,7 +11,6 @@
 ![Search](screenshots/2.png)
 ![Details](screenshots/3.png)
 ![Watchlist](screenshots/4.png)
-![Profile](screenshots/5.png)
 
 ## 🇹🇷 Türkçe
 
