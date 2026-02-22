@@ -5,11 +5,17 @@
 [![Docker](https://img.shields.io/badge/Docker-Supported-2496ED?style=for-the-badge&logo=docker)](https://www.docker.com/)
 [![Machine Learning](https://img.shields.io/badge/ML-TF--IDF%20%2B%20Cosine%20Similarity-FF6F00?style=for-the-badge&logo=scikit-learn)](https://scikit-learn.org/)
 
+## 📸 Proje Önizlemesi / Project Preview
+
+![Home Page](screenshots/1.png)
+![Search](screenshots/2.png)
+![Details](screenshots/3.png)
+![Watchlist](screenshots/4.png)
+
 ## 🇹🇷 Türkçe
 
 İçerik tabanlı filtreleme (Content-Based Filtering) ve TMDb API kullanarak kişiselleştirilmiş film önerileri sunan, modern arayüze sahip bir web uygulaması.
 
-> 📚 **Eğitim Odaklı (Junior-Friendly) Mimari:**
 > Bu projenin kod tabanı (Python dosyaları) **tamamen çift dilli (Türkçe-İngilizce)** ayrıntılı yorumlarla donatılmış ve "Single Responsibility" prensibine göre basitleştirilmiştir.
 
 ### ✨ Özellikler
