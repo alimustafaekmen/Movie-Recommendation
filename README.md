@@ -7,13 +7,11 @@
 
 ## 📸 Proje Önizlemesi / Project Preview
 
-<p align="center">
-  <img src="screenshots/1.png" width="400" alt="Home Page">
-  <img src="screenshots/2.png" width="400" alt="Search">
-  <img src="screenshots/3.png" width="400" alt="Details">
-  <img src="screenshots/4.png" width="400" alt="Watchlist">
-  <img src="screenshots/5.png" width="400" alt="Profile">
-</p>
+![Home Page](screenshots/1.png)
+![Search](screenshots/2.png)
+![Details](screenshots/3.png)
+![Watchlist](screenshots/4.png)
+![Profile](screenshots/5.png)
 
 ## 🇹🇷 Türkçe
 
