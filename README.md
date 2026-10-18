@@ -1,204 +1,120 @@
-# 🎬 Film Öneri Sistemi / Movie Recommendation System
+# Movie Recommendation
 
-[![Python Version](https://img.shields.io/badge/Python-3.10+-blue?style=for-the-badge&logo=python)](https://www.python.org/)
-[![Flask](https://img.shields.io/badge/Flask-2.0+-lightgrey?style=for-the-badge&logo=flask)](https://flask.palletsprojects.com/)
-[![Docker](https://img.shields.io/badge/Docker-Supported-2496ED?style=for-the-badge&logo=docker)](https://www.docker.com/)
-[![Machine Learning](https://img.shields.io/badge/ML-TF--IDF%20%2B%20Cosine%20Similarity-FF6F00?style=for-the-badge&logo=scikit-learn)](https://scikit-learn.org/)
+A content-based movie recommender built with Flask on the [TMDB 5000 dataset](https://www.kaggle.com/datasets/tmdb/tmdb-movie-metadata). It finds films similar to one you like, or ranks films that match a set of filters (genres, director, release years, minimum rating). Movie and person pages are enriched with live data from the TMDb API: posters, trailers, cast and biographies. The interface is in Turkish.
 
-## 📸 Proje Önizlemesi / Project Preview
+There are no accounts. Favourites and the watchlist are kept in the visitor's browser, so the app keeps no accounts or lists on the server and needs no database.
 
-![Home Page](screenshots/1.png)
-![Search](screenshots/2.png)
-![Details](screenshots/3.png)
-![Watchlist](screenshots/4.png)
+![Home page](screenshots/1.jpg)
+![Similar movies](screenshots/2.jpg)
+![Movie page](screenshots/3.jpg)
+![My lists](screenshots/4.jpg)
 
-## 🇹🇷 Türkçe
+## How recommendations work
 
-İçerik tabanlı filtreleme (Content-Based Filtering) ve TMDb API kullanarak kişiselleştirilmiş film önerileri sunan, modern arayüze sahip bir web uygulaması.
+**Similar movies.** Each film is turned into one text made of its genres, keywords, director, overview and tagline. A TF-IDF vectorizer (English stop words, up to 20,000 terms) converts these texts into L2-normalised vectors, so the cosine similarity between two films is a dot product. Only the sparse TF-IDF matrix is kept in memory; a film's similarity row is computed when it is needed.
 
-> Bu projenin kod tabanı (Python dosyaları) **tamamen çift dilli (Türkçe-İngilizce)** ayrıntılı yorumlarla donatılmış ve "Single Responsibility" prensibine göre basitleştirilmiştir.
+For a query film, the 91 most similar films form a candidate pool, and each candidate gets a weighted score in which every signal is scaled to 0-1 within the pool:
 
-### ✨ Özellikler
+| Signal | Weight |
+|---|---|
+| Content similarity (relative to the best match in the pool) | 0.50 |
+| Vote average / 10 | 0.20 |
+| Popularity | 0.20 |
+| Vote count | 0.10 |
 
-- 🔍 **Film Benzerlik Araması (Content-Based Filtering)** — Seçtiğiniz bir filmin yönetmeni, türleri, anahtar kelimeleri ve konusunu (overview) analiz ederek matematiksel olarak en benzer filmleri bulur (TF-IDF + Kosinüs Benzerliği).
-- 🎯 **Gelişmiş Çoklu Filtreleme Sistemi** — Sadece isimle değil; aynı anda belirli bir tür, spesifik bir yönetmen, vizyon yılı aralığı (Örn: 2010-2020) ve minimum IMDb puanı (Örn: 7.0+) belirleyerek çok hassas aramalar yapabilirsiniz.
-- 👤 **Kullanıcı Sistemi & Session Yönetimi** — Kullanıcılar kendi hesaplarını oluşturup giriş yapabilir. Oturumlar (session) güvenli bir şekilde yönetilir ve veriler JSON tabanlı lokal bir sistemde saklanır.
-- ❤️ **Kişiselleştirme (Favoriler & İzleme Listesi)** — Giriş yapan kullanıcılar, beğendikleri filmleri favorilerine ekleyebilir veya daha sonra izlemek üzere kendi izleme listelerine (Watchlist) kaydedebilirler.
-- 🎭 **Zengin Detay (TMDb Entegrasyonu)** — Sadece veri setindeki düz yazılar değil, canlı TMDb API'si kullanılarak filmlerin güncel afişleri, oyuncu kadrosu, yönetmenlerin biyografileri ve diğer yönettikleri güncel filmler anlık olarak çekilir.
-- 🐳 **Docker Desteği & İzolasyon** — Uygulama baştan sona konteynerize edilmiştir. Sunucuda veya lokal bilgisayarınızda sadece tek bir `docker-compose up` komutuyla, hiçbir Python kütüphanesi kurmadan izole bir ortamda ayağa kalkar.
-- 🏎️ **Fuzzy String Matching (Bulanık Arama)** — Arama çubuğuna film adını yanlış veya eksik yazsanız bile (Örn: "batmn"), sistem TheFuzz kütüphanesini kullanarak aradığınızı anlar ve doğru filme yönlendirir.
+TMDb ratings are noisy below 100 votes, so such films are dropped whenever the pool contains a film with at least 100 votes. Because the pool size is fixed, asking for more results never reorders the top ones.
 
----
+**Filter search.** Films that match every selected genre, the director and the year and rating bounds are ranked by `0.40 * rating + 0.45 * popularity + 0.15 * vote count` (each scaled to 0-1). Co-directed films match any of their directors.
 
-### 🚀 Kurulum & Çalıştırma
+**Title search.** Exact, case-insensitive title matches win; otherwise the closest title by fuzzy matching (thefuzz `WRatio`, cutoff 75) is used. When several films share a title, the most-voted one is chosen.
 
-Projeyi çalıştırmak için 2 farklı yol (Docker veya Manuel) mevcuttur.
+The weights live in [movierec/config.py](movierec/config.py).
 
-#### 1. Veri Setini Hazırlama (Ortak Adım)
-Proje çalışmak için [Kaggle TMDB 5000 Movie Dataset](https://www.kaggle.com/datasets/tmdb/tmdb-movie-metadata) dosyalarına ihtiyaç duyar.
-Aşağıdaki dosyaları indirip ana dizindeki `dataset/` klasörünün içine yerleştirin:
-- `tmdb_5000_movies.csv`
-- `tmdb_5000_credits.csv`
-
-#### 2. .env Dosyasını Hazırlama (Ortak Adım)
-```bash
-cp .env.example .env
-```
-`.env` dosyasını açıp TMDb API anahtarınızı girin. (Anahtarınızı [TMDb Ayarlar](https://www.themoviedb.org/settings/api) sayfasından alabilirsiniz.)
-
-#### YÖNTEM A: Docker ile (Tavsiye Edilen) 🐳
-
-Sisteminizde hiçbir Python eklentisi kurmadan uygulamayı tek komutla başlatabilirsiniz:
-
-```bash
-docker-compose up --build
-```
-Çalıştıktan sonra tarayıcınızda açın: **http://localhost:5001**
-
-#### YÖNTEM B: Manuel (Sanal Ortam) ile 🐍
-
-**1. Sanal ortam (venv veya conda) oluşturup aktifleştirin:**
-```bash
-python3 -m venv venv
-source venv/bin/activate  # Windows: venv\Scripts\activate
-```
-
-**2. Kütüphaneleri kurun:**
-```bash
-pip install -r requirements.txt
-```
-
-**3. Uygulamayı başlatın:**
-```bash
-python app.py
-```
-Çalıştıktan sonra tarayıcınızda açın: **http://localhost:5001**
-
----
-
-### 🧠 Öneri Motoru Nasıl Çalışır?
-
-1. **Veri Ön İşleme (Preprocessing):** Veri setindeki (CSV) film özetleri, türleri, yönetmen ve oyuncu bilgileri tek tek toplanır. Eksik veriler (NaN) temizlenerek, her film için uzun ve tek parça bir "Özellik Metni" (Combined Features String) oluşturulur.
-2. **Vektörizasyon (TF-IDF):** Matematiksel modeller metinleri okuyamayacağı için bu uzun özellik metinleri **TF-IDF (Term Frequency-Inverse Document Frequency)** modeli kullanılarak matematiksel vektörlere (sayılara) dönüştürülür. Sık kullanılan ama anlamsız bağlaçlar ('the', 'and') yoksayılır.
-3. **Benzerlik Matrisi (Cosine Similarity):** Her bir filmin matematiksel vektörü, diğer 4800 filmin vektörü ile karşılaştırılır. **Kosinüs Benzerliği (Cosine Similarity)** kullanılarak iki film arasındaki açının kosinüsü hesaplanır ve her eşleşmeye 0 (hiç benzemiyor) ile 1 (birebir aynı) arasında bir benzerlik skoru atanır.
-4. **Hibrit Skorlama (Hybrid Score):** Sadece "içerik benzerliği" yeterli değildir; kimse çok benzeyen ama kalitesiz veya 3 kişinin oy verdiği bir filmi izlemek istemez. Bu yüzden sistem, benzerlik skorunu alıp filmin **Orijinal Popülerliği**, **Oy Ortalaması (IMDb)** ve **Bilinirliği (Oy Sayısı)** ile belirli ağırlıklarla çarparak son bir "Tavsiye Edilebilirlik Skoru (Hybrid Score)" üretir ve algoritmayı mantıklı hale getirir.
-
----
-
-### 📂 Proje Yapısı / Project Structure
+## Project layout
 
 ```text
-MovieRecommendation/
-├── app.py                # Uygulama Ana Giriş Noktası / Main Application Entry Point
-├── Dockerfile            # Docker İmaj Kurulum Dosyası / Docker Image Setup File
-├── docker-compose.yml    # Docker Servis Orkestratörü / Docker Service Orchestrator
-├── requirements.txt      # Python Bağımlılıkları / Python Dependencies
-├── .env                  # Çevresel Değişkenler (TMDb Anahtarı) / Environment Variables
-├── dataset/              # CSV veri setleri (Movies & Credits) / CSV datasets
-├── static/               # CSS, JS ve Görsel Dosyalar / CSS, JS and Images
-├── templates/            # HTML Şablonları (Jinja2) / HTML Templates (Jinja2)
-└── src/                  # Çekirdek İş Mantığı Modülleri / Core Business Logic Modules
-    ├── config.py         # Yapılandırma & Sabitler / Configuration & Constants
-    ├── helpers.py        # Yardımcı Fonksiyonlar & API İstekleri / Helper Functions & API
-    ├── recommendation.py # Makine Öğrenimi Motoru / Machine Learning Engine
-    └── user_data.py      # Kullanıcı (JSON) Veri Yönetimi / User (JSON) Data Management
+app.py                  entry point (gunicorn app:app)
+movierec/
+  config.py             settings read from the environment / .env
+  dataset.py            CSV loading and preprocessing
+  similarity.py         TF-IDF matrix and ranking formulas
+  engine.py             RecommendationEngine: similar movies and filter search, offline
+  filters.py            input parsing and genre/director filters
+  details.py            movie pages and list cards enriched with TMDb data
+  genres.py             genre names and Turkish labels
+  tmdb.py               small TMDb API client
+  people.py             director/actor pages from TMDb
+  web/
+    __init__.py         app factory: config, security headers, error pages
+    movies.py           home, movie, person and search routes, JSON suggestions
+    lists.py            favourites and watchlist page, card endpoint
+    redirects.py        safe redirects back to the referring page
+templates/              Jinja templates
+static/                 CSS and JavaScript; lists.js keeps the lists in localStorage
+tests/                  pytest suite; tests/js/ holds the node:test suite
 ```
 
----
----
+## Running locally
 
-## 🇬🇧 English
+Requirements: Python 3.12 and the two Kaggle CSVs.
 
-A web application with a modern interface that provides personalized movie recommendations using Content-Based Filtering and the TMDb API.
+1. Download `tmdb_5000_movies.csv` and `tmdb_5000_credits.csv` from [Kaggle](https://www.kaggle.com/datasets/tmdb/tmdb-movie-metadata) into `dataset/`.
+2. Create the environment file and fill in a [TMDb API key](https://www.themoviedb.org/settings/api) and a secret key:
 
-> 📚 **Educational (Junior-Friendly) Architecture:**
-> The codebase (Python files) of this project has been heavily commented in **both Turkish and English** and refactored for simplicity. It aims to read like a storybook, allowing junior developers to easily grasp complex ML algorithms and API handling.
+   ```bash
+   cp .env.example .env
+   python -c "import secrets; print(secrets.token_hex(32))"   # value for FLASK_SECRET_KEY
+   ```
 
-### ✨ Features
+   Without a TMDb key the app still works on the dataset alone, without posters, trailers or person pages. The secret key signs the cookie that carries flash messages; without it a random key is generated on each start.
+3. Install and run:
 
-- 🔍 **Film Similarity Search (Content-Based Filtering)** — Analyzes a selected movie's director, genres, keywords, and overview to mathematically find the most similar movies (TF-IDF + Cosine Similarity).
-- 🎯 **Advanced Multi-Filtering System** — Search not just by name, but simultaneously filter by a specific genre, director, release year range (e.g., 2010-2020), and minimum IMDb rating (e.g., 7.0+).
-- 👤 **User System & Session Management** — Users can create accounts and log in. Sessions are securely managed and data is stored in a local JSON-based storage engine.
-- ❤️ **Personalization (Favorites & Watchlist)** — Logged-in users can bookmark their favorite movies or add them to their personal Watchlist for later.
-- 🎭 **Rich Details (TMDb Integration)** — Instead of relying solely on offline static data, the system fetches real-time movie posters, cast lists, director biographies, and their recent works using the live TMDb API.
-- 🐳 **Docker Support & Isolation** — The application is fully containerized. Boot up the entire environment locally or on a server with a single `docker-compose up` command, without installing any Python dependencies.
-- 🏎️ **Fuzzy String Matching** — Even if you misspell a movie name in the search bar (e.g., "batmn"), the system uses the TheFuzz library to understand your intent and redirect you to the correct movie.
+   ```bash
+   python -m venv .venv && source .venv/bin/activate
+   pip install -r requirements.txt
+   python app.py
+   ```
 
----
+   The app listens on http://127.0.0.1:5001.
 
-### 🚀 Setup & Execution
+With Docker, put the CSVs in `dataset/` first; they are copied into the image. Then `docker compose up --build` serves the app with gunicorn on port 5001, as a non-root user with a health check.
 
-There are 2 ways to run the project (Docker or Manual).
-
-#### 1. Prepare the Dataset (Common Step)
-The project requires the [Kaggle TMDB 5000 Movie Dataset](https://www.kaggle.com/datasets/tmdb/tmdb-movie-metadata).
-Download and place the following two files into the `dataset/` folder:
-- `tmdb_5000_movies.csv`
-- `tmdb_5000_credits.csv`
-
-#### 2. Prepare the .env File (Common Step)
-```bash
-cp .env.example .env
-```
-Open the `.env` file and enter your TMDb API key. (Get it from [TMDb Settings](https://www.themoviedb.org/settings/api)).
-
-#### METHOD A: Using Docker (Recommended) 🐳
-
-Run the application with a single command without installing Python dependencies on your host system:
+## Tests
 
 ```bash
-docker-compose up --build
-```
-Open in browser: **http://localhost:5001**
-
-#### METHOD B: Manual (Virtual Environment) 🐍
-
-**1. Create and activate a virtual environment:**
-```bash
-python3 -m venv venv
-source venv/bin/activate  # Windows: venv\Scripts\activate
+pip install -r requirements-dev.txt
+ruff check . && ruff format --check .
+pytest
+node --test "tests/js/*.test.mjs"
 ```
 
-**2. Install dependencies:**
-```bash
-pip install -r requirements.txt
-```
+Without the Kaggle CSVs, pytest runs against a 158-film fixture taken from the dataset (`tests/fixtures/`) and only skips the engine output snapshot, which needs all 4,803 films. CI runs the same commands on every push.
 
-**3. Run the app:**
-```bash
-python app.py
-```
-Open in browser: **http://localhost:5001**
+## Configuration
 
----
+| Variable | Purpose | Default |
+|---|---|---|
+| `TMDB_API_KEY` | TMDb v3 API key | unset (offline mode) |
+| `FLASK_SECRET_KEY` | signs the flash-message cookie | random per process |
+| `DATASET_DIR` | folder with the two CSVs | `dataset/` |
+| `SESSION_COOKIE_SECURE` | set to `1` behind HTTPS | off |
+| `HOST`, `PORT`, `FLASK_DEBUG` | development server options | `127.0.0.1`, `5001`, off |
+| `LOG_LEVEL` | log level, also under gunicorn | `INFO` |
 
----
+## Limitations
 
-### 🧠 How the Recommendation Engine Works?
+- The dataset ends in 2017, and recommendations only come from its 4,803 films.
+- Recommendations are purely content-based; they do not learn from what users like.
+- Lists need JavaScript, belong to one browser on one device and disappear when its site data is cleared.
 
-1. **Data Preprocessing:** Movie overviews, genres, director, and cast information from the dataset (CSV) are gathered. Missing data (NaN) is cleaned, and a long, single "Combined Features String" is generated for each movie.
-2. **Vectorization (TF-IDF):** Since mathematical models cannot read text, these long feature strings are converted into mathematical vectors (numbers) using the **TF-IDF (Term Frequency-Inverse Document Frequency)** model. Common but meaningless stop words ('the', 'and') are ignored.
-3. **Similarity Matrix (Cosine Similarity):** The mathematical vector of each movie is compared with the vectors of all other 4,800 movies. Using **Cosine Similarity**, the cosine of the angle between two movies is calculated, assigning a similarity score between 0 (not similar at all) and 1 (exact match) to each pair.
-4. **Hybrid Scoring:** Relying solely on "content similarity" is flawed; users rarely want to watch a highly similar but terrible movie with only 3 votes. Therefore, the system takes the similarity score and multiplies it by the movie's **Original Popularity**, **Vote Average (IMDb)**, and **Vote Count** using specific weights. This produces a final "Recommendability Score (Hybrid Score)", making the algorithm logical and reliable.
+## License and credits
 
----
+Source available under the [PolyForm Noncommercial License 1.0.0](LICENSE): free for personal, educational and other noncommercial use; commercial use is not permitted.
 
-### 📦 Technologies & Libraries
+Movie data and images come from [TMDB](https://www.themoviedb.org/). This product uses the TMDB API but is not endorsed or certified by TMDB. The base dataset is the [TMDB 5000 Movie Dataset](https://www.kaggle.com/datasets/tmdb/tmdb-movie-metadata) on Kaggle.
 
-| Technology | Usage Category |
-|-----------|----------|
-| **Python 3.10+ / Flask** | Backend Web Framework & Routing |
-| **Pandas** | Data extraction, manipulation & cleaning |
-| **Scikit-learn** | Machine Learning (TF-IDF, Cosine Similarity) |
-| **TheFuzz** | Fuzzy String Matching for search bars |
-| **Jinja2** | Front-end HTML Template engine |
-| **Docker** | Containerization & Deployment |
+## Türkçe özet
 
----
+TMDB 5000 veri seti üzerinde çalışan, Flask ile yazılmış içerik tabanlı bir film öneri sistemi. Beğendiğiniz bir filme benzeyen filmleri ya da seçtiğiniz tür, yönetmen, yıl ve puan filtrelerine uyan filmleri sıralar. Benzerlik, filmlerin tür, anahtar kelime, yönetmen, özet ve slogan metinlerinden üretilen TF-IDF vektörleriyle hesaplanır; sonuçlar puan, popülerlik ve oy sayısıyla birlikte ağırlıklandırılır.
 
-## 📝 Lisans / License
-This project is for educational purposes. / Bu proje eğitim amaçlıdır.
-
-## 🙏 Teşekkürler / Credits
-- [TMDb](https://www.themoviedb.org/) — Movie Data API
-- [Kaggle](https://www.kaggle.com/datasets/tmdb/tmdb-movie-metadata) — Dataset Provider
+Üyelik yoktur: beğeniler ve izleme listesi ziyaretçinin tarayıcısında saklanır, bu yüzden veritabanı gerekmez. Proje ticari olmayan kullanım için PolyForm Noncommercial 1.0.0 lisansıyla paylaşılmıştır. Kurulum adımları yukarıdaki bölümlerdedir.
