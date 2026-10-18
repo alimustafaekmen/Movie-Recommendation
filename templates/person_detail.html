@@ -7,11 +7,6 @@ Detayları{% endblock %}
 
 {% block content %}
 <div class="container">
-    {% if person %}
-    <script id="personBiographyData" type="application/json">
-                {{ {"fullBio": person.biography} | tojson | safe }}
-            </script>
-
     <div class="person-detail-container">
         <div class="person-main-info">
             <div class="person-profile-image-section">
@@ -49,19 +44,20 @@ Detayları{% endblock %}
                     {% endif %}
                 </div>
 
-                {% if person.biography and person.biography != "Biyografi bilgisi bulunmamaktadır." %}
+                {% if person.biography %}
+                {% set biography = person.biography %}
+                {# Cut at a word boundary near 600 characters; the rest sits behind "Devamını Oku". #}
+                {% set preview = biography | truncate(600, false, '') %}
+                {% set is_long = preview | length < biography | length %}
                 <div class="person-biography">
                     <h3><i class="fas fa-book-open"></i> Biyografi</h3>
-                    <p id="biographyText">{{ person.biography[:600] }}{% if person.biography|length > 600 %}...{% endif
-                        %}</p>
-                    {% if person.biography|length > 600 %}
-                    <span class="biography-read-more" onclick="toggleBiography()">Devamını Oku</span>
+                    <p>{{ preview }}{% if is_long %}...{% endif %}</p>
+                    {% if is_long %}
+                    <details>
+                        <summary class="biography-read-more">Devamını Oku</summary>
+                        <p>{{ biography[preview | length:] }}</p>
+                    </details>
                     {% endif %}
-                </div>
-                {% elif person.biography == "Biyografi bilgisi bulunmamaktadır." %}
-                <div class="person-biography">
-                    <h3><i class="fas fa-book-open"></i> Biyografi</h3>
-                    <p>{{ person.biography }}</p>
                 </div>
                 {% endif %}
             </div>
@@ -72,7 +68,7 @@ Detayları{% endblock %}
             <h3><i class="fas fa-video"></i> Filmografi (Popüler)</h3>
             <div class="filmography-grid">
                 {% for movie in person.movies %}
-                <a href="{{ url_for('movie_details_page', movie_id=movie.id) }}" class="filmography-item"
+                <a href="{{ url_for('movies.movie_detail', movie_id=movie.id) }}" class="filmography-item"
                     title="{{ movie.title }}">
                     {% if movie.poster_url %}
                     <img src="{{ movie.poster_url }}" alt="{{ movie.title }} Posteri" loading="lazy">
@@ -104,52 +100,10 @@ Detayları{% endblock %}
         {% endif %}
 
         <div class="back-button-container">
-            <button onclick="window.history.back();" class="btn btn-secondary">
+            <a class="btn btn-secondary" href="{{ url_for('movies.home') }}" data-back>
                 <i class="fas fa-arrow-left"></i> Önceki Sayfaya Dön
-            </button>
+            </a>
         </div>
     </div>
-    {% else %}
-    <div class="alert alert-danger card-style" role="alert" style="margin-top: 2rem;">
-        <h4 class="alert-heading"><i class="fas fa-exclamation-circle"></i> Hata!</h4>
-        <p>{{ person.person_type_tr }} detayları yüklenirken bir sorun oluştu veya bu kişi bulunamadı.</p>
-        <hr>
-        <p class="mb-0"><a href="{{ url_for('home') }}" class="alert-link">Ana sayfaya dönmek için tıklayın.</a></p>
-    </div>
-    {% endif %}
 </div>
-{% endblock %}
-
-{% block scripts %}{% endblock %}{# scripts.js gerekmez #}
-
-{% block extra_scripts %}
-<script>
-    function toggleBiography() {
-        const bioText = document.getElementById('biographyText');
-        const biographyDataElement = document.getElementById('personBiographyData');
-        const readMoreSpan = document.querySelector('.biography-read-more');
-        let fullBio = '';
-        if (biographyDataElement) {
-            try {
-                const jsonData = JSON.parse(biographyDataElement.textContent);
-                fullBio = jsonData.fullBio || "Biyografi bilgisi bulunmamaktadır.";
-            } catch (e) {
-                console.error("Biyografi JSON parse hatası:", e);
-                fullBio = "Biyografi bilgisi yüklenirken bir sorun oluştu.";
-            }
-        } else {
-            fullBio = "Biyografi bilgisi bulunamadı.";
-        }
-        if (bioText && readMoreSpan) {
-            if (readMoreSpan.textContent === 'Devamını Oku') {
-                bioText.textContent = fullBio;
-                readMoreSpan.textContent = 'Daha Az Göster';
-            } else {
-                const truncatedBio = fullBio.substring(0, 600);
-                bioText.textContent = truncatedBio + (fullBio.length > 600 ? '...' : '');
-                readMoreSpan.textContent = 'Devamını Oku';
-            }
-        }
-    }
-</script>
 {% endblock %}

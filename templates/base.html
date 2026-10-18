@@ -4,19 +4,14 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    {# Her sayfa kendi başlığını belirler #}
     <title>{% block title %}Film Öneri Motoru{% endblock %}</title>
-    {% block meta_description %}{% endblock %}
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
     <link
         href="https://fonts.googleapis.com/css2?family=Poppins:wght@300;400;500;600;700&family=Roboto:wght@300;400;500;700&display=swap"
         rel="stylesheet">
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.1/css/all.min.css">
-    <link rel="stylesheet" href="{{ url_for('static', filename='styles.css') }}?v={{ range(1, 10000)|random }}"> {#
-    Cache busting #}
-    {# Sayfa-spesifik stiller için #}
-    {% block extra_head %}{% endblock %}
+    <link rel="stylesheet" href="{{ asset_url('styles.css') }}">
 </head>
 
 <body>
@@ -24,35 +19,29 @@
         <header class="header">
             <div class="container">
                 <div class="header-content">
-                    <a href="{{ url_for('home') }}" class="header-link">
-                        <h1><i class="fas fa-film header-icon"></i> Film Öneri Motoru</h1>
+                    {# The home page's title is its h1; every other page has its own. #}
+                    {% set brand_tag = 'h1' if brand_heading else 'span' %}
+                    <a href="{{ url_for('movies.home') }}" class="header-link">
+                        <{{ brand_tag }} class="site-title"><i class="fas fa-film header-icon"></i> Film Öneri Motoru</{{ brand_tag }}>
                     </a>
-                    {# Bazı sayfalarda alt başlık/slogan gösterilebilir #}
                     {% block header_subtitle %}{% endblock %}
                 </div>
                 <nav class="header-nav">
-                    {% if current_user.is_authenticated %}
-                    <a href="{{ url_for('personal_page_route') }}"
-                        class="nav-link {% block nav_personal_active %}{% endblock %}"><i
-                            class="fas fa-user-circle"></i> Kişisel Sayfam ({{ current_user.username }})</a>
-                    <a href="{{ url_for('logout_route') }}" class="nav-link"><i class="fas fa-sign-out-alt"></i> Çıkış
-                        Yap</a>
-                    {% else %}
-                    <a href="{{ url_for('login_route') }}"
-                        class="nav-link {% block nav_login_active %}{% endblock %}"><i class="fas fa-sign-in-alt"></i>
-                        Giriş Yap</a>
-                    <a href="{{ url_for('register_route') }}"
-                        class="nav-link {% block nav_register_active %}{% endblock %}"><i class="fas fa-user-plus"></i>
-                        Üye Ol</a>
-                    {% endif %}
+                    <a href="{{ url_for('lists.my_lists') }}" class="nav-link"
+                        {% if request.endpoint == 'lists.my_lists' %}aria-current="page"{% endif %}><i
+                            class="fas fa-bookmark"></i> Listelerim</a>
                 </nav>
-                {# Arama formunu göstermek isteyen sayfalar bu bloğu doldurur #}
-                {% block header_search %}{% endblock %}
+                {% include '_header_search_form.html' %}
             </div>
         </header>
 
-        {# Ana içerik alanı — her sayfa kendi içeriğini buraya koyar #}
-        {% block content %}{% endblock %}
+        <main id="main-content">
+            <div class="flash-messages-container">
+                {% include '_flash_messages.html' %}
+            </div>
+
+            {% block content %}{% endblock %}
+        </main>
 
         <footer class="footer">
             <div class="container">
@@ -61,15 +50,11 @@
                         title="The Movie Database (TMDb)">
                         <img src="https://www.themoviedb.org/assets/2/v4/logos/v2/blue_short-8e7b30f73a4020692ccca9c88bafe5dcb6f8a62a4c6bc55cd9ba82bb2cd95f6c.svg"
                             height="15" alt="TMDb logo">
-                    </a> Bu site film verileri için TMDb API'sini kullanmaktadır.</p>
+                    </a> Bu site film verileri için TMDB API'sini kullanmaktadır ancak TMDB tarafından onaylanmamış veya sertifikalandırılmamıştır.</p>
             </div>
         </footer>
     </div>
-    {# Genel JS dosyası — sadece index.html formları için #}
-    {% block scripts %}
-    <script src="{{ url_for('static', filename='scripts.js') }}?v={{ range(1, 10000)|random }}"></script>
-    {% endblock %}
-    {# Sayfa-spesifik JavaScript için #}
+    <script src="{{ asset_url('scripts.js') }}"></script>
     {% block extra_scripts %}{% endblock %}
 </body>
 

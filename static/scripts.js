@@ -1,32 +1,54 @@
-// Sayfa tamamen yüklendiğinde kodun çalışmasını sağlar
+// Behaviour shared by every page; the home page forms need most of it.
 document.addEventListener('DOMContentLoaded', () => {
 
-    // Elemanları güvenli bir şekilde almak için yardımcı fonksiyon
-    const getElement = (selector, parent = document) => {
-        const element = parent.querySelector(selector);
-        if (!element) {
-            // console.warn(`Uyarı: '${selector}' seçicisiyle eşleşen HTML elemanı bulunamadı.`);
+    // Flash dismiss, back links and list toggles are delegated, so they also work on content added later.
+    document.addEventListener('click', (event) => {
+        const dismiss = event.target.closest('[data-dismiss="alert"]');
+        if (dismiss) {
+            dismiss.closest('.alert').remove();
         }
-        return element;
-    };
-    const getAllElements = (selector, parent = document) => {
-        const elements = parent.querySelectorAll(selector);
-        if (elements.length === 0) {
-            // console.warn(`Uyarı: '${selector}' seçicisiyle eşleşen HTML elemanları bulunamadı.`);
-        }
-        return elements;
-    };
 
-    // Toggle işlevselliğini kuran fonksiyon
+        // Go back only when the previous page is ours; the link's own href (home) is the fallback.
+        const back = event.target.closest('[data-back]');
+        if (back && document.referrer.startsWith(location.origin + '/')) {
+            event.preventDefault();
+            history.back();
+        }
+
+        const toggle = event.target.closest('[aria-controls][aria-expanded]');
+        if (toggle) {
+            const expanded = toggle.getAttribute('aria-expanded') === 'true';
+            toggle.setAttribute('aria-expanded', String(!expanded));
+            document.getElementById(toggle.getAttribute('aria-controls')).hidden = expanded;
+        }
+    });
+
+    // The suggestion lists are large, so they are fetched when the user first focuses the input.
+    document.querySelectorAll('datalist[data-src]').forEach((list) => {
+        const input = document.querySelector(`input[list="${list.id}"]`);
+        if (!input) {
+            return;
+        }
+        input.addEventListener('focus', async () => {
+            try {
+                const response = await fetch(list.dataset.src);
+                const names = response.ok ? await response.json() : [];
+                list.replaceChildren(...names.map((name) => new Option(name)));
+            } catch {
+                // The suggestions are optional; typing still works without them.
+            }
+        }, { once: true });
+    });
+
+    // Show either the select or the free-text input, and submit only the visible one.
     const setupToggle = (toggleSelector, selectWrapperSelector, inputWrapperSelector, selectInputSelector, customInputSelector) => {
-        const toggle = getElement(toggleSelector);
-        const selectWrapper = getElement(selectWrapperSelector); // Wrapper ID'leri güncellendi
-        const inputWrapper = getElement(inputWrapperSelector);   // Wrapper ID'leri güncellendi
-        const selectInput = getElement(selectInputSelector);
-        const customInput = getElement(customInputSelector);
+        const toggle = document.querySelector(toggleSelector);
+        const selectWrapper = document.querySelector(selectWrapperSelector);
+        const inputWrapper = document.querySelector(inputWrapperSelector);
+        const selectInput = document.querySelector(selectInputSelector);
+        const customInput = document.querySelector(customInputSelector);
 
         if (!toggle || !selectWrapper || !inputWrapper || !selectInput || !customInput) {
-            // console.warn(`Toggle kurulumu için gerekli elemanlar eksik: ${toggleSelector}`);
             return;
         }
 
@@ -36,117 +58,94 @@ document.addEventListener('DOMContentLoaded', () => {
             inputWrapper.classList.toggle('d-block', isChecked);
             inputWrapper.classList.toggle('d-none', !isChecked);
 
-            // Form gönderimi için name ve required attribute'larını ayarla
-            // İsimler (name) input/select ID'leri ile aynı olmalı
+            // The server reads the field named after the input's id; the hidden one gets no name.
             if (isChecked) {
-                selectInput.name = ''; // Seçimden gelen veriyi gönderme
+                selectInput.name = '';
                 selectInput.required = false;
-                customInput.name = customInput.id; // Özel girişten gelen veriyi gönder
-                // customInput.required = true; // Eğer özel giriş zorunluysa
+                customInput.name = customInput.id;
             } else {
-                selectInput.name = selectInput.id; // Seçimden gelen veriyi gönder
-                // selectInput.required = true; // Eğer seçim zorunluysa
-                customInput.name = ''; // Özel girişten gelen veriyi gönderme
+                selectInput.name = selectInput.id;
+                customInput.name = '';
                 customInput.required = false;
             }
         };
 
-        // Başlangıç durumu: HTML'de Jinja ile ayarlanan sınıflar ve form_data'daki 'checked' durumu esas alınır.
-        // Toggle'ın mevcut durumuna göre ilk görünürlüğü ayarla.
-        updateVisibility(toggle.checked); 
+        updateVisibility(toggle.checked);
 
         toggle.addEventListener('change', () => {
-            const isChecked = toggle.checked;
-            updateVisibility(isChecked);
-            if (isChecked) {
+            updateVisibility(toggle.checked);
+            if (toggle.checked) {
                 customInput.focus();
-            } else {
-                // Eğer select input görünür hale geliyorsa ve bir değeri varsa, ona odaklanmak yerine
-                // genel bir davranış sergileyebiliriz. Genellikle kullanıcı toggle'ı değiştirdiğinde
-                // bir sonraki adıma kendi geçer.
             }
         });
     };
 
-    // Film ve Yönetmen için Toggle mekanizmalarını başlat
-    // Wrapper ID'leri HTML'deki gibi olmalı: #film_select_wrapper, #film_input_wrapper vb.
     setupToggle('#toggle_film', '#film_select_wrapper', '#film_input_wrapper', '#film_ismi', '#film_ismi_custom');
     setupToggle('#toggle_yonetmen', '#yonetmen_select_wrapper', '#yonetmen_input_wrapper', '#yonetmen', '#yonetmen_custom');
 
 
-    // Form gönderildiğinde basit istemci taraflı doğrulama
-    getAllElements('form').forEach(form => {
+    // Basic client-side validation before a form is submitted.
+    document.querySelectorAll('form').forEach(form => {
         form.addEventListener('submit', (event) => {
             let validationError = false;
             let firstErrorElement = null;
 
-            // Hata mesajlarını temizle
             form.querySelectorAll('.error-message').forEach(el => el.remove());
 
             const createErrorMessage = (inputElement, message) => {
                 const errorSpan = document.createElement('span');
                 errorSpan.className = 'error-message';
-                errorSpan.style.color = 'var(--danger-color)';
-                errorSpan.style.fontSize = 'var(--font-size-sm)';
-                errorSpan.style.display = 'block';
-                errorSpan.style.marginTop = '0.25rem';
                 errorSpan.textContent = message;
                 inputElement.parentNode.insertBefore(errorSpan, inputElement.nextSibling);
                 if (!firstErrorElement) firstErrorElement = inputElement;
                 validationError = true;
             };
 
-            // Öneri Sayısı Doğrulaması
-            const numInput = getElement('input[name="num_recommendations"]', form);
+            const numInput = form.querySelector('input[name="num_recommendations"]');
             if (numInput) {
                 const numValue = parseInt(numInput.value, 10);
                 const min = parseInt(numInput.min, 10) || 1;
-                const max = parseInt(numInput.max, 10) || MAX_RECOMMENDATION_COUNT; // MAX_RECOMMENDATION_COUNT JS'de tanımlı olmalı ya da HTML'den alınmalı
+                const max = parseInt(numInput.max, 10);
 
-                if (numInput.value.trim() === '') {
-                    // Boş bırakılabilir, backend varsayılanı kullanır.
-                } else if (isNaN(numValue) || numValue < min || numValue > max) {
+                // An empty count is fine: the server uses its default.
+                if (numInput.value.trim() !== '' && (isNaN(numValue) || numValue < min || numValue > max)) {
                     createErrorMessage(numInput, `Lütfen ${min} ile ${max} arasında bir sayı girin.`);
                 }
             }
 
-            // Yıl Aralığı Doğrulaması
             if (form.id === 'feature-form') {
-                const minYearInput = getElement('#min_yil', form);
-                const maxYearInput = getElement('#max_yil', form);
+                const minYearInput = form.querySelector('#min_yil');
+                const maxYearInput = form.querySelector('#max_yil');
                 if (minYearInput && maxYearInput) {
                     const minYear = minYearInput.value ? parseInt(minYearInput.value, 10) : null;
                     const maxYear = maxYearInput.value ? parseInt(maxYearInput.value, 10) : null;
                     const currentYear = new Date().getFullYear();
 
                     if (minYearInput.value && (isNaN(minYear) || minYear < 1900 || minYear > currentYear)) {
-                         createErrorMessage(minYearInput, `Geçerli bir başlangıç yılı girin (1900 - ${currentYear}).`);
+                        createErrorMessage(minYearInput, `Geçerli bir başlangıç yılı girin (1900 - ${currentYear}).`);
                     }
                     if (maxYearInput.value && (isNaN(maxYear) || maxYear < 1900 || maxYear > currentYear)) {
-                         createErrorMessage(maxYearInput, `Geçerli bir bitiş yılı girin (1900 - ${currentYear}).`);
+                        createErrorMessage(maxYearInput, `Geçerli bir bitiş yılı girin (1900 - ${currentYear}).`);
                     }
-                    
-                    if (minYear !== null && maxYear !== null && minYear > maxYear && !validationError) { // Sadece diğer yıl hataları yoksa bu hatayı göster
+
+                    // Only report the range when both years are valid on their own.
+                    if (minYear !== null && maxYear !== null && minYear > maxYear && !validationError) {
                         createErrorMessage(minYearInput, 'Başlangıç yılı, bitiş yılından büyük olamaz.');
-                        // maxYearInput için de aynı mesajı ekleyebilir veya sadece birine odaklanabiliriz.
                     }
                 }
             }
-            
-            // Benzerlik formu için film adı kontrolü (eğer toggle kapalıysa ve seçim yapılmadıysa)
+
             if (form.id === 'similarity-form') {
-                const filmToggle = getElement('#toggle_film', form);
-                const filmSelect = getElement('#film_ismi', form);
-                const filmCustom = getElement('#film_ismi_custom', form);
+                const filmToggle = form.querySelector('#toggle_film');
+                const filmSelect = form.querySelector('#film_ismi');
+                const filmCustom = form.querySelector('#film_ismi_custom');
                 if (filmToggle && !filmToggle.checked && filmSelect && filmSelect.value === '') {
                     createErrorMessage(filmSelect, 'Lütfen popüler filmlerden birini seçin.');
                 } else if (filmToggle && filmToggle.checked && filmCustom && filmCustom.value.trim() === '') {
-                     createErrorMessage(filmCustom, 'Lütfen bir film adı yazın.');
+                    createErrorMessage(filmCustom, 'Lütfen bir film adı yazın.');
                 }
             }
 
-
-            // Hata varsa formu gönderme ve odaklan
             if (validationError) {
                 event.preventDefault();
                 if (firstErrorElement) {

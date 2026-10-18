@@ -1,39 +1,15 @@
 {% extends "base.html" %}
+{% set brand_heading = true %}
 
 {% block title %}Film Öneri Motoru | Akıllı Film Tavsiyeleri{% endblock %}
-
-{% block meta_description %}
-<meta name="description"
-    content="Gelişmiş filtreleme ve benzerlik analizi ile kişiselleştirilmiş film önerileri alın. En iyi filmleri keşfedin.">
-{% endblock %}
 
 {% block header_subtitle %}
 <p>Size en uygun filmleri keşfedin: Benzerlerini bulun veya detaylı filtreleyin.</p>
 {% endblock %}
 
-{% block header_search %}
-{% include '_header_search_form.html' %}
-{% endblock %}
-
 {% block content %}
 <div class="container content-container">
-    <main class="main-content">
-        {# Flash Mesajları #}
-        {% with messages = get_flashed_messages(with_categories=true) %}
-        {% if messages %}
-        <div class="flash-messages-container">
-            {% for category, message in messages %}
-            <div class="alert alert-{{ category if category != 'message' else 'info' }} alert-dismissible fade-in"
-                role="alert">
-                {{ message }}
-                <button type="button" class="close-button" data-dismiss="alert" aria-label="Kapat"
-                    onclick="this.parentElement.style.display='none';">&times;</button>
-            </div>
-            {% endfor %}
-        </div>
-        {% endif %}
-        {% endwith %}
-
+    <div class="main-content" id="results">
         {# Uyarılar Bölümü #}
         {% if warnings %}
         <div class="warnings-container alert alert-warning">
@@ -64,7 +40,7 @@
             <ul class="film-list">
                 {% for film in suggestions %}
                 <li class="film-card">
-                    <a href="{{ url_for('movie_details_page', movie_id=film.id) }}" class="film-card-link"
+                    <a href="{{ url_for('movies.movie_detail', movie_id=film.id) }}" class="film-card-link"
                         title="{{ film.title }} detayları için tıklayın">
                         <div class="film-content">
                             {% if film.poster_url %}
@@ -135,12 +111,12 @@
             <p class="mt-3"><small>Farklı bir film adı veya filtre kriterleri deneyebilirsiniz.</small></p>
         </div>
         {% endif %}
-    </main>
+    </div>
 
     <aside class="sidebar">
         <section class="filter-section card-style">
             <h2><i class="fas fa-search"></i> Benzer Film Bul</h2>
-            <form method="POST" action="{{ url_for('home') }}" id="similarity-form">
+            <form method="POST" action="{{ url_for('movies.home', _anchor='results') }}" id="similarity-form">
                 <div class="form-group">
                     <label for="film_ismi_custom">Film Adı:</label>
                     <div class="input-toggle">
@@ -167,9 +143,7 @@
                         <input type="text" id="film_ismi_custom" name="film_ismi_custom"
                             placeholder="Film adını buraya yazın..." class="form-control" list="movieTitlesDatalist"
                             value="{{ form_data.get('film_ismi_custom', '') if form_data.get('toggle_film') == 'on' else '' }}">
-                        <datalist id="movieTitlesDatalist">
-                            {% for title in all_movie_titles %} <option value="{{ title }}"> {% endfor %}
-                        </datalist>
+                        <datalist id="movieTitlesDatalist" data-src="{{ url_for('movies.api_titles') }}"></datalist>
                     </div>
                 </div>
                 <div class="form-group">
@@ -188,19 +162,19 @@
 
         <section class="filter-section card-style">
             <h2><i class="fas fa-filter"></i> Filtreleyerek Öneri Al</h2>
-            <form method="POST" action="{{ url_for('home') }}" id="feature-form">
-                <div class="form-group">
-                    <label>Film Türü (Bir veya daha fazla seçin):</label>
+            <form method="POST" action="{{ url_for('movies.home', _anchor='results') }}" id="feature-form">
+                <fieldset class="form-group">
+                    <legend>Film Türü (Bir veya daha fazla seçin):</legend>
                     <div class="genre-checkbox-group">
                         {% for genre in all_genres %}
                         <div class="genre-checkbox-item">
                             <input type="checkbox" id="genre-{{ genre|replace(' ', '-')|lower }}" name="tur"
                                 value="{{ genre }}" {% if genre in selected_genres %}checked{% endif %}>
-                            <label for="genre-{{ genre|replace(' ', '-')|lower }}">{{ genre }}</label>
+                            <label for="genre-{{ genre|replace(' ', '-')|lower }}">{{ genre_label(genre) }}</label>
                         </div>
                         {% endfor %}
                     </div>
-                </div>
+                </fieldset>
 
                 <div class="form-group">
                     <label for="yonetmen_custom">Yönetmen Adı:</label>
@@ -228,14 +202,12 @@
                             placeholder="Yönetmen adını buraya yazın..." class="form-control"
                             list="directorNamesDatalist"
                             value="{{ form_data.get('yonetmen_custom', '') if form_data.get('toggle_yonetmen') == 'on' else '' }}">
-                        <datalist id="directorNamesDatalist">
-                            {% for director in all_director_names %} <option value="{{ director }}"> {% endfor %}
-                        </datalist>
+                        <datalist id="directorNamesDatalist" data-src="{{ url_for('movies.api_directors') }}"></datalist>
                     </div>
                 </div>
 
-                <div class="form-group">
-                    <label>Yayın Yılı Aralığı (İsteğe Bağlı):</label>
+                <fieldset class="form-group">
+                    <legend>Yayın Yılı Aralığı (İsteğe Bağlı):</legend>
                     <div class="year-range-inputs">
                         <input type="number" id="min_yil" name="min_yil" placeholder="En Az" aria-label="Başlangıç Yılı"
                             min="1900" max="{{ current_year }}" class="form-control year-input"
@@ -245,10 +217,10 @@
                             min="1900" max="{{ current_year }}" class="form-control year-input"
                             value="{{ form_data.get('max_yil', '') }}">
                     </div>
-                </div>
+                </fieldset>
 
                 <div class="form-group">
-                    <label for="min_puan">Minimum Puan (IMDb):</label>
+                    <label for="min_puan">Minimum Puan (TMDB):</label>
                     <div class="select-wrapper">
                         <select id="min_puan" name="min_puan" class="form-control">
                             <option value="">-- Farketmez --</option>
