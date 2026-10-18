@@ -1,24 +1,10 @@
-# Yoksayılacak dosyalar / Files to ignore
-
-# Git
-.git
-.gitignore
-
-# Python
-__pycache__/
-*.py[cod]
-*$py.class
-venv/
-env/
-.env
-
-# MacOS
-.DS_Store
-
-# IDEs
-.vscode/
-.idea/
-
-# Veritabanı ve Loglar (Gerekirse) / Database and Logs (If needed)
-*.db
-*.log
+# Allowlist: the build context holds only what the image runs.
+*
+!app.py
+!movierec/
+!templates/
+!static/
+!requirements.txt
+!dataset/tmdb_5000_movies.csv
+!dataset/tmdb_5000_credits.csv
+**/__pycache__

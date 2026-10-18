@@ -1,33 +1,22 @@
-# Temel imaj olarak resmi Python imajını kullanıyoruz
-# Use official Python image as a parent image
-FROM python:3.10-slim
+FROM python:3.12-slim
 
-# Çalışma dizinini ayarlıyoruz
-# Set the working directory in the container
+ENV PYTHONDONTWRITEBYTECODE=1 \
+    PYTHONUNBUFFERED=1
+
 WORKDIR /app
 
-# İşletim sistemi bağımlılıklarını kur (thefuzz kütüphanesi derleme gerektirebilir)
-# Install system dependencies (thefuzz library might require compilation)
-RUN apt-get update && apt-get install -y \
-    build-essential \
-    && rm -rf /var/lib/apt/lists/*
-
-# Önce sadece requirements.txt dosyasını kopyalıyoruz (Önbelleği verimli kullanmak için)
-# Copy only requirements.txt first (To use cache efficiently)
 COPY requirements.txt .
-
-# Python bağımlılıklarını yüklüyoruz
-# Install Python dependencies
 RUN pip install --no-cache-dir -r requirements.txt
 
-# Uygulamanın geri kalanını (kodları) kopyalıyoruz
-# Copy the rest of the application (codes)
+# The dataset CSVs are copied in as well; the app only reads them and writes no files.
 COPY . .
+RUN useradd --create-home appuser
+USER appuser
 
-# Flask'ın internete açılacağı portu belirtiyoruz
-# Expose the port that Flask will run on
 EXPOSE 5001
 
-# Konteyner ayağa kalktığında çalıştırılacak komut
-# Command to run when the container starts
-CMD ["python", "app.py"]
+HEALTHCHECK --interval=30s --timeout=5s --start-period=30s \
+    CMD python -c "import urllib.request; urllib.request.urlopen('http://127.0.0.1:5001/health', timeout=4)"
+
+# One worker: every worker would build its own copy of the model.
+CMD ["gunicorn", "--workers", "1", "--threads", "4", "--bind", "0.0.0.0:5001", "--access-logfile", "-", "app:app"]
