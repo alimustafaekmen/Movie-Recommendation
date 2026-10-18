@@ -1,0 +1,282 @@
+import re
+
+import pytest
+from flask import url_for
+
+from movierec.engine import RecommendationEngine
+
+
+def test_similarity_excludes_the_query_movie(engine):
+    results, _ = engine.recommend_by_similarity("Avatar", num=5)
+
+    assert 1 <= len(results) <= 5
+    assert 19995 not in {movie["id"] for movie in results}
+
+
+def test_misspelled_title_falls_back_to_closest_match(engine):
+    results, warnings = engine.recommend_by_similarity("inceptoin")
+
+    assert results
+    assert any("Inception" in warning for warning in warnings)
+
+
+def test_feature_search_by_genre_returns_movies(engine):
+    results, _ = engine.recommend_by_features(genres=["Drama"])
+
+    assert results
+
+
+def _similar_ids(details, movie_id):
+    return [movie["id"] for movie in details.get_movie_details(movie_id)["similar_movies"]]
+
+
+def test_duplicate_titles_get_their_own_neighbours(details):
+    batman_1966 = _similar_ids(details, 2661)
+
+    assert batman_1966 != _similar_ids(details, 268)
+    assert 2661 not in batman_1966
+
+
+def test_similar_movie_ids_match_the_detail_page(engine, details):
+    assert engine.similar_movie_ids(155, num=8) == _similar_ids(details, 155)
+    assert len(engine.similar_movie_ids(155, num=30)) == 30
+
+
+@pytest.mark.parametrize(
+    ("query", "movie_id"),
+    [("Alien³", 8077), ("alien", 348), ("batman", 268), ("  The Host ", 72710), ("avatr", 19995)],
+)
+def test_find_movie_id(engine, query, movie_id):
+    assert engine.find_movie_id(query) == movie_id
+
+
+@pytest.mark.parametrize("query", ["a", " ", "", None, 5, "qqqqzzzzxx"])
+def test_find_movie_id_rejects_junk(engine, query):
+    assert engine.find_movie_id(query) is None
+
+
+def test_overlong_query_is_cut_to_100_characters(engine):
+    _, warnings = engine.recommend_by_similarity("x" * 5000)
+
+    assert warnings
+    assert all(len(warning) < 300 for warning in warnings)
+
+
+def test_exact_title_has_no_fuzzy_warning(engine):
+    _, warnings = engine.recommend_by_similarity("alien³")
+
+    assert warnings == []
+
+
+@pytest.mark.parametrize(("num", "limit"), [(-5, 1), (0, 1), ("5", 5), ("abc", 15), (999, 30)])
+def test_result_count_is_clamped(engine, num, limit):
+    similar, _ = engine.recommend_by_similarity("Avatar", num=num)
+    by_genre, _ = engine.recommend_by_features(genres=["Drama"], num=num)
+
+    assert 1 <= len(similar) <= limit
+    assert 1 <= len(by_genre) <= limit
+
+
+def test_non_string_title_returns_a_warning(engine):
+    results, warnings = engine.recommend_by_similarity(5)
+
+    assert results == []
+    assert warnings == ["Lütfen aramak için bir film ismi girin veya listeden seçin."]
+
+
+def test_single_genre_string_is_treated_as_one_genre(engine):
+    assert engine.recommend_by_features(genres="Drama") == engine.recommend_by_features(
+        genres=["Drama"]
+    )
+
+
+@pytest.mark.parametrize("movie_id", ["abc", None, 1.5j])
+def test_list_card_for_invalid_id_is_none(details, movie_id):
+    assert details.get_movie_info_for_list(movie_id) is None
+
+
+def test_missing_dataset_raises(tmp_path):
+    missing = str(tmp_path / "missing.csv")
+
+    with pytest.raises(FileNotFoundError, match="missing.csv"):
+        RecommendationEngine(missing, missing)
+
+
+def test_low_vote_feature_results_fall_back_with_a_warning(engine):
+    results, warnings = engine.recommend_by_features(genres=["Foreign"])
+
+    assert results
+    assert any("daha az bilinen" in warning for warning in warnings)
+
+
+def _feature_ids(results):
+    return [movie["id"] for movie in results]
+
+
+def _rows(engine, results):
+    ids = _feature_ids(results)
+    return engine.movies_df.set_index("id").loc[ids]
+
+
+def test_multi_word_genres_stay_whole(engine):
+    assert "Science Fiction" in engine.all_genres
+    assert not {"Science", "Fiction", "TV", "Movie", "TV Movie", "Foreign"} & set(engine.all_genres)
+
+
+def test_genre_filter_needs_every_genre_exactly(engine):
+    results, _ = engine.recommend_by_features(genres=["science fiction", "Animation"], num=30)
+
+    assert results
+    for genres in _rows(engine, results)["genre_list"]:
+        assert {"Science Fiction", "Animation"} <= set(genres)
+
+
+def test_genre_fragment_matches_nothing(engine):
+    results, warnings = engine.recommend_by_features(genres=["a"])
+
+    assert results == []
+    assert warnings
+
+
+def test_co_directors_are_searchable(engine):
+    results, warnings = engine.recommend_by_features(director_query="Ethan Coen", num=30)
+
+    assert len(results) >= 5
+    assert warnings == []
+    assert all("Ethan Coen" in directors for directors in _rows(engine, results)["directors"])
+
+
+@pytest.mark.parametrize(
+    ("query", "director"),
+    [
+        ("nolan", "Christopher Nolan"),
+        ("spielberg", "Steven Spielberg"),
+        ("tarantino", "Quentin Tarantino"),
+        ("cristopher nolan", "Christopher Nolan"),
+    ],
+)
+def test_fuzzy_director_resolves(engine, query, director):
+    results, warnings = engine.recommend_by_features(director_query=query)
+
+    assert results
+    assert warnings == [f"Yönetmen '{query}' bulunamadı. '{director}' kullanılıyor."]
+
+
+@pytest.mark.parametrize("query", ["Zzqx Qwerty", "John Smith"])
+def test_unknown_director_returns_nothing(engine, query):
+    results, warnings = engine.recommend_by_features(
+        genres=["Drama"], director_query=query, min_rating="7"
+    )
+
+    assert results == []
+    assert warnings == [f"'{query}' adlı yönetmen bulunamadı."]
+
+
+def test_turkish_decimal_comma_is_accepted(engine):
+    results, warnings = engine.recommend_by_features(genres=["Drama"], min_rating="7,5", num=30)
+
+    assert results
+    assert warnings == []
+    assert (_rows(engine, results)["vote_average"] >= 7.5).all()
+
+
+def test_one_invalid_number_keeps_the_other_filters(engine):
+    results, warnings = engine.recommend_by_features(
+        min_rating="abc", min_year="2010.0", max_year="nan", num=30
+    )
+
+    assert warnings == ["Geçersiz puan veya yıl formatı girildi. Lütfen sadece sayı kullanın."]
+    assert (_rows(engine, results)["year"] >= 2010).all()
+
+
+@pytest.mark.parametrize(("field", "value"), [("min_rating", "11"), ("min_year", "1800")])
+def test_out_of_range_number_is_rejected(engine, field, value):
+    _, warnings = engine.recommend_by_features(genres=["Drama"], **{field: value})
+
+    assert warnings == ["Geçersiz puan veya yıl formatı girildi. Lütfen sadece sayı kullanın."]
+
+
+def test_reversed_year_range_is_swapped(engine):
+    results, warnings = engine.recommend_by_features(min_year="2020", max_year="2000", num=30)
+
+    assert warnings == ["Yıl aralığı ters girilmişti, düzeltildi."]
+    assert _rows(engine, results)["year"].between(2000, 2020).all()
+
+
+def test_detail_badges_use_turkish_labels(details):
+    movie = details.get_movie_details(19995)
+
+    assert {"display_name": "Bilim Kurgu", "link_name": "Science Fiction"}.items() <= next(
+        badge
+        for badge in movie["genre_details_for_display"]
+        if badge["link_name"] == "Science Fiction"
+    ).items()
+    assert [badge["display_name"] for badge in movie["genre_details_for_display"]] == [
+        "Aksiyon",
+        "Macera",
+        "Fantastik",
+        "Bilim Kurgu",
+    ]
+
+
+def test_director_names_are_stripped(engine):
+    names = engine.movies_df["director"]
+
+    assert (names == names.str.strip()).all()
+
+
+def test_details_list_every_director(details):
+    movie = details.get_movie_details(6977)  # No Country for Old Men
+
+    assert movie["directors"] == ["Joel Coen", "Ethan Coen"]
+    assert movie["director"] == "Joel Coen"
+
+
+def _home_genre_url(app_module, genre):
+    with app_module.app.test_request_context():
+        return url_for("movies.home", genre=genre)
+
+
+def _assert_lists_only_science_fiction(engine, body):
+    ids = [
+        int(movie_id)
+        for movie_id in re.findall(r'href="/movie/(\d+)" class="film-card-link"', body)
+    ]
+    assert ids
+    assert all(
+        "Science Fiction" in genres
+        for genres in engine.movies_df.set_index("id").loc[ids, "genre_list"]
+    )
+
+
+def test_genre_link_lists_only_that_genre(client, app_module, engine):
+    body = client.get(_home_genre_url(app_module, "Science Fiction")).get_data(as_text=True)
+
+    _assert_lists_only_science_fiction(engine, body)
+
+
+@pytest.mark.parametrize("path", ["/genre/Science+Fiction", "/genre/Science%20Fiction"])
+def test_genre_route_redirects_to_a_listing_of_that_genre(client, engine, path):
+    response = client.get(path, follow_redirects=True)
+
+    _assert_lists_only_science_fiction(engine, response.get_data(as_text=True))
+
+
+def test_close_franchise_match_outranks_a_popular_weak_match(engine):
+    results, _ = engine.recommend_by_similarity("The Dark Knight", num=10)
+    titles = [movie["title"] for movie in results]
+
+    assert "Despicable Me 2" not in titles or titles.index("Batman Returns") < titles.index(
+        "Despicable Me 2"
+    )
+
+
+@pytest.mark.parametrize("movie_id", [155, 19995, 862, 2661, 597, 238, 13, 680, 24428, 72710])
+def test_every_count_is_a_prefix_of_the_full_list(engine, movie_id):
+    # Asking for more results must never reorder the top ones, so one 30-item list per
+    # movie serves every count.
+    full = engine.similar_movie_ids(movie_id, 30)
+
+    assert len(full) == 30
+    for num in range(1, 30):
+        assert engine.similar_movie_ids(movie_id, num) == full[:num]

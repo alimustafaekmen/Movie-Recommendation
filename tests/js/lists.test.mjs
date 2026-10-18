@@ -1,0 +1,158 @@
+import test from 'node:test';
+import assert from 'node:assert/strict';
+
+import { createListStore, openListStore } from '../../static/lists.js';
+
+// A Storage stand-in; the methods named in failOn throw like a full or blocked localStorage.
+function memoryStorage(initial = {}, { failOn = [] } = {}) {
+  const items = new Map(Object.entries(initial));
+  const guard = (method) => {
+    if (failOn.includes(method)) throw new Error(`${method} blocked`);
+  };
+  return {
+    getItem(key) {
+      guard('getItem');
+      return items.has(key) ? items.get(key) : null;
+    },
+    setItem(key, value) {
+      guard('setItem');
+      items.set(key, String(value));
+    },
+  };
+}
+
+test('toggle, has and list work per list', () => {
+  const store = createListStore(memoryStorage());
+
+  assert.equal(store.has('favorites', 155), false);
+  assert.equal(store.toggle('favorites', 155), true);
+  assert.equal(store.has('favorites', 155), true);
+  assert.equal(store.has('watchlist', 155), false);
+  assert.equal(store.toggle('watchlist', 19995), true);
+  assert.deepEqual(store.list('favorites'), [155]);
+  assert.deepEqual(store.list('watchlist'), [19995]);
+
+  assert.equal(store.toggle('favorites', 155), false);
+  assert.equal(store.has('favorites', 155), false);
+  assert.deepEqual(store.list('favorites'), []);
+  assert.deepEqual(store.list('watchlist'), [19995]);
+});
+
+test('list returns a copy, newest first', () => {
+  const store = createListStore(memoryStorage());
+  store.toggle('watchlist', 1);
+  store.toggle('watchlist', 2);
+
+  const ids = store.list('watchlist');
+  ids.push(3);
+
+  assert.deepEqual(store.list('watchlist'), [2, 1]);
+});
+
+test('lists are stored as JSON id arrays under the film-oneri keys', () => {
+  const storage = memoryStorage();
+  const store = createListStore(storage);
+  store.toggle('favorites', 155);
+  store.toggle('favorites', 19995);
+  store.toggle('watchlist', 27205);
+
+  assert.equal(storage.getItem('film-oneri:favorites'), '[19995,155]');
+  assert.equal(storage.getItem('film-oneri:watchlist'), '[27205]');
+  assert.equal(store.persistent, true);
+
+  const reopened = createListStore(storage);
+  assert.deepEqual(reopened.list('favorites'), [19995, 155]);
+  assert.equal(reopened.has('watchlist', 27205), true);
+});
+
+test('changes made by another tab are seen on the next read', () => {
+  const storage = memoryStorage();
+  const tabA = createListStore(storage);
+  const tabB = createListStore(storage);
+
+  tabA.toggle('favorites', 1);
+  tabB.toggle('favorites', 2);
+
+  assert.deepEqual(tabA.list('favorites'), [2, 1]);
+});
+
+test('corrupt or unexpected stored values read as an empty list', () => {
+  for (const raw of ['{not json', '', '"155"', '{"a":1}', 'null', '155']) {
+    const storage = memoryStorage({ 'film-oneri:favorites': raw });
+    const store = createListStore(storage);
+
+    assert.deepEqual(store.list('favorites'), [], raw);
+    assert.equal(store.toggle('favorites', 7), true, raw);
+    assert.equal(storage.getItem('film-oneri:favorites'), '[7]', raw);
+  }
+});
+
+test('invalid and duplicate stored ids are dropped', () => {
+  const raw = '[155, "x", "19995", -1, 0, 2.5, 155, 2147483648, null, 27205]';
+  const store = createListStore(memoryStorage({ 'film-oneri:watchlist': raw }));
+
+  assert.deepEqual(store.list('watchlist'), [155, 27205]);
+});
+
+test('a storage that throws keeps the lists in memory and is not persistent', () => {
+  const store = createListStore(memoryStorage({}, { failOn: ['getItem', 'setItem'] }));
+
+  assert.equal(store.persistent, false);
+  assert.equal(store.toggle('favorites', 155), true);
+  assert.equal(store.has('favorites', 155), true);
+  assert.deepEqual(store.list('favorites'), [155]);
+});
+
+test('a storage that cannot write keeps both lists in memory', () => {
+  const storage = memoryStorage({ 'film-oneri:favorites': '[1]' }, { failOn: ['setItem'] });
+  const store = createListStore(storage);
+
+  assert.equal(store.toggle('watchlist', 2), true);
+
+  assert.equal(store.persistent, false);
+  assert.deepEqual(store.list('watchlist'), [2]);
+  assert.deepEqual(store.list('favorites'), [1]);
+});
+
+test('missing storage works in memory and is not persistent', () => {
+  for (const storage of [undefined, null]) {
+    const store = createListStore(storage);
+
+    assert.equal(store.persistent, false);
+    assert.equal(store.toggle('watchlist', 9), true);
+    assert.deepEqual(store.list('watchlist'), [9]);
+  }
+});
+
+test('openListStore falls back to memory when localStorage cannot be reached', () => {
+  const previous = Object.getOwnPropertyDescriptor(globalThis, 'window');
+  Object.defineProperty(globalThis, 'window', {
+    configurable: true,
+    value: {
+      get localStorage() {
+        throw new Error('SecurityError');
+      },
+    },
+  });
+  try {
+    const store = openListStore();
+    assert.equal(store.persistent, false);
+    assert.equal(store.toggle('favorites', 1), true);
+  } finally {
+    if (previous) Object.defineProperty(globalThis, 'window', previous);
+    else delete globalThis.window;
+  }
+});
+
+test('invalid ids and unknown lists are rejected', () => {
+  const store = createListStore(memoryStorage());
+
+  for (const id of [0, -1, 1.5, '155', NaN, null, undefined, 2147483648]) {
+    assert.throws(() => store.toggle('favorites', id), TypeError, String(id));
+    assert.equal(store.has('favorites', id), false, String(id));
+  }
+  assert.throws(() => store.toggle('likes', 1), TypeError);
+  assert.throws(() => store.list('likes'), TypeError);
+  assert.throws(() => store.has('likes', 1), TypeError);
+  assert.deepEqual(store.list('favorites'), []);
+});

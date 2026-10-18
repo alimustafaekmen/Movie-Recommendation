@@ -23,8 +23,12 @@ env/
 *.swo
 *~
 
+# Tool caches
+.pytest_cache/
+.ruff_cache/
+node_modules/
+
 # Environment variables
-.env
 .env.local
 
 # Logs
@@ -36,5 +40,8 @@ logs/
 Thumbs.db
 
 # Dataset
-dataset/*.csv
-dataset/*.json
+**/dataset/*.csv
+**/dataset/*.json
+**/dataset/.*.tmp
+# The small CSVs the tests fall back to without the Kaggle files
+!tests/fixtures/dataset/*.csv
