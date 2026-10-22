@@ -3,6 +3,10 @@
 [![CI](https://github.com/alimustafaekmen/Movie-Recommendation/actions/workflows/ci.yml/badge.svg)](https://github.com/alimustafaekmen/Movie-Recommendation/actions/workflows/ci.yml)
 [![License: PolyForm Noncommercial 1.0.0](https://img.shields.io/badge/license-PolyForm%20Noncommercial%201.0.0-blue)](LICENSE)
 
+**English** | [Türkçe](README.tr.md)
+
+**Contents:** [Screenshots](#screenshots) · [Features](#features) · [How it works](#how-it-works) · [Evaluation](#evaluation) · [Run locally](#run-locally) · [Tests](#tests) · [Configuration](#configuration) · [Project layout](#project-layout) · [Limitations](#limitations) · [License and credits](#license-and-credits)
+
 MovieRec is a content-based movie recommender built with Flask on the [TMDB 5000 dataset](https://www.kaggle.com/datasets/tmdb/tmdb-movie-metadata) of 4,803 films. Give it a film you like and it finds similar films. You can also search by genre, director, year and rating. The interface is in Turkish.
 
 **Live demo:** [movierec.pages.dev](https://movierec.pages.dev)
@@ -226,9 +230,3 @@ The source is available under the [PolyForm Noncommercial License 1.0.0](LICENSE
 - The base dataset is the [TMDB 5000 Movie Dataset](https://www.kaggle.com/datasets/tmdb/tmdb-movie-metadata) on Kaggle.
 - The icons in `static/icons.svg` are from [Font Awesome Free 6.5.1](https://fontawesome.com), under their own [CC BY 4.0 license](https://fontawesome.com/license/free).
 - The fonts are [IBM Plex Sans and IBM Plex Sans Condensed](https://github.com/IBM/plex), under the SIL Open Font License 1.1, loaded from Google Fonts.
-
-## Türkçe özet
-
-MovieRec, Flask ile yazılmış içerik tabanlı bir film öneri sistemidir. TMDB 5000 veri setindeki 4.803 film üzerinde çalışır. Beğendiğiniz bir filme benzeyen filmleri bulur. Tür, yönetmen, yıl ve puana göre de arama yapabilirsiniz. Her filmin türleri, yönetmenleri, anahtar kelimeleri ve özet ile slogan metni ayrı TF-IDF bloklarına dönüşür ve her blok kendi ağırlığıyla birleşir. Böylece özetteki bir karakter adı sonucu tek başına belirleyemez. Ardından en benzer 91 film benzerliğe, puana, popülerliğe ve oy sayısına göre yeniden sıralanır. Kullanıcı verisi olmadığı için ağırlıklar elle seçilmiştir. `scripts/evaluate.py` listelerin tutarlı olup olmadığını ölçer, insanların onları beğenip beğenmeyeceğini ölçmez.
-
-Üyelik yoktur. Beğeniler ve izleme listesi tarayıcınızda saklanır, bu yüzden veritabanı gerekmez. Listeler sayfasındaki "Beğendiklerinize göre" bölümü, beğendiğiniz filmlere benzeyen filmleri önerir. Poster, fragman ve kişi sayfaları için bir TMDb API anahtarı gerekir. Anahtar olmadan uygulama yalnızca veri setiyle çalışır. Proje, PolyForm Noncommercial 1.0.0 lisansıyla ticari olmayan kullanım için paylaşılmıştır.
