@@ -29,7 +29,6 @@ from movierec.similarity import (
 
 logger = logging.getLogger(__name__)
 
-POPULAR_MOVIE_COUNT = 25
 # Card grids hold 12 cards (home page before any search, similar movies on a detail page),
 # which fills rows of 2, 3, 4 or 6.
 POPULAR_CARD_COUNT = 12
@@ -46,36 +45,46 @@ NEIGHBOUR_POOL_SIZE = 3 * MAX_RECOMMENDATION_COUNT + 1
 
 
 class RecommendationEngine:
-    """Loads the dataset once and answers similarity and filter queries."""
+    """Loads the dataset once and answers similarity and filter queries.
+
+    movies_df: the movies table from dataset.load_movies; row r of it is row r of tfidf_matrix.
+    """
 
     def __init__(self, movies_path: str, credits_path: str):
-        started = time.perf_counter()
+        start_time = time.perf_counter()
         df = load_movies(movies_path, credits_path)
         if df.empty:
             raise ValueError(f"No movie in {movies_path} has credits in {credits_path}")
         self.movies_df = df
         self.tfidf_matrix = build_tfidf_matrix(df)
-        self._title_keys = df["title"].str.casefold()
+        self._casefolded_titles = df["title"].str.casefold()
+        # Plain numpy copies of the columns each query reads. Position r in each one is row r of
+        # movies_df and of tfidf_matrix; indexing an array is cheaper than a DataFrame column.
         self._ids = df["id"].to_numpy()
-        self.row_of = {movie_id: row for row, movie_id in enumerate(self._ids.tolist())}
         self._vote_average = df["vote_average"].to_numpy(dtype=float)
         self._vote_count = df["vote_count"].to_numpy()
         self._popularity = df["popularity"].to_numpy(dtype=float)
+        # TMDb id -> row position, to turn the ids in URLs and lists into rows.
+        self.row_of = {movie_id: row for row, movie_id in enumerate(self._ids.tolist())}
 
+        # genre_list and directors hold a list per film; explode() puts each item on its own row.
         genres = df["genre_list"].explode().dropna().unique()
         self.all_genres = sorted(genre for genre in genres if not is_excluded(genre))
         self.all_movie_titles = sorted(df["title"].dropna().unique().tolist())
         self.all_director_names = sorted(df["directors"].explode().dropna().unique().tolist())
         well_voted = df[df["vote_count"] >= MIN_VOTES_THRESHOLD]
         by_votes = well_voted.sort_values("vote_count", ascending=False, kind="stable")
-        self._most_voted_movies = by_votes.head(POPULAR_MOVIE_COUNT)
-        self.popular_titles = self._most_voted_movies["title"].tolist()
-        logger.info("Loaded %d movies in %.2fs", len(df), time.perf_counter() - started)
+        self._most_voted_movies = by_votes.head(POPULAR_CARD_COUNT)
+        logger.info("Loaded %d movies in %.2fs", len(df), time.perf_counter() - start_time)
 
     def format_results(self, ranked: pd.DataFrame, num: int) -> list[dict]:
-        """Turn ranked rows into the card dictionaries the templates render."""
-        return [
-            {
+        """Return the card dictionaries for the first ``num`` ranked rows.
+
+        ranked: rows of movies_df, best first.
+        """
+        cards = []
+        for movie in ranked.head(num).to_dict("records"):
+            card = {
                 "id": int(movie["id"]),
                 # Filled in by MovieDetails.add_posters; the engine itself never calls TMDb.
                 "poster_url": None,
@@ -84,41 +93,56 @@ class RecommendationEngine:
                 "title": str(movie["title"]),
                 "director": str(movie["director"]),
             }
-            for movie in ranked.head(num).to_dict("records")
-        ]
+            cards.append(card)
+        return cards
 
     def popular_cards(self, num: int = POPULAR_CARD_COUNT) -> list[dict]:
-        """Cards for the most-voted movies; new dicts on every call, as add_posters edits them."""
+        """Return cards for the most-voted movies (at most POPULAR_CARD_COUNT).
+
+        The dicts are new on every call, as add_posters edits them.
+        """
         return self.format_results(self._most_voted_movies, num)
 
-    def _find_best_match(self, query, choices):
-        """Return the choice closest to ``query`` (thefuzz), or None below the score cutoff."""
-        # A query of only punctuation or symbols scores 0 everywhere, and thefuzz would log
-        # a warning for each one a visitor sends.
-        if not choices or not utils.full_process(query or ""):
+    def _find_best_match(self, query: str, choices: list[str]) -> str | None:
+        """Return the choice closest to ``query`` (thefuzz WRatio), or None below the cutoff."""
+        # full_process lowercases and drops punctuation. A query of only symbols becomes "",
+        # scores 0 everywhere, and thefuzz would log a warning for each one a visitor sends.
+        cleaned_query = utils.full_process(query)
+        if not cleaned_query:
             return None
+        query_words = set(cleaned_query.split())
+
         # WRatio's partial scoring lets a short title win inside a longer word ("O" for "Bogs",
         # "Her" for "Godfather 2"), so a title under half the query's length only counts when
         # all its words are in the query ("Saw" for "Saw 2004").
-        words = set(utils.full_process(query).split())
-        choices = [
-            choice
-            for choice in choices
-            if len(choice) * 2 >= len(query) or set(utils.full_process(choice).split()) <= words
-        ]
+        candidates = []
+        for choice in choices:
+            if len(choice) * 2 >= len(query):
+                candidates.append(choice)
+                continue
+            choice_words = set(utils.full_process(choice).split())
+            if choice_words.issubset(query_words):
+                candidates.append(choice)
+
+        # (choice, score) pairs that reach the cutoff, best score first.
         matches = process.extractBests(
-            query, choices, scorer=fuzz.WRatio, score_cutoff=FUZZY_SCORE_CUTOFF, limit=None
+            query, candidates, scorer=fuzz.WRatio, score_cutoff=FUZZY_SCORE_CUTOFF, limit=None
         )
         if not matches:
             return None
         # WRatio often ties (every "... 2" title scores the same); the closest whole title wins.
-        top = [choice for choice, score in matches if score == matches[0][1]]
-        return max(top, key=lambda choice: fuzz.token_sort_ratio(query, choice))
+        best_score = matches[0][1]
+        tied = [choice for choice, score in matches if score == best_score]
+        # On equal ratios max() returns the first one in tied.
+        return max(tied, key=lambda choice: fuzz.token_sort_ratio(query, choice))
 
     def find_movie_id(self, query: str) -> int | None:
         """Return the TMDb id of the movie a title query refers to, or None."""
         match = self._resolve_title(query)
-        return None if match is None else int(self._ids[match[0]])
+        if match is None:
+            return None
+        row, _is_exact = match
+        return int(self._ids[row])
 
     def title_of(self, movie_id: int) -> str:
         """Return the dataset title of a movie id, e.g. one that find_movie_id returned."""
@@ -131,18 +155,26 @@ class RecommendationEngine:
         query = query.strip()[:MAX_QUERY_LENGTH]
         if len(query) < MIN_QUERY_LENGTH:
             return None
-        exact = (self._title_keys == query.casefold()).to_numpy()
-        if exact.any():
-            return self._most_voted(exact), True
+        # One True/False per film: is its title the query, ignoring case?
+        is_same_title = (self._casefolded_titles == query.casefold()).to_numpy()
+        if is_same_title.any():
+            return self._most_voted_row(is_same_title), True
         title = self._find_best_match(query, self.all_movie_titles)
         if title is None:
             return None
-        return self._most_voted((self.movies_df["title"] == title).to_numpy()), False
+        is_matched_title = (self.movies_df["title"] == title).to_numpy()
+        return self._most_voted_row(is_matched_title), False
 
-    def _most_voted(self, mask: np.ndarray) -> int:
-        # Remakes share a title; the better-known film is the likelier target.
-        rows = np.flatnonzero(mask)
-        return int(rows[np.argmax(self._vote_count[rows])])
+    def _most_voted_row(self, is_candidate: np.ndarray) -> int:
+        """Return the most-voted row among those where ``is_candidate`` is True.
+
+        Remakes share a title; the better-known film is the likelier target. On equal votes
+        the first row wins.
+        """
+        candidate_rows = np.flatnonzero(is_candidate)  # positions of the True values
+        candidate_votes = self._vote_count[candidate_rows]
+        best = np.argmax(candidate_votes)
+        return int(candidate_rows[best])
 
     def recommend_by_similarity(
         self, movie_title_query: str, num: int | str = DEFAULT_RECOMMENDATION_COUNT
@@ -156,63 +188,86 @@ class RecommendationEngine:
         if match is None:
             return [], [f"'{query}' ismine benzer bir film bulunamadı."]
 
-        index, is_exact = match
-        title = self.movies_df["title"].iat[index]
+        row, is_exact = match
+        title = self.movies_df["title"].iat[row]
         warnings = []
         if not is_exact:
             warnings.append(
                 f"'{query}' adında tam bir eşleşme bulunamadı. Bunun yerine en yakın isim olan "
                 f"'{title}' için sonuçlar gösteriliyor."
             )
-        ranked = self.rank_neighbours(index)
-        if self._vote_count[ranked].max(initial=0) < MIN_VOTES_THRESHOLD:
+        ranked_rows = self.rank_neighbours(row)
+        # rank_neighbours keeps films under MIN_VOTES_THRESHOLD only if its pool has nothing better.
+        is_well_voted = self._vote_count[ranked_rows] >= MIN_VOTES_THRESHOLD
+        if not is_well_voted.any():
             warnings.append(
                 f"'{title}' için çok fazla oy almış popüler benzer film bulamadık. "
                 "Daha az bilinen filmleri listeliyoruz."
             )
-        return self.format_results(self.movies_df.iloc[ranked], num), warnings
+        neighbours = self.movies_df.iloc[ranked_rows]
+        return self.format_results(neighbours, num), warnings
 
     def similar_movie_ids(self, movie_id: int, num: int = DETAIL_SIMILAR_COUNT) -> list[int]:
         """Return the ids recommended next to a dataset movie, best first, without TMDb calls."""
-        index = self.row_of.get(int(movie_id))
-        if index is None:
+        row = self.row_of.get(int(movie_id))
+        if row is None:
             return []
-        return self._ids[self.rank_neighbours(index)[: clamp_count(num)]].tolist()
+        ranked_rows = self.rank_neighbours(row)
+        top_rows = ranked_rows[: clamp_count(num)]
+        return self._ids[top_rows].tolist()
 
     def recommend_from_favourites(
         self, favourite_ids: list[int], exclude_ids: list[int]
     ) -> list[int]:
-        """Ids of films like the favourites, best first, leaving out favourites and exclude_ids.
+        """Return ids of films like the favourites, best first, without favourites and exclude_ids.
 
         Each favourite's similar list gives the film at 0-based rank r a score of 1 / (r + 1);
         the scores add up over the favourites, and ties keep the order films first appear in.
         """
-        used = [movie_id for movie_id in favourite_ids if movie_id in self.row_of]
-        listed = {*favourite_ids, *exclude_ids}
-        scores = {}
-        for favourite in used[:MAX_FAVOURITES_USED]:
-            similar = self.similar_movie_ids(favourite, FAVOURITE_NEIGHBOURS)
-            for rank, movie_id in enumerate(similar):
-                if movie_id not in listed:
-                    scores[movie_id] = scores.get(movie_id, 0) + 1 / (rank + 1)
-        # sorted() is stable with reverse=True too.
-        return sorted(scores, key=scores.get, reverse=True)[:DETAIL_SIMILAR_COUNT]
+        # Favourites outside the dataset have no similar list; of the rest, the first
+        # MAX_FAVOURITES_USED count.
+        in_dataset = [movie_id for movie_id in favourite_ids if movie_id in self.row_of]
+        used = in_dataset[:MAX_FAVOURITES_USED]
+        already_listed = set(favourite_ids) | set(exclude_ids)
 
-    def rank_neighbours(self, index: int) -> np.ndarray:
-        """Row positions of the movies most similar to row ``index``, best hybrid score first."""
-        scores = (self.tfidf_matrix[index] @ self.tfidf_matrix.T).toarray().ravel()
-        # A stable sort keeps tied scores in dataset order.
-        order = np.argsort(-scores, kind="stable")
-        pool = order[order != index][:NEIGHBOUR_POOL_SIZE]
+        scores = {}
+        for favourite in used:
+            similar_ids = self.similar_movie_ids(favourite, FAVOURITE_NEIGHBOURS)
+            for rank, movie_id in enumerate(similar_ids):
+                if movie_id in already_listed:
+                    continue
+                scores[movie_id] = scores.get(movie_id, 0) + 1 / (rank + 1)
+
+        # Ids by total score, highest first. sorted() is stable with reverse=True too, so equal
+        # totals keep the order the films were first scored in.
+        ranked_ids = sorted(scores, key=scores.get, reverse=True)
+        return ranked_ids[:DETAIL_SIMILAR_COUNT]
+
+    def rank_neighbours(self, row: int) -> np.ndarray:
+        """Return the row positions of films most similar to ``row``, best hybrid score first."""
+        # Rows are L2-normalised, so this row times the transposed matrix is the film's cosine
+        # similarity to every film: a 1 x N sparse matrix, flattened to a plain array.
+        product = self.tfidf_matrix[row] @ self.tfidf_matrix.T
+        similarity = product.toarray().ravel()
+        # argsort sorts ascending, so sort the negated scores; "stable" keeps ties in dataset order.
+        by_similarity = np.argsort(-similarity, kind="stable")
+        # Leave out the film itself and keep the closest NEIGHBOUR_POOL_SIZE for re-ranking.
+        others = by_similarity[by_similarity != row]
+        pool = others[:NEIGHBOUR_POOL_SIZE]
         hybrid = hybrid_score(
-            scores[pool], self._vote_average[pool], self._vote_count[pool], self._popularity[pool]
+            similarity[pool],
+            self._vote_average[pool],
+            self._vote_count[pool],
+            self._popularity[pool],
         )
         # Below MIN_VOTES_THRESHOLD votes TMDb ratings are noisy, so such films are only
         # shown when the pool has nothing better.
-        well_voted = self._vote_count[pool] >= MIN_VOTES_THRESHOLD
-        if well_voted.any():
-            pool, hybrid = pool[well_voted], hybrid[well_voted]
-        return pool[np.argsort(-hybrid, kind="stable")]
+        is_well_voted = self._vote_count[pool] >= MIN_VOTES_THRESHOLD
+        if is_well_voted.any():
+            pool = pool[is_well_voted]
+            hybrid = hybrid[is_well_voted]
+        best_first = np.argsort(-hybrid, kind="stable")
+        return pool[best_first]
 
     def recommend_by_features(
         self,
@@ -240,44 +295,55 @@ class RecommendationEngine:
             if director_warning:
                 warnings.append(director_warning)
 
-        numbers = parse_numeric_filters(min_rating, min_year, max_year)
-        warnings.extend(numbers.warnings)
-        if not (wanted_genres or director_match or numbers.count):
+        numeric_filters = parse_numeric_filters(min_rating, min_year, max_year)
+        warnings.extend(numeric_filters.warnings)
+        # director_match is None or a dataset name, never "".
+        has_criteria = (
+            bool(wanted_genres) or director_match is not None or numeric_filters.has_bounds
+        )
+        if not has_criteria:
             return [], [
                 "Lütfen arama yapmak için en az bir kriter (tür, yönetmen vb.) girin."
             ] + warnings
 
-        matches = apply_filters(self.movies_df, wanted_genres, director_match, numbers)
+        matches = apply_filters(self.movies_df, wanted_genres, director_match, numeric_filters)
         if matches.empty:
             return [], ["Seçtiğiniz kriterlere tam olarak uyan hiçbir film bulunamadı."] + warnings
 
-        reliable = matches[matches["vote_count"] >= MIN_VOTES_THRESHOLD]
-        if reliable.empty:
-            reliable = matches
+        candidates = matches[matches["vote_count"] >= MIN_VOTES_THRESHOLD]
+        if candidates.empty:
+            candidates = matches
             warnings.append(
                 "Yeterli oy sayısına sahip film bulunamadı; daha az bilinen filmler listeleniyor."
             )
-        ranked = reliable.assign(feature_score=feature_score(reliable)).sort_values(
-            "feature_score", ascending=False, kind="stable"
-        )
+        scores = feature_score(candidates)
+        ranked = candidates.assign(feature_score=scores)
+        ranked = ranked.sort_values("feature_score", ascending=False, kind="stable")
         return self.format_results(ranked, num), warnings
 
     def _match_director(self, query: str) -> tuple[str | None, str | None]:
         """Return (director name or None, warning or None) for a free-text director query."""
-        key = query.casefold()
-        exact = next((name for name in self.all_director_names if name.casefold() == key), None)
-        if exact:
-            return exact, None
-        match = self._find_best_match(query, self.all_director_names)
-        if match and is_plausible_name(query, match):
-            return match, f"Yönetmen '{query}' bulunamadı. '{match}' kullanılıyor."
+        wanted = query.casefold()
+        for name in self.all_director_names:
+            if name.casefold() == wanted:
+                return name, None
+        closest = self._find_best_match(query, self.all_director_names)
+        if closest is not None and is_plausible_name(query, closest):
+            return closest, f"Yönetmen '{query}' bulunamadı. '{closest}' kullanılıyor."
         return None, f"'{query}' adlı yönetmen bulunamadı."
 
 
-def clamp_count(num) -> int:
-    """A requested result count (e.g. the ?n= text) clamped to [1, MAX]; junk gives the default."""
+def clamp_count(num: int | str | None) -> int:
+    """Return a requested result count (e.g. the ?n= text) limited to 1..MAX_RECOMMENDATION_COUNT.
+
+    Values int() cannot convert give DEFAULT_RECOMMENDATION_COUNT.
+    """
     try:
-        num = int(num)
+        count = int(num)
     except (TypeError, ValueError):
         return DEFAULT_RECOMMENDATION_COUNT
-    return max(1, min(num, MAX_RECOMMENDATION_COUNT))
+    if count < 1:
+        return 1
+    if count > MAX_RECOMMENDATION_COUNT:
+        return MAX_RECOMMENDATION_COUNT
+    return count

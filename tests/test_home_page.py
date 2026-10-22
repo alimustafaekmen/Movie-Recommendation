@@ -200,7 +200,8 @@ def test_popular_cards_are_the_most_voted_movies(engine):
     cards = engine.popular_cards()
 
     assert len(cards) == 12
-    assert [card["title"] for card in cards] == engine.popular_titles[:12]
+    by_votes = engine.movies_df.sort_values("vote_count", ascending=False, kind="stable")
+    assert [card["id"] for card in cards] == by_votes["id"].head(12).tolist()
     # A card carries what the card template shows, plus the director for result notes.
     assert set(cards[0]) == {"id", "title", "year", "vote_average", "poster_url", "director"}
     # Each call returns fresh cards, so adding posters to one page never leaks into the next.

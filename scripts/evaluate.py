@@ -25,6 +25,7 @@ from collections import defaultdict
 from pathlib import Path
 
 import numpy as np
+import pandas as pd
 
 REPO = Path(__file__).resolve().parents[1]
 METHODS = ("Pure cosine", "MovieRec (hybrid)", "Most-voted baseline")
@@ -55,68 +56,92 @@ def title_stem(title: str) -> str | None:
     return " ".join(words)
 
 
-def series_siblings(movies) -> dict:
-    """{row: rows of the other films in its series with enough votes}, by title stem."""
-    titles = movies["title"].str.lower().tolist()
-    votes = movies["vote_count"].tolist()
+def series_siblings(df: pd.DataFrame) -> dict:
+    """{row: rows of the other films in its series with enough votes}, by title stem.
+
+    df: engine.movies_df.
+    """
+    titles = df["title"].str.lower().tolist()
+    votes = df["vote_count"].tolist()
     groups = defaultdict(list)
     for row, title in enumerate(titles):
-        if stem := title_stem(title):
+        stem = title_stem(title)
+        if stem is not None:
             groups[stem].append(row)
     siblings = {}
     for rows in groups.values():
         for row in rows:
-            found = {r for r in rows if titles[r] != titles[row] and votes[r] >= SERIES_MIN_VOTES}
+            found = set()
+            for other in rows:
+                if titles[other] != titles[row] and votes[other] >= SERIES_MIN_VOTES:
+                    found.add(other)
             if found:
                 siblings[row] = found
     return siblings
 
 
-def metrics(movies, recommendations: dict) -> dict:
-    """The six columns for {seed row: recommended rows} over the ``movies`` DataFrame."""
+def metrics(df: pd.DataFrame, recommendations: dict) -> dict:
+    """The six columns for {seed row: recommended rows}.
+
+    df: engine.movies_df.
+    """
     from movierec.movie_details import cast_names
 
-    genres = movies["genre_list"].map(set).tolist()
-    directors = movies["directors"].map(set).tolist()
+    genres = df["genre_list"].map(set).tolist()
+    directors = df["directors"].map(set).tolist()
     # The cast column keeps billing order.
-    leads = movies["cast"].map(lambda cast: set(cast_names(cast, LEAD_ACTORS))).tolist()
-    votes = movies["vote_count"].tolist()
-    siblings = series_siblings(movies)
-    pairs = [(seed, rec) for seed, recs in recommendations.items() for rec in recs]
-    found = [
-        len(siblings[seed] & set(recs)) / min(len(siblings[seed]), len(recs))
-        for seed, recs in recommendations.items()
-        if seed in siblings
-    ]
+    leads = df["cast"].map(lambda cast: set(cast_names(cast, LEAD_ACTORS))).tolist()
+    votes = df["vote_count"].tolist()
+    siblings = series_siblings(df)
+    pairs = []
+    for seed, recs in recommendations.items():
+        for rec in recs:
+            pairs.append((seed, rec))
+    series_recalls = []
+    for seed, recs in recommendations.items():
+        if seed not in siblings:
+            continue
+        hits = len(siblings[seed] & set(recs))
+        series_recalls.append(hits / min(len(siblings[seed]), len(recs)))
     return {
-        "Genre overlap": np.mean([jaccard(genres[s], genres[r]) for s, r in pairs if genres[s]]),
-        "Same director": np.mean([bool(directors[s] & directors[r]) for s, r in pairs]),
-        "Shared lead actor": np.mean([bool(leads[s] & leads[r]) for s, r in pairs]),
-        "Series recall": np.mean(found),
-        "Catalog coverage": len({rec for _, rec in pairs}) / len(movies),
+        "Genre overlap": np.mean(
+            [jaccard(genres[seed], genres[rec]) for seed, rec in pairs if genres[seed]]
+        ),
+        "Same director": np.mean([bool(directors[seed] & directors[rec]) for seed, rec in pairs]),
+        "Shared lead actor": np.mean([bool(leads[seed] & leads[rec]) for seed, rec in pairs]),
+        "Series recall": np.mean(series_recalls),
+        "Catalog coverage": len({rec for _, rec in pairs}) / len(df),
         "Median votes": np.median([votes[rec] for _, rec in pairs]),
     }
 
 
 def evaluate(engine) -> dict:
     """{method: metrics} with every dataset row as a seed."""
-    from movierec.engine import DETAIL_SIMILAR_COUNT as count
+    # Imported here: _load puts the repo on sys.path first.
+    from movierec.engine import DETAIL_SIMILAR_COUNT
 
-    def pure_cosine(seed):
-        scores = (engine.tfidf_matrix[seed] @ engine.tfidf_matrix.T).toarray().ravel()
-        order = np.argsort(-scores, kind="stable")
-        return order[order != seed][:count]
-
-    most_voted = np.argsort(-engine.movies_df["vote_count"].to_numpy(), kind="stable")[: count + 1]
-    rankers = (
-        pure_cosine,
-        lambda seed: engine.rank_neighbours(seed)[:count],
-        lambda seed: most_voted[most_voted != seed][:count],
-    )
-    seeds = range(len(engine.movies_df))
+    df = engine.movies_df
+    # The most-voted rows, one extra so that a seed can be left out of its own list.
+    by_votes = np.argsort(-df["vote_count"].to_numpy(), kind="stable")
+    most_voted = by_votes[: DETAIL_SIMILAR_COUNT + 1]
+    cosine_lists = {}
+    hybrid_lists = {}
+    baseline_lists = {}
+    for seed in range(len(df)):
+        # Pure cosine: the first steps of rank_neighbours, without the hybrid re-ranking.
+        product = engine.tfidf_matrix[seed] @ engine.tfidf_matrix.T
+        similarity = product.toarray().ravel()
+        by_similarity = np.argsort(-similarity, kind="stable")
+        others = by_similarity[by_similarity != seed]
+        cosine_lists[seed] = others[:DETAIL_SIMILAR_COUNT].tolist()
+        hybrid_lists[seed] = engine.rank_neighbours(seed)[:DETAIL_SIMILAR_COUNT].tolist()
+        baseline = most_voted[most_voted != seed]
+        baseline_lists[seed] = baseline[:DETAIL_SIMILAR_COUNT].tolist()
+    cosine_name, hybrid_name, baseline_name = METHODS
     return {
-        name: metrics(engine.movies_df, {seed: rank(seed).tolist() for seed in seeds})
-        for name, rank in zip(METHODS, rankers, strict=True)
+        cosine_name: metrics(df, cosine_lists),
+        hybrid_name: metrics(df, hybrid_lists),
+        baseline_name: metrics(df, baseline_lists),
     }
 
 
@@ -137,11 +162,11 @@ def main():
         "| Catalog coverage | Median votes |"
     )
     print("|---|---|---|---|---|---|---|")
-    for name, row in evaluate(engine).items():
+    for method, results in evaluate(engine).items():
         print(
-            f"| {name} | {row['Genre overlap']:.3f} | {row['Same director']:.1%} "
-            f"| {row['Shared lead actor']:.2%} | {row['Series recall']:.1%} "
-            f"| {row['Catalog coverage']:.1%} | {row['Median votes']:,.0f} |"
+            f"| {method} | {results['Genre overlap']:.3f} | {results['Same director']:.1%} "
+            f"| {results['Shared lead actor']:.2%} | {results['Series recall']:.1%} "
+            f"| {results['Catalog coverage']:.1%} | {results['Median votes']:,.0f} |"
         )
     print(f"\nDataset median votes: {engine.movies_df['vote_count'].median():,.0f}")
 

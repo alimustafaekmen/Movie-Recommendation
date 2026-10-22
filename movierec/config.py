@@ -14,7 +14,7 @@ _PLACEHOLDER_SECRET_KEYS = {"", "your_secret_key_here", "dev_secret_key_!@#$"}
 _PLACEHOLDER_TMDB_KEYS = {"", "your_api_key", "your_tmdb_api_key"}
 
 
-def _resolve_secret_key(raw):
+def _resolve_secret_key(raw: str | None) -> tuple[str, bool]:
     """Return (key, is_ephemeral); placeholders are replaced by a random per-process key."""
     key = (raw or "").strip()
     if key in _PLACEHOLDER_SECRET_KEYS:
@@ -22,10 +22,12 @@ def _resolve_secret_key(raw):
     return key, False
 
 
-def _resolve_tmdb_key(raw):
+def _resolve_tmdb_key(raw: str | None) -> str | None:
     """Return the TMDb API key, or None when it is unset or still a placeholder."""
     key = (raw or "").strip()
-    return None if key in _PLACEHOLDER_TMDB_KEYS else key
+    if key in _PLACEHOLDER_TMDB_KEYS:
+        return None
+    return key
 
 
 # TMDb

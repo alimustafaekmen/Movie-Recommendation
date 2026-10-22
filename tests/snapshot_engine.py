@@ -78,7 +78,7 @@ def build_snapshot(engine, details):
         "all_genres": list(engine.all_genres),
         "movie_title_count": len(engine.all_movie_titles),
         "director_name_count": len(engine.all_director_names),
-        "popular_movies_top10": list(engine.popular_titles[:10]),
+        "popular_movies_top10": [card["title"] for card in engine.popular_cards(10)],
     }
 
     return {

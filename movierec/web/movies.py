@@ -10,7 +10,7 @@ from movierec.config import DEFAULT_RECOMMENDATION_COUNT
 from movierec.engine import clamp_count
 from movierec.genres import genre_label
 from movierec.people import find_person
-from movierec.search_filters import YEARS_SWAPPED
+from movierec.search_filters import YEARS_SWAPPED_WARNING
 from movierec.tmdb import TmdbUnavailableError
 from movierec.web import MOVIE_ID_CONVERTER, get_details, get_engine
 from movierec.web.redirects import redirect_back
@@ -88,7 +88,7 @@ def _filter_search(engine, args, num):
         num=num,
     )
     # The engine searched a reversed year range in order; the page shows it that way too.
-    if YEARS_SWAPPED in warnings:
+    if YEARS_SWAPPED_WARNING in warnings:
         filters["min_yil"], filters["max_yil"] = filters["max_yil"], filters["min_yil"]
     return {
         "suggestions": suggestions,
