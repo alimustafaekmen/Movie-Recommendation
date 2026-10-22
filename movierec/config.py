@@ -30,7 +30,7 @@ def _resolve_tmdb_key(raw):
 
 # TMDb
 TMDB_API_KEY = _resolve_tmdb_key(os.getenv("TMDB_API_KEY"))
-TMDB_POSTER_BASE_URL = "https://image.tmdb.org/t/p/"
+TMDB_IMAGE_BASE_URL = "https://image.tmdb.org/t/p/"
 TMDB_API_BASE_URL = "https://api.themoviedb.org/3"
 
 # Files. DATASET_DIR holds the TMDB 5000 CSVs; the app writes no files.
@@ -39,7 +39,8 @@ MOVIES_CSV = os.path.join(DATASET_DIR, "tmdb_5000_movies.csv")
 CREDITS_CSV = os.path.join(DATASET_DIR, "tmdb_5000_credits.csv")
 
 # Recommendations
-DEFAULT_RECOMMENDATION_COUNT = 15
+# 12 fills grid rows of 2, 3, 4 or 6 cards; "Daha fazla göster" adds 12 more.
+DEFAULT_RECOMMENDATION_COUNT = 12
 MAX_RECOMMENDATION_COUNT = 30
 MIN_VOTES_THRESHOLD = 100
 

@@ -43,7 +43,9 @@ def latest_year() -> int:
     return datetime.date.today().year + 1
 
 
-def parse_number(value, cast, low, high):
+def parse_number(
+    value, cast: type[int] | type[float], low: float, high: float
+) -> int | float | None:
     """Parse a form value, accepting a Turkish decimal comma ('7,5').
 
     Returns None for non-numeric, non-finite or out-of-range input; ``cast`` (int or

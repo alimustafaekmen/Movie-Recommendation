@@ -6,7 +6,7 @@ import os
 
 import pandas as pd
 
-log = logging.getLogger(__name__)
+logger = logging.getLogger(__name__)
 
 MOVIE_COLUMNS = [
     "id",
@@ -48,7 +48,7 @@ def _read_csvs(movies_path: str, credits_path: str) -> tuple[pd.DataFrame, pd.Da
     credits = pd.read_csv(credits_path, usecols=CREDIT_COLUMNS)
     movies = _with_int_ids(movies, "id")
     credits = _with_int_ids(credits, "movie_id")
-    log.info("Read %d movie rows and %d credit rows", len(movies), len(credits))
+    logger.info("Read %d movie rows and %d credit rows", len(movies), len(credits))
     return movies, credits
 
 
@@ -84,7 +84,7 @@ def _preprocess(movies: pd.DataFrame, credits: pd.DataFrame) -> pd.DataFrame:
     return df.drop(columns=["crew"])
 
 
-def parse_name_list(json_str, job=None) -> list[str]:
+def parse_name_list(json_str, job: str | None = None) -> list[str]:
     """Return every 'name' in a JSON list column, or only crew members with ``job``."""
     if not isinstance(json_str, str) or not json_str:
         return []

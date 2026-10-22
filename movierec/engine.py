@@ -5,7 +5,7 @@ import time
 
 import numpy as np
 import pandas as pd
-from thefuzz import fuzz, process
+from thefuzz import fuzz, process, utils
 
 from movierec.config import (
     DEFAULT_RECOMMENDATION_COUNT,
@@ -14,24 +14,26 @@ from movierec.config import (
     MIN_VOTES_THRESHOLD,
 )
 from movierec.dataset import load_movies
-from movierec.filters import (
+from movierec.genres import is_excluded
+from movierec.search_filters import (
     apply_filters,
     genre_keys,
     is_plausible_name,
     parse_numeric_filters,
 )
-from movierec.genres import is_excluded
 from movierec.similarity import (
     build_tfidf_matrix,
     feature_score,
     hybrid_score,
 )
 
-log = logging.getLogger(__name__)
+logger = logging.getLogger(__name__)
 
 POPULAR_MOVIE_COUNT = 25
-POPULAR_DIRECTOR_COUNT = 20
-DETAIL_SIMILAR_COUNT = 8
+# Card grids hold 12 cards (home page before any search, similar movies on a detail page),
+# which fills rows of 2, 3, 4 or 6.
+POPULAR_CARD_COUNT = 12
+DETAIL_SIMILAR_COUNT = 12
 MAX_QUERY_LENGTH = 100
 MIN_QUERY_LENGTH = 2
 # Re-ranking looks a little past the longest list we serve. The pool does not depend on the
@@ -62,12 +64,9 @@ class RecommendationEngine:
         self.all_director_names = sorted(df["directors"].explode().dropna().unique().tolist())
         well_voted = df[df["vote_count"] >= MIN_VOTES_THRESHOLD]
         by_votes = well_voted.sort_values("vote_count", ascending=False, kind="stable")
-        self.popular_movies_list = by_votes["title"].head(POPULAR_MOVIE_COUNT).tolist()
-        directed = df[df["director"] != ""]
-        by_popularity = directed.groupby("director")["popularity"].mean()
-        top = by_popularity.sort_values(ascending=False, kind="stable")
-        self.popular_directors_list = top.head(POPULAR_DIRECTOR_COUNT).index.tolist()
-        log.info("Loaded %d movies in %.2fs", len(df), time.perf_counter() - started)
+        self._most_voted_movies = by_votes.head(POPULAR_MOVIE_COUNT)
+        self.popular_titles = self._most_voted_movies["title"].tolist()
+        logger.info("Loaded %d movies in %.2fs", len(df), time.perf_counter() - started)
 
     def format_results(self, ranked: pd.DataFrame, num: int) -> list[dict]:
         """Turn ranked rows into the card dictionaries the templates render."""
@@ -79,15 +78,20 @@ class RecommendationEngine:
                 "year": int(movie["year"]),
                 "vote_average": round(float(movie["vote_average"]), 1),
                 "title": str(movie["title"]),
-                "cast": short_cast(movie["cast"]),
                 "director": str(movie["director"]),
             }
             for movie in ranked.head(num).to_dict("records")
         ]
 
+    def popular_cards(self, num: int = POPULAR_CARD_COUNT) -> list[dict]:
+        """Cards for the most-voted movies; new dicts on every call, as add_posters edits them."""
+        return self.format_results(self._most_voted_movies, num)
+
     def _find_best_match(self, query, choices):
         """Return the choice closest to ``query`` (thefuzz), or None below the score cutoff."""
-        if not query or not choices:
+        # A query of only punctuation or symbols scores 0 everywhere, and thefuzz would log
+        # a warning for each one a visitor sends.
+        if not choices or not utils.full_process(query or ""):
             return None
         match = process.extractOne(
             query, choices, scorer=fuzz.WRatio, score_cutoff=FUZZY_SCORE_CUTOFF
@@ -98,6 +102,10 @@ class RecommendationEngine:
         """Return the TMDb id of the movie a title query refers to, or None."""
         match = self._resolve_title(query)
         return None if match is None else int(self._ids[match[0]])
+
+    def title_of(self, movie_id: int) -> str:
+        """Return the dataset title of a movie id, e.g. one that find_movie_id returned."""
+        return str(self.movies_df["title"].iat[self.row_of[movie_id]])
 
     def _resolve_title(self, query) -> tuple[int, bool] | None:
         """Return (row, is_exact) for a title query; exact case-insensitive matches win."""
@@ -124,8 +132,8 @@ class RecommendationEngine:
     ) -> tuple[list[dict], list[str]]:
         """Recommend movies similar to the given title; returns (results, warnings)."""
         if not isinstance(movie_title_query, str) or not movie_title_query.strip():
-            return [], ["Lütfen aramak için bir film ismi girin veya listeden seçin."]
-        num = _clamp_count(num)
+            return [], ["Lütfen bir film adı girin."]
+        num = clamp_count(num)
         query = movie_title_query.strip()[:MAX_QUERY_LENGTH]
         match = self._resolve_title(query)
         if match is None:
@@ -152,7 +160,7 @@ class RecommendationEngine:
         index = self.row_of.get(int(movie_id))
         if index is None:
             return []
-        return self._ids[self.rank_neighbours(index)[: _clamp_count(num)]].tolist()
+        return self._ids[self.rank_neighbours(index)[: clamp_count(num)]].tolist()
 
     def rank_neighbours(self, index: int) -> np.ndarray:
         """Row positions of the movies most similar to row ``index``, best hybrid score first."""
@@ -180,11 +188,14 @@ class RecommendationEngine:
         num: int | str = DEFAULT_RECOMMENDATION_COUNT,
     ) -> tuple[list[dict], list[str]]:
         """Recommend movies matching genre, director, rating and year filters."""
-        num = _clamp_count(num)
+        num = clamp_count(num)
         wanted_genres = genre_keys(genres)
         warnings = []
 
-        director = director_query.strip() if isinstance(director_query, str) else ""
+        director = ""
+        if isinstance(director_query, str):
+            # Cut like title queries, so the warnings never echo a pasted wall of text.
+            director = director_query.strip()[:MAX_QUERY_LENGTH]
         director_match = None
         if director:
             director_match, director_warning = self._match_director(director)
@@ -227,16 +238,10 @@ class RecommendationEngine:
         return None, f"'{query}' adlı yönetmen bulunamadı."
 
 
-def _clamp_count(num) -> int:
+def clamp_count(num) -> int:
+    """A requested result count (e.g. the ?n= text) clamped to [1, MAX]; junk gives the default."""
     try:
         num = int(num)
     except (TypeError, ValueError):
         return DEFAULT_RECOMMENDATION_COUNT
     return max(1, min(num, MAX_RECOMMENDATION_COUNT))
-
-
-def short_cast(cast: str, limit: int = 3) -> str:
-    """Return the first ``limit`` names of a comma-separated cast, with ', ...' if there are more."""
-    names = [name.strip() for name in str(cast).split(",") if name.strip()]
-    shown = ", ".join(names[:limit])
-    return shown + ", ..." if len(names) > limit else shown

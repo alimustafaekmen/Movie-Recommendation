@@ -2,30 +2,35 @@
 
 import datetime
 import logging
+from urllib.parse import urlencode
 
 from flask import Blueprint, abort, flash, jsonify, redirect, render_template, request, url_for
 
-from movierec.config import DEFAULT_RECOMMENDATION_COUNT, MAX_RECOMMENDATION_COUNT
+from movierec.config import DEFAULT_RECOMMENDATION_COUNT
+from movierec.engine import clamp_count
 from movierec.genres import genre_label
 from movierec.people import find_person
-from movierec.tmdb import TmdbUnavailable
-from movierec.web import MOVIE_ID, get_details, get_engine
+from movierec.search_filters import YEARS_SWAPPED
+from movierec.tmdb import TmdbUnavailableError
+from movierec.web import MOVIE_ID_CONVERTER, get_details, get_engine
 from movierec.web.redirects import redirect_back
 
 logger = logging.getLogger(__name__)
 
 bp = Blueprint("movies", __name__)
 
-# Flash messages live in the session cookie, which browsers drop beyond about 4 KB.
+# Text the page shows back: the search fields, whose inputs have maxlength="100" (the engine
+# reads no further), and flash messages, which live in the session cookie that browsers drop
+# beyond about 4 KB.
 _MAX_ECHOED_INPUT = 100
 # The suggestion lists only change when the dataset does, i.e. on a redeploy.
 _SUGGESTIONS_MAX_AGE = 86400
-
-
-def _parse_num_recs(form):
-    """Return the requested result count clamped to [1, MAX]; raise ValueError if not an int."""
-    num = int(form.get("num_recommendations", DEFAULT_RECOMMENDATION_COUNT))
-    return max(1, min(num, MAX_RECOMMENDATION_COUNT))
+# The filter search: ?tur= may repeat, the other fields are single values. ?film= is the
+# similarity search.
+_FILTER_SCALARS = ("yonetmen", "min_yil", "max_yil", "min_puan")
+_FILTER_FIELDS = ("tur", *_FILTER_SCALARS)
+# "Daha fazla göster" adds one more grid of results; a longer ?n= still works by URL.
+_MORE_RESULTS_LIMIT = 2 * DEFAULT_RECOMMENDATION_COUNT
 
 
 def _recommend(method, *args, **kwargs):
@@ -34,119 +39,128 @@ def _recommend(method, *args, **kwargs):
         suggestions, warnings = method(*args, **kwargs)
     except Exception:
         logger.exception("Recommendation request failed")
-        return None, ["Öneriler sayfaya yüklenirken bir hata oluştu."]
+        return [], ["Öneriler sayfaya yüklenirken bir hata oluştu."]
     get_details().add_posters(suggestions)
     return suggestions, warnings
 
 
-def _similarity_request(form, num):
-    """Handle the 'similar movies' form; return (suggestions, warnings, search_term)."""
-    field = "film_ismi_custom" if form.get("toggle_film") == "on" else "film_ismi"
-    query = form.get(field)
-    search_term = query.strip() if query else None
-    if not search_term:
-        return None, ["Lütfen bir film ismi girin veya listeden seçin."], search_term
-    suggestions, warnings = _recommend(get_engine().recommend_by_similarity, search_term, num=num)
-    return suggestions, warnings, search_term
-
-
-def _features_request(form, num, genres):
-    """Handle the filter form; return (suggestions, warnings, search_term)."""
-    field = "yonetmen_custom" if form.get("toggle_yonetmen") == "on" else "yonetmen"
-    director = form.get(field)
-    director = director.strip() if director else None
-    min_rating = form.get("min_puan", "")
-    min_year = form.get("min_yil", "")
-    max_year = form.get("max_yil", "")
-    search_term = _features_title(genres, director, min_year, max_year, min_rating)
-    suggestions, warnings = _recommend(
-        get_engine().recommend_by_features,
-        genres=genres,
-        director_query=director,
-        min_rating=min_rating,
-        min_year=min_year,
-        max_year=max_year,
-        num=num,
-    )
-    return suggestions, warnings, search_term
-
-
-def _features_title(genres, director, min_year, max_year, min_rating):
-    """Describe the active filters for the results heading."""
+def _filter_summary(genres, filters):
+    """Describe the active filters under the results heading."""
     parts = []
     if genres:
-        parts.append("Türler: " + ", ".join(genre_label(genre) for genre in genres))
-    if director:
-        parts.append(f"Yönetmen: {director}")
-    years = [year for year in (min_year, max_year) if year]
+        label = "Tür" if len(genres) == 1 else "Türler"
+        parts.append(f"{label}: " + ", ".join(genre_label(genre) for genre in genres))
+    if filters["yonetmen"]:
+        parts.append(f"Yönetmen: {filters['yonetmen']}")
+    years = [year for year in (filters["min_yil"], filters["max_yil"]) if year]
     if years:
         parts.append("Yıl: " + " - ".join(years))
-    if min_rating:
-        parts.append(f"Min. Puan: {min_rating}")
-    return " | ".join(parts) or "Seçilen Filtreler"
+    if filters["min_puan"]:
+        parts.append("Min. puan: " + filters["min_puan"].replace(".", ","))
+    return " · ".join(parts)
 
 
-@bp.route("/", methods=["GET", "POST"])
+def _field(args, name):
+    """A text field of the search, stripped and cut like its input."""
+    return args.get(name, "").strip()[:_MAX_ECHOED_INPUT]
+
+
+def _similar_search(engine, args, num):
+    film = _field(args, "film")
+    suggestions, warnings = _recommend(engine.recommend_by_similarity, film, num=num)
+    # Name the film the results are for: a misspelt or lower-case query shows its match.
+    movie_id = engine.find_movie_id(film) if suggestions else None
+    if movie_id is not None:
+        film = engine.title_of(movie_id)
+    return {"suggestions": suggestions, "warnings": warnings, "form": {"film": film}}
+
+
+def _filter_search(engine, args, num):
+    genres = list(dict.fromkeys(genre for genre in args.getlist("tur") if genre))
+    filters = {field: _field(args, field) for field in _FILTER_SCALARS}
+    suggestions, warnings = _recommend(
+        engine.recommend_by_features,
+        genres=genres,
+        director_query=filters["yonetmen"],
+        min_rating=filters["min_puan"],
+        min_year=filters["min_yil"],
+        max_year=filters["max_yil"],
+        num=num,
+    )
+    # The engine searched a reversed year range in order; the page shows it that way too.
+    if YEARS_SWAPPED in warnings:
+        filters["min_yil"], filters["max_yil"] = filters["max_yil"], filters["min_yil"]
+    return {
+        "suggestions": suggestions,
+        "warnings": warnings,
+        "summary": _filter_summary(genres, filters),
+        "form": {"tur": genres, **filters},
+    }
+
+
+def _search(engine, args, num):
+    """Run the search named by the query string; returns the page's search context.
+
+    form holds the search as the page shows it, which also makes the "more" link.
+    """
+    search = {"mode": None, "suggestions": [], "warnings": [], "summary": "", "form": {}}
+    if "film" in args:
+        search.update(_similar_search(engine, args, num), mode="similar")
+    elif any(field in args for field in _FILTER_FIELDS):
+        search.update(_filter_search(engine, args, num), mode="filter")
+    return search
+
+
+def _more_url(form, num, shown):
+    """Link to the same search with more results, or None when every result is shown."""
+    if shown < num or num >= _MORE_RESULTS_LIMIT:
+        return None
+    # Rankings are prefix-consistent, so the old results stay put and the link can jump
+    # straight to the first new card.
+    query = {key: value for key, value in form.items() if value}
+    more = min(num + DEFAULT_RECOMMENDATION_COUNT, _MORE_RESULTS_LIMIT)
+    return url_for("movies.home", **query, n=more, _anchor=f"sonuc-{num + 1}")
+
+
+def _legacy_genre_redirect(args):
+    """Older pages linked genres as /?genre=<name>; the same search is now ?tur=<name>."""
+    pairs = [
+        ("tur" if key == "genre" else key, value)
+        for key, value in args.items(multi=True)
+        if value or key != "genre"
+    ]
+    return redirect(f"{url_for('movies.home')}?{urlencode(pairs)}", 301)
+
+
+@bp.route("/")
 def home():
-    """Home page: popular movies, ?genre= listing and both recommendation forms."""
+    """Home page: popular movies, or the results of a ?film= or filter search."""
     engine = get_engine()
     if engine is None:
-        message = "Film öneri motoru kullanılamıyor. Lütfen daha sonra tekrar deneyin."
+        message = "Öneri motoru şu anda kullanılamıyor. Lütfen daha sonra tekrar deneyin."
         return render_template("error.html", code=503, message=message), 503
 
-    suggestions = None
-    search_term = None
-    warnings = []
-    recommendation_type = None
-    form_data = {}
-    selected_genres = []
+    args = request.args
+    if any(args.getlist("genre")):
+        return _legacy_genre_redirect(args)
 
-    genre = request.args.get("genre")
-    if request.method == "GET" and genre:
-        selected_genres = [genre]
-        form_data["tur"] = selected_genres
-        recommendation_type = "features"
-        suggestions, warnings = engine.recommend_by_features(
-            genres=selected_genres, num=DEFAULT_RECOMMENDATION_COUNT
-        )
-        get_details().add_posters(suggestions)
-        search_term = f"Tür: {genre_label(selected_genres[0])}"
-
-    if request.method == "POST":
-        form_data = request.form.to_dict()
-        selected_genres = request.form.getlist("tur")
-        form_data["tur"] = selected_genres
-        try:
-            num = _parse_num_recs(request.form)
-        except ValueError:
-            warnings.append("Lütfen sayısal alanlara sadece geçerli sayılar girin.")
-        else:
-            if "submit_similarity" in request.form:
-                recommendation_type = "similarity"
-                suggestions, warnings, search_term = _similarity_request(request.form, num)
-            elif "submit_features" in request.form:
-                recommendation_type = "features"
-                suggestions, warnings, search_term = _features_request(
-                    request.form, num, selected_genres
-                )
-
+    num = clamp_count(args.get("n"))
+    search = _search(engine, args, num)
+    popular = []
+    if search["mode"] is None:
+        popular = engine.popular_cards()
+        # Posters come from TMDb; during its cooldown the grid shows placeholders instead.
+        get_details().add_posters(popular)
     return render_template(
-        "index.html",
-        suggestions=suggestions,
-        search_term=search_term,
-        warnings=warnings,
-        recommendation_type=recommendation_type,
-        popular_movies=engine.popular_movies_list,
-        popular_directors=engine.popular_directors_list,
+        "home.html",
+        **search,
+        more_url=_more_url(search["form"], num, len(search["suggestions"])),
+        popular=popular,
         all_genres=engine.all_genres,
-        form_data=form_data,
-        selected_genres=selected_genres,
-        max_recommendations=MAX_RECOMMENDATION_COUNT,
-        default_recommendations=DEFAULT_RECOMMENDATION_COUNT,
     )
 
 
-@bp.route(f"/movie/<{MOVIE_ID}:movie_id>")
+@bp.route(f"/movie/<{MOVIE_ID_CONVERTER}:movie_id>")
 def movie_detail(movie_id):
     """Movie detail page; movie_detail.js sets the like/watchlist buttons from the browser."""
     if get_engine() is None:
@@ -165,15 +179,15 @@ def movie_detail(movie_id):
 
 @bp.route("/genre/<path:genre_name>")
 def genre(genre_name):
-    """Pretty URL for the home page's ?genre= listing."""
+    """Pretty URL for a one-genre filter search."""
     # Older links spelled spaces as "+" (/genre/Science+Fiction); no genre name has a "+".
-    return redirect(url_for("movies.home", genre=genre_name.replace("+", " ")))
+    return redirect(url_for("movies.home", tur=genre_name.replace("+", " ")), 301)
 
 
 def _person_page(name, person_type, label):
     try:
         person = find_person(name, person_type)
-    except TmdbUnavailable:
+    except TmdbUnavailableError:
         flash(
             "Kişi bilgileri şu anda TMDb'den alınamıyor. Lütfen daha sonra tekrar deneyin.",
             "warning",
@@ -185,20 +199,20 @@ def _person_page(name, person_type, label):
     return render_template("person_detail.html", person=person)
 
 
-@bp.route("/director/<path:director_name_url>")
-def director(director_name_url):
+@bp.route("/director/<path:director_name>")
+def director(director_name):
     """Director page with biography and filmography from TMDb."""
-    return _person_page(director_name_url, "director", "yönetmen")
+    return _person_page(director_name, "director", "yönetmen")
 
 
-@bp.route("/actor/<path:actor_name_url>")
-def actor(actor_name_url):
+@bp.route("/actor/<path:actor_name>")
+def actor(actor_name):
     """Actor page with biography and filmography from TMDb."""
-    return _person_page(actor_name_url, "actor", "oyuncu")
+    return _person_page(actor_name, "actor", "oyuncu")
 
 
 @bp.route("/search_movie_redirect", methods=["POST"])
-def search():
+def header_search():
     """Header search: open the closest-matching movie, or go back with a message."""
     engine = get_engine()
     if engine is None:
@@ -227,7 +241,7 @@ def _suggestion_list(items):
 
 @bp.route("/api/titles")
 def api_titles():
-    """Every movie title, for the home page's free-text film suggestions."""
+    """Every movie title, for the film and header search suggestions."""
     engine = get_engine()
     if engine is None:
         abort(503)
@@ -236,7 +250,7 @@ def api_titles():
 
 @bp.route("/api/directors")
 def api_directors():
-    """Every director name, for the home page's free-text director suggestions."""
+    """Every director name, for the director filter's suggestions."""
     engine = get_engine()
     if engine is None:
         abort(503)

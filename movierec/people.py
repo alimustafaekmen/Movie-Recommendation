@@ -1,27 +1,64 @@
 """Director and actor pages: TMDb person search, profile and filmography."""
 
 import logging
+import re
 
 from movierec import tmdb
 
-log = logging.getLogger(__name__)
+logger = logging.getLogger(__name__)
 
 MAX_NAME_LENGTH = 100
 MOVIE_LIMIT = 24
-OVERVIEW_PREVIEW_CHARS = 120
-DEPARTMENTS = {"director": "Directing", "actor": "Acting"}
+# A person page costs two TMDb round trips (about 400 ms), so found people are remembered.
+# Emptied once full, like the poster cache: simpler than LRU and still bounded.
+PERSON_CACHE_LIMIT = 256
+# Cast credits where the person appears as themselves (talk shows, making-ofs, documentaries)
+# or only in old footage; they are not roles and crowd out the actual films.
+_NOT_A_ROLE = re.compile(r"^\s*(self|himself|herself|themselves)\b|archiv(e|al) footage", re.I)
+PERSON_TYPE_DEPARTMENTS = {"director": "Directing", "actor": "Acting"}
+# Turkish labels for TMDb's known_for_department; a department missing here gets no label.
+DEPARTMENT_LABELS = {
+    "Directing": "Yönetmen",
+    "Acting": "Oyuncu",
+    "Writing": "Senarist",
+    "Production": "Yapımcı",
+    "Camera": "Görüntü Yönetmeni",
+    "Editing": "Kurgu",
+    "Sound": "Ses",
+    "Art": "Sanat Yönetmeni",
+    "Costume & Make-Up": "Kostüm ve Makyaj",
+    "Visual Effects": "Görsel Efekt",
+    "Crew": "Ekip",
+    "Lighting": "Işık",
+}
+# Page data per (name, person type), filled by find_person.
+_person_cache: dict[tuple[str, str], dict] = {}
 
 
 def find_person(name: str, person_type: str) -> dict | None:
     """Return the person page data, or None if TMDb knows nobody by that name.
 
-    Raises tmdb.TmdbUnavailable when TMDb is not configured or cannot be reached.
+    Raises tmdb.TmdbUnavailableError when TMDb is not configured or cannot be reached.
     """
     name = name.strip()
     # Real names are short; longer input is junk and would only produce a 414 upstream.
     if not name or len(name) > MAX_NAME_LENGTH:
         return None
 
+    key = (name, person_type)
+    person = _person_cache.get(key)
+    if person is None:
+        person = _lookup_person(name, person_type)
+        # Misses and failures are not remembered, so a person TMDb adds later is found.
+        if person is None:
+            return None
+        if len(_person_cache) >= PERSON_CACHE_LIMIT:
+            _person_cache.clear()
+        _person_cache[key] = person
+    return person
+
+
+def _lookup_person(name: str, person_type: str) -> dict | None:
     person_id = _search_person(name, person_type)
     if person_id is None:
         return None
@@ -30,35 +67,29 @@ def find_person(name: str, person_type: str) -> dict | None:
         return None
 
     person = _profile(details)
-    person["movies"] = _format_credits(details.get("movie_credits") or {}, person_type)
+    person["movies"] = _format_credits(tmdb.record(details.get("movie_credits")), person_type)
     person["person_type_tr"] = "Yönetmen" if person_type == "director" else "Oyuncu"
-    person["page_title_name"] = name
     return person
-
-
-def short_overview(overview: str | None) -> str:
-    """Shorten a filmography overview to OVERVIEW_PREVIEW_CHARS, adding '…' only when cut."""
-    if not overview:
-        return "Özet bulunmuyor."
-    if len(overview) <= OVERVIEW_PREVIEW_CHARS:
-        return overview
-    return overview[: OVERVIEW_PREVIEW_CHARS - 1].rstrip() + "…"
 
 
 def _search_person(name: str, person_type: str) -> int | None:
     data = tmdb.get("/search/person", query=name, language="tr-TR", include_adult="false")
-    results = (data or {}).get("results") or []
+    results = [
+        result
+        for result in tmdb.records((data or {}).get("results"))
+        if tmdb.valid_id(result.get("id"))
+    ]
     if not results:
-        log.info("No TMDb person matches %r", name)
+        logger.info("No TMDb person matches %r", name)
         return None
 
     # A common name returns several people; prefer the one known for the requested
     # role and fall back to TMDb's top hit.
     best = results[0]
-    department = DEPARTMENTS.get(person_type)
+    department = PERSON_TYPE_DEPARTMENTS.get(person_type)
     if department is not None:
         best = next((r for r in results if r.get("known_for_department") == department), best)
-    return best.get("id")
+    return best["id"]
 
 
 def _fetch_person(person_id: int) -> dict | None:
@@ -66,61 +97,67 @@ def _fetch_person(person_id: int) -> dict | None:
 
 
 def _profile(details: dict) -> dict:
-    profile_path = details.get("profile_path")
-    homepage = details.get("homepage") or ""
-    return {
-        "id": details.get("id"),
-        "name": details.get("name"),
-        "biography": details.get("biography") or "Biyografi bilgisi bulunmamaktadır.",
-        "birthday": details.get("birthday"),
-        "deathday": details.get("deathday"),
-        "place_of_birth": details.get("place_of_birth"),
-        "profile_path": profile_path,
-        "known_for_department": details.get("known_for_department"),
-        "profile_image_url": tmdb.image_url(profile_path, "h632"),
+    homepage = tmdb.text(details.get("homepage"))
+    profile = {
+        "id": tmdb.valid_id(details.get("id")),
+        "name": tmdb.text(details.get("name")),
+        "biography": tmdb.text(details.get("biography")) or "Biyografi bilgisi bulunmamaktadır.",
+        "birthday": tmdb.text(details.get("birthday")),
+        "deathday": tmdb.text(details.get("deathday")),
+        "place_of_birth": tmdb.text(details.get("place_of_birth")),
+        "known_for_department": tmdb.text(details.get("known_for_department")),
+        "profile_image_url": tmdb.image_url(details.get("profile_path"), "h632"),
         # The page links to it, so only web addresses pass; a javascript: URL would run on click.
         "homepage": homepage if homepage.startswith(("http://", "https://")) else None,
     }
+    label = DEPARTMENT_LABELS.get(profile["known_for_department"])
+    if label:
+        profile["known_for_label"] = label
+    return profile
 
 
 def _format_credits(movie_credits: dict, person_type: str) -> list[dict]:
     is_director = person_type == "director"
-    credits = movie_credits.get("crew" if is_director else "cast") or []
-    # Credits without a poster render as empty cards, so they are left out.
+    # Credits without a poster render as empty cards, and a card needs an id to link to.
     credits = [
         credit
-        for credit in credits
-        if credit.get("poster_path") and (not is_director or credit.get("job") == "Director")
+        for credit in tmdb.records(movie_credits.get("crew" if is_director else "cast"))
+        if tmdb.valid_id(credit.get("id"))
+        and tmdb.image_url(credit.get("poster_path"), "w342")
+        and (credit.get("job") == "Director" if is_director else _is_a_role(credit))
     ]
-    credits.sort(key=_newest_first_key, reverse=True)
+    credits.sort(key=_best_known_first_key, reverse=True)
 
     movies, seen_ids = [], set()
     for credit in credits:
-        if credit.get("id") in seen_ids:
+        if credit["id"] in seen_ids:
             continue
-        seen_ids.add(credit.get("id"))
+        seen_ids.add(credit["id"])
         movies.append(_credit_card(credit, person_type))
         if len(movies) >= MOVIE_LIMIT:
             break
     return movies
 
 
-def _newest_first_key(credit: dict) -> tuple:
-    # TMDb dates are ISO 'YYYY-MM-DD', so string order is date order; undated films sort last.
-    return credit.get("release_date") or "", credit.get("popularity") or 0
+def _is_a_role(credit: dict) -> bool:
+    return not _NOT_A_ROLE.search(tmdb.text(credit.get("character")))
+
+
+def _best_known_first_key(credit: dict) -> tuple:
+    # Vote counts grow with a film's audience over the years, so the well-known films lead;
+    # TMDb's popularity is a trend score that would put unreleased films first. It only
+    # breaks ties, e.g. between upcoming films that have no votes yet.
+    return tmdb.number(credit.get("vote_count")), tmdb.number(credit.get("popularity"))
 
 
 def _credit_card(credit: dict, person_type: str) -> dict:
     card = {
-        "id": credit.get("id"),
-        "title": credit.get("title") or credit.get("name"),
+        "id": credit["id"],
+        "title": tmdb.text(credit.get("title")) or tmdb.text(credit.get("name")),
         "poster_url": tmdb.image_url(credit.get("poster_path"), "w342"),
-        "release_date": credit.get("release_date"),
-        "overview": short_overview(credit.get("overview")),
-        "vote_average": credit.get("vote_average", 0),
+        "year": tmdb.release_year(credit),
+        "vote_average": tmdb.number(credit.get("vote_average")),
     }
-    if person_type == "director":
-        card["job"] = "Yönetmen"
-    elif person_type == "actor":
-        card["character"] = credit.get("character", "Bilinmiyor")
+    if person_type == "actor":
+        card["character"] = tmdb.text(credit.get("character"))
     return card

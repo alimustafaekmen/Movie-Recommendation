@@ -2,6 +2,7 @@
 
 import numpy as np
 import pandas as pd
+from scipy import sparse
 from sklearn.feature_extraction.text import TfidfVectorizer
 from sklearn.preprocessing import normalize
 
@@ -34,7 +35,7 @@ def content_text(movies: pd.DataFrame) -> pd.Series:
     )
 
 
-def build_tfidf_matrix(movies: pd.DataFrame):
+def build_tfidf_matrix(movies: pd.DataFrame) -> sparse.csr_matrix:
     """Return one L2-normalised TF-IDF row per movie (about 2 MB for the full dataset)."""
     vectorizer = TfidfVectorizer(stop_words="english", max_features=TFIDF_MAX_FEATURES)
     # fit_transform rows are unit length only up to rounding; normalising once more makes

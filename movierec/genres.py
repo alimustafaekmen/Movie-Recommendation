@@ -49,7 +49,6 @@ TMDB_GENRE_NAMES = {
     10752: "War",
     37: "Western",
 }
-TMDB_GENRE_IDS = {name: genre_id for genre_id, name in TMDB_GENRE_NAMES.items()}
 
 
 def genre_label(name: str) -> str:
@@ -64,4 +63,4 @@ def is_excluded(name: str) -> bool:
 
 def genre_badge(name: str) -> dict:
     """Return the detail-page badge for an English genre name."""
-    return {"id": TMDB_GENRE_IDS.get(name), "display_name": genre_label(name), "link_name": name}
+    return {"display_name": genre_label(name), "link_name": name}
