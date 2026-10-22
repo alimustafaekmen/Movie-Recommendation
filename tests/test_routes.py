@@ -58,13 +58,17 @@ def test_movie_detail_failure_hides_exception_text(client, details, monkeypatch)
     assert "secret internals" not in body
 
 
-def test_failed_recommendation_shows_a_generic_warning(client, engine, monkeypatch):
-    def broken(**kwargs):
+@pytest.mark.parametrize(
+    ("method", "url"),
+    [("recommend_by_features", "/?tur=Action"), ("recommend_by_similarity", "/?film=Avatar")],
+)
+def test_failed_recommendation_shows_a_generic_warning(client, engine, monkeypatch, method, url):
+    def broken(*args, **kwargs):
         raise RuntimeError("boom")
 
-    monkeypatch.setattr(engine, "recommend_by_features", broken)
+    monkeypatch.setattr(engine, method, broken)
 
-    response = client.get("/?tur=Action")
+    response = client.get(url)
 
     assert response.status_code == 200
     body = response.get_data(as_text=True)
