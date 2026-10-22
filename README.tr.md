@@ -226,7 +226,7 @@ tests/                  pytest testleri. tests/js/ içinde node:test testleri va
 
 Kaynak kod [PolyForm Noncommercial License 1.0.0](LICENSE) ile paylaşılmıştır. Kişisel, eğitim amaçlı ve diğer ticari olmayan amaçlarla kullanılabilir. Ticari kullanıma izin verilmez.
 
-- Film verileri ve görseller [TMDB](https://www.themoviedb.org/) kaynaklıdır. Bu ürün TMDB API'sini kullanır ancak TMDB tarafından onaylanmış ya da sertifikalandırılmış değildir.
+- Film verileri ve görseller [TMDB](https://www.themoviedb.org/) kaynaklıdır. Bu web sitesi TMDB'yi ve TMDB API'lerini kullanır, ancak TMDB tarafından onaylanmamış, sertifikalandırılmamış veya başka bir şekilde desteklenmemiştir.
 - Temel veri seti, Kaggle'daki [TMDB 5000 Movie Dataset](https://www.kaggle.com/datasets/tmdb/tmdb-movie-metadata) veri setidir.
 - `static/icons.svg` içindeki ikonlar [Font Awesome Free 6.5.1](https://fontawesome.com) kaynaklıdır ve kendi [CC BY 4.0 lisanslarıyla](https://fontawesome.com/license/free) kullanılır.
 - Yazı tipleri [IBM Plex Sans ve IBM Plex Sans Condensed](https://github.com/IBM/plex) olup SIL Open Font License 1.1 kapsamındadır ve Google Fonts üzerinden yüklenir.

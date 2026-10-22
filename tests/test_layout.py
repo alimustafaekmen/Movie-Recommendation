@@ -23,6 +23,11 @@ FONT_AWESOME_LICENCE = (
     " License - https://fontawesome.com/license/free"
 )
 SITE_NAME = "MovieRec"
+# The exact notice section 3 of TMDB's API terms asks for, in English as written there.
+TMDB_NOTICE = (
+    "This website uses TMDB and the TMDB APIs but is not endorsed, certified,"
+    " or otherwise approved by TMDB."
+)
 HOME_TITLE = "MovieRec · Benzer filmleri keşfedin"
 # The site's name before the rebrand, written so this file does not match a grep for it.
 OLD_SITE_NAME = re.compile(r"film\s+öneri\s+motoru", re.IGNORECASE)
@@ -109,7 +114,7 @@ def test_footer_carries_the_site_name_and_the_tmdb_notice(client):
     [footer] = Page(body_text(client.get("/"))).find("footer")
 
     assert SITE_NAME in footer.text
-    assert "TMDB tarafından onaylanmamış veya sertifikalandırılmamıştır" in footer.text
+    assert texts(footer, lang="en") == [TMDB_NOTICE]
     assert footer.find("a", href="https://www.themoviedb.org/")
 
 
