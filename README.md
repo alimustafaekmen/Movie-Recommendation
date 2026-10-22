@@ -31,6 +31,28 @@ TMDb ratings are noisy below 100 votes, so such films are dropped whenever the p
 
 The weights live in [movierec/config.py](movierec/config.py).
 
+## Evaluation
+
+There is no user data to test against, so `scripts/evaluate.py` uses every film in the dataset as a seed and measures how its 12 similar movies agree with it on metadata, how much of the catalogue they reach and how popular they are:
+
+```bash
+python scripts/evaluate.py
+```
+
+| Method | Genre overlap | Same director | Catalog coverage | Median votes |
+|---|---|---|---|---|
+| Pure cosine | 0.356 | 4.5% | 98.6% | 284 |
+| MovieRec (hybrid) | 0.335 | 4.0% | 64.1% | 1,630 |
+| Most-voted baseline | 0.159 | 0.1% | 0.3% | 10,099 |
+
+The median film in the dataset has 235 votes. *Pure cosine* is the top 12 by TF-IDF similarity alone, *MovieRec (hybrid)* is exactly what the app shows, and the *most-voted baseline* recommends the same 12 most-voted films to everyone. Genre overlap is the mean Jaccard index between the seed's and each recommendation's genre sets (seeds without genres are skipped), same director is the share of recommendations that share a director with the seed, catalog coverage is the share of all films recommended at least once, and median votes is the median vote count of all recommendations, counting a film each time it is recommended.
+
+- These are proxies for metadata agreement, not accuracy: they show whether the lists are coherent, not whether people would like them.
+- Genres and director are part of the text the model compares, so the first two columns are partly circular. Coverage and median votes do not depend on the model's inputs.
+- The hybrid weights were set by hand; the table shows their effect, not a tuned optimum.
+- The hybrid trades a little agreement (genre overlap 0.356 to 0.335, same director 4.5% to 4.0%) and about a third of the catalogue for better-known films: its picks have a median of 1,630 votes against 284 for pure cosine.
+- Most of the coverage drop comes from the 100-vote floor: only 3,162 films (65.8%) have 100 votes or more, and the hybrid reaches almost all of them.
+
 ## Project layout
 
 ```text
@@ -52,6 +74,7 @@ movierec/
     redirects.py        safe redirects back to the referring page
 templates/              Jinja templates
 static/                 CSS, JavaScript and the icon sprite; js/list_store.js keeps the lists in localStorage
+scripts/evaluate.py     offline evaluation of the similar-movies lists
 tests/                  pytest suite; tests/js/ holds the node:test suite
 ```
 
@@ -118,6 +141,6 @@ The icons in `static/icons.svg` are from [Font Awesome Free 6.5.1](https://fonta
 
 ## Türkçe özet
 
-MovieRec, TMDB 5000 veri seti üzerinde çalışan, Flask ile yazılmış içerik tabanlı bir film öneri sistemidir. Beğendiğiniz bir filme benzeyen filmleri ya da seçtiğiniz tür, yönetmen, yıl ve puan filtrelerine uyan filmleri sıralar. Benzerlik, filmlerin tür, anahtar kelime, yönetmen, özet ve slogan metinlerinden üretilen TF-IDF vektörleriyle hesaplanır; sonuçlar puan, popülerlik ve oy sayısıyla birlikte ağırlıklandırılır.
+MovieRec, TMDB 5000 veri seti üzerinde çalışan, Flask ile yazılmış içerik tabanlı bir film öneri sistemidir. Beğendiğiniz bir filme benzeyen filmleri ya da seçtiğiniz tür, yönetmen, yıl ve puan filtrelerine uyan filmleri sıralar. Benzerlik, filmlerin tür, anahtar kelime, yönetmen, özet ve slogan metinlerinden üretilen TF-IDF vektörleriyle hesaplanır; sonuçlar puan, popülerlik ve oy sayısıyla birlikte ağırlıklandırılır. Benzer film listeleri, kullanıcı verisi olmadan `scripts/evaluate.py` ile meta veri üzerinden değerlendirilir: tür örtüşmesi, aynı yönetmen oranı, katalog kapsamı ve önerilen filmlerin popülerliği.
 
 Üyelik yoktur: beğeniler ve izleme listesi ziyaretçinin tarayıcısında saklanır, bu yüzden veritabanı gerekmez. Proje ticari olmayan kullanım için PolyForm Noncommercial 1.0.0 lisansıyla paylaşılmıştır. Kurulum adımları yukarıdaki bölümlerdedir.
