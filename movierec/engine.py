@@ -93,6 +93,9 @@ class RecommendationEngine:
         # a warning for each one a visitor sends.
         if not choices or not utils.full_process(query or ""):
             return None
+        # WRatio's partial scoring lets a one-letter title like "O" win for "Bogs"; the cap
+        # keeps short titles such as "Saw" in play for queries like "Saw 2004".
+        choices = [choice for choice in choices if len(choice) * 2 >= min(len(query), 6)]
         match = process.extractOne(
             query, choices, scorer=fuzz.WRatio, score_cutoff=FUZZY_SCORE_CUTOFF
         )

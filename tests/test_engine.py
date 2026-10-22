@@ -49,6 +49,21 @@ def test_find_movie_id(engine, query, movie_id):
     assert engine.find_movie_id(query) == movie_id
 
 
+@pytest.mark.real_dataset
+def test_typo_does_not_match_a_one_letter_title(engine):
+    # WRatio scores "Bogs" against the film "O" (id 11065) as a partial match.
+    assert engine.find_movie_id("Bogs") == 3587
+
+
+@pytest.mark.real_dataset
+@pytest.mark.parametrize(
+    ("query", "movie_id"),
+    [("Jaws 1975", 578), ("Thor movie", 10195), ("Saw 2004", 176), ("Juno 2007", 7326)],
+)
+def test_short_title_with_extra_words(engine, query, movie_id):
+    assert engine.find_movie_id(query) == movie_id
+
+
 @pytest.mark.parametrize("query", ["a", " ", "", None, 5, "qqqqzzzzxx"])
 def test_find_movie_id_rejects_junk(engine, query):
     assert engine.find_movie_id(query) is None
@@ -145,6 +160,15 @@ def test_genre_fragment_matches_nothing(engine):
 
     assert results == []
     assert warnings
+
+
+def test_genre_with_no_matches_plus_director_and_year_finds_nothing(engine):
+    results, warnings = engine.recommend_by_features(
+        genres=["a"], director_query="Christopher Nolan", min_year="2000"
+    )
+
+    assert results == []
+    assert warnings == ["Seçtiğiniz kriterlere tam olarak uyan hiçbir film bulunamadı."]
 
 
 def test_co_directors_are_searchable(engine):

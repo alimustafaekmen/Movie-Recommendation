@@ -126,7 +126,8 @@ def apply_filters(
     if genres:
         df = df[df["genre_list"].map(lambda names: genres <= {name.casefold() for name in names})]
     if director:
-        df = df[df["directors"].map(lambda names: director in names)]
+        # On an empty frame map() returns an object Series, which pandas reads as column names.
+        df = df[df["directors"].map(lambda names: director in names).astype(bool)]
     if numbers.min_rating is not None:
         df = df[df["vote_average"] >= numbers.min_rating]
     # Year 0 marks a missing release date, which never satisfies a year bound.
