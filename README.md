@@ -1,13 +1,14 @@
-# Movie Recommendation
+# MovieRec
 
-A content-based movie recommender built with Flask on the [TMDB 5000 dataset](https://www.kaggle.com/datasets/tmdb/tmdb-movie-metadata). It finds films similar to one you like, or ranks films that match a set of filters (genres, director, release years, minimum rating). Movie and person pages are enriched with live data from the TMDb API: posters, trailers, cast and biographies. The interface is in Turkish.
+MovieRec is a content-based movie recommender built with Flask on the [TMDB 5000 dataset](https://www.kaggle.com/datasets/tmdb/tmdb-movie-metadata). It finds films similar to one you like, or ranks films that match a set of filters (genres, director, release years, minimum rating). Movie and person pages are enriched with live data from the TMDb API: posters, trailers, cast and biographies. The interface is in Turkish.
 
-There are no accounts. Favourites and the watchlist are kept in the visitor's browser, so the app keeps no accounts or lists on the server and needs no database.
+There are no accounts. Favourites and the watchlist are kept in the visitor's browser, so the app keeps no accounts or lists on the server and needs no database. The site follows the system's light or dark setting, and a header button switches it.
 
-![Home page](screenshots/1.jpg)
-![Similar movies](screenshots/2.jpg)
-![Movie page](screenshots/3.jpg)
-![My lists](screenshots/4.jpg)
+![Home page](screenshots/home.jpg)
+![Similar movies](screenshots/similar-movies.jpg)
+![Movie page](screenshots/movie-page.jpg)
+![My lists](screenshots/my-lists.jpg)
+![Movie page in the dark theme](screenshots/movie-page-dark.jpg)
 
 ## How recommendations work
 
@@ -39,8 +40,8 @@ movierec/
   dataset.py            CSV loading and preprocessing
   similarity.py         TF-IDF matrix and ranking formulas
   engine.py             RecommendationEngine: similar movies and filter search, offline
-  filters.py            input parsing and genre/director filters
-  details.py            movie pages and list cards enriched with TMDb data
+  search_filters.py     input parsing and genre/director filters
+  movie_details.py      movie pages and list cards enriched with TMDb data
   genres.py             genre names and Turkish labels
   tmdb.py               small TMDb API client
   people.py             director/actor pages from TMDb
@@ -50,7 +51,7 @@ movierec/
     lists.py            favourites and watchlist page, card endpoint
     redirects.py        safe redirects back to the referring page
 templates/              Jinja templates
-static/                 CSS and JavaScript; lists.js keeps the lists in localStorage
+static/                 CSS, JavaScript and the icon sprite; js/list_store.js keeps the lists in localStorage
 tests/                  pytest suite; tests/js/ holds the node:test suite
 ```
 
@@ -113,8 +114,10 @@ Source available under the [PolyForm Noncommercial License 1.0.0](LICENSE): free
 
 Movie data and images come from [TMDB](https://www.themoviedb.org/). This product uses the TMDB API but is not endorsed or certified by TMDB. The base dataset is the [TMDB 5000 Movie Dataset](https://www.kaggle.com/datasets/tmdb/tmdb-movie-metadata) on Kaggle.
 
+The icons in `static/icons.svg` are from [Font Awesome Free 6.5.1](https://fontawesome.com) and stay under their own [CC BY 4.0 license](https://fontawesome.com/license/free). The type is [IBM Plex Sans and IBM Plex Sans Condensed](https://github.com/IBM/plex) (SIL Open Font License 1.1), loaded from Google Fonts.
+
 ## Türkçe özet
 
-TMDB 5000 veri seti üzerinde çalışan, Flask ile yazılmış içerik tabanlı bir film öneri sistemi. Beğendiğiniz bir filme benzeyen filmleri ya da seçtiğiniz tür, yönetmen, yıl ve puan filtrelerine uyan filmleri sıralar. Benzerlik, filmlerin tür, anahtar kelime, yönetmen, özet ve slogan metinlerinden üretilen TF-IDF vektörleriyle hesaplanır; sonuçlar puan, popülerlik ve oy sayısıyla birlikte ağırlıklandırılır.
+MovieRec, TMDB 5000 veri seti üzerinde çalışan, Flask ile yazılmış içerik tabanlı bir film öneri sistemidir. Beğendiğiniz bir filme benzeyen filmleri ya da seçtiğiniz tür, yönetmen, yıl ve puan filtrelerine uyan filmleri sıralar. Benzerlik, filmlerin tür, anahtar kelime, yönetmen, özet ve slogan metinlerinden üretilen TF-IDF vektörleriyle hesaplanır; sonuçlar puan, popülerlik ve oy sayısıyla birlikte ağırlıklandırılır.
 
 Üyelik yoktur: beğeniler ve izleme listesi ziyaretçinin tarayıcısında saklanır, bu yüzden veritabanı gerekmez. Proje ticari olmayan kullanım için PolyForm Noncommercial 1.0.0 lisansıyla paylaşılmıştır. Kurulum adımları yukarıdaki bölümlerdedir.
