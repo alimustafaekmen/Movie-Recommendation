@@ -11,6 +11,62 @@
     "en": "Unknown",
     "tr": "Bilinmiyor"
   },
+  "error.bad_request": {
+    "en": "The request could not be processed. Please try again.",
+    "tr": "İstek işlenemedi. Lütfen tekrar deneyin."
+  },
+  "error.engine_unavailable": {
+    "en": "The recommendation engine is unavailable right now. Please try again later.",
+    "tr": "Öneri motoru şu anda kullanılamıyor. Lütfen daha sonra tekrar deneyin."
+  },
+  "error.home": {
+    "en": "Back to home",
+    "tr": "Ana Sayfaya Dön"
+  },
+  "error.method_not_allowed": {
+    "en": "This address cannot be used this way.",
+    "tr": "Bu adres bu şekilde kullanılamaz."
+  },
+  "error.movie_unavailable": {
+    "en": "The film details cannot be loaded right now.",
+    "tr": "Film detayı şu anda alınamıyor."
+  },
+  "error.not_found": {
+    "en": "The page you are looking for was not found.",
+    "tr": "Aradığınız sayfa bulunamadı."
+  },
+  "error.not_found_title": {
+    "en": "Page not found",
+    "tr": "Sayfa bulunamadı"
+  },
+  "error.payload_too_large": {
+    "en": "The request sent is too large.",
+    "tr": "Gönderilen istek çok büyük."
+  },
+  "error.server_error": {
+    "en": "An unexpected error occurred. Please try again later.",
+    "tr": "Beklenmedik bir hata oluştu. Lütfen daha sonra tekrar deneyin."
+  },
+  "error.title": {
+    "en": "Something went wrong",
+    "tr": "Bir sorun oluştu"
+  },
+  "error.unavailable": {
+    "en": "The service is unavailable right now. Please try again later.",
+    "tr": "Servis şu anda kullanılamıyor. Lütfen daha sonra tekrar deneyin."
+  },
+  "flash.engine_unavailable": {
+    "en": "The recommendation engine is unavailable.",
+    "tr": "Öneri motoru kullanılamıyor."
+  },
+  "flash.movie_not_found": {
+    "en": "We found no film with a title like '{query}'.",
+    "tr": "'{query}' ismine benzer hiçbir film bulamadık."
+  },
+  "flash.person_unavailable": {
+    "en": "Person details cannot be loaded from TMDb right now. Please try again later.",
+    "tr": "Kişi bilgileri şu anda TMDb'den alınamıyor. Lütfen daha sonra tekrar deneyin."
+  },
   "header.language": {
     "en": "Language",
     "tr": "Dil"
@@ -39,6 +95,14 @@
     "en": "Main menu",
     "tr": "Ana menü"
   },
+  "person.not_found_actor": {
+    "en": "No actor named '{name}' was found.",
+    "tr": "'{name}' adlı oyuncu bulunamadı."
+  },
+  "person.not_found_director": {
+    "en": "No director named '{name}' was found.",
+    "tr": "'{name}' adlı yönetmen bulunamadı."
+  },
   "runtime.hours": {
     "en": "{hours} h",
     "tr": "{hours} sa"
@@ -51,6 +115,26 @@
     "en": "{minutes} min",
     "tr": "{minutes} dk"
   },
+  "summary.director": {
+    "en": "Director: {name}",
+    "tr": "Yönetmen: {name}"
+  },
+  "summary.genres.one": {
+    "en": "Genre: {genres}",
+    "tr": "Tür: {genres}"
+  },
+  "summary.genres.other": {
+    "en": "Genres: {genres}",
+    "tr": "Türler: {genres}"
+  },
+  "summary.min_rating": {
+    "en": "Min. rating: {rating}",
+    "tr": "Min. puan: {rating}"
+  },
+  "summary.years": {
+    "en": "Years: {years}",
+    "tr": "Yıl: {years}"
+  },
   "theme.to_dark": {
     "en": "Switch to dark theme",
     "tr": "Koyu temaya geç"
@@ -58,5 +142,53 @@
   "theme.to_light": {
     "en": "Switch to light theme",
     "tr": "Açık temaya geç"
+  },
+  "warning.director_fuzzy": {
+    "en": "Director '{query}' not found. Using '{name}'.",
+    "tr": "Yönetmen '{query}' bulunamadı. '{name}' kullanılıyor."
+  },
+  "warning.director_not_found": {
+    "en": "No director named '{query}' was found.",
+    "tr": "'{query}' adlı yönetmen bulunamadı."
+  },
+  "warning.empty_query": {
+    "en": "Please enter a film title.",
+    "tr": "Lütfen bir film adı girin."
+  },
+  "warning.invalid_number": {
+    "en": "The rating or year is not a valid number. Please use digits only.",
+    "tr": "Geçersiz puan veya yıl formatı girildi. Lütfen sadece sayı kullanın."
+  },
+  "warning.less_known": {
+    "en": "No film has enough votes; showing less-known films.",
+    "tr": "Yeterli oy sayısına sahip film bulunamadı; daha az bilinen filmler listeleniyor."
+  },
+  "warning.less_known_similar": {
+    "en": "We found no widely voted films similar to '{title}'. Showing less-known films instead.",
+    "tr": "'{title}' için çok fazla oy almış popüler benzer film bulamadık. Daha az bilinen filmleri listeliyoruz."
+  },
+  "warning.movie_not_found": {
+    "en": "No film with a title like '{query}' was found.",
+    "tr": "'{query}' ismine benzer bir film bulunamadı."
+  },
+  "warning.no_criteria": {
+    "en": "Please enter at least one criterion (genre, director, etc.) to search.",
+    "tr": "Lütfen arama yapmak için en az bir kriter (tür, yönetmen vb.) girin."
+  },
+  "warning.no_match": {
+    "en": "No film matches all of the criteria you chose.",
+    "tr": "Seçtiğiniz kriterlere tam olarak uyan hiçbir film bulunamadı."
+  },
+  "warning.not_exact": {
+    "en": "No exact match for '{query}'. Showing results for the closest title, '{title}'.",
+    "tr": "'{query}' adında tam bir eşleşme bulunamadı. Bunun yerine en yakın isim olan '{title}' için sonuçlar gösteriliyor."
+  },
+  "warning.search_failed": {
+    "en": "Something went wrong while loading the recommendations.",
+    "tr": "Öneriler sayfaya yüklenirken bir hata oluştu."
+  },
+  "warning.years_swapped": {
+    "en": "The year range was reversed and has been corrected.",
+    "tr": "Yıl aralığı ters girilmişti, düzeltildi."
   }
 }

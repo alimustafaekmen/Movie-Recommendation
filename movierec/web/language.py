@@ -8,7 +8,7 @@ from urllib.parse import quote, urlencode
 
 from flask import current_app, g, request, url_for
 
-from movierec.i18n import DEFAULT_LANGUAGE, LANGUAGES, translate
+from movierec.i18n import DEFAULT_LANGUAGE, LANGUAGES, translate, translate_count
 
 COOKIE_NAME = "lang"
 COOKIE_MAX_AGE_SECONDS = 365 * 24 * 60 * 60
@@ -65,3 +65,13 @@ def lang_url(code: str) -> str:
 def t(key: str, **params) -> str:
     """Return a catalogue text in the language of this request."""
     return translate(get_lang(), key, **params)
+
+
+def t_count(key: str, count: int, **params) -> str:
+    """Return the singular or plural catalogue text for count in the language of this request."""
+    return translate_count(get_lang(), key, count, **params)
+
+
+def t_message(item: dict) -> str:
+    """Return a movierec.i18n.message(), e.g. an engine warning, as text in this language."""
+    return t(item["key"], **item["params"])

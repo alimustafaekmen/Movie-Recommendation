@@ -1,6 +1,7 @@
 import pytest
 
 from movierec.engine import DETAIL_SIMILAR_COUNT, RecommendationEngine, clamp_count
+from movierec.i18n import message
 
 
 def test_similarity_excludes_the_query_movie(engine):
@@ -14,7 +15,8 @@ def test_misspelled_title_falls_back_to_closest_match(engine):
     results, warnings = engine.recommend_by_similarity("inceptoin")
 
     assert results
-    assert any("Inception" in warning for warning in warnings)
+    # A catalogue key and its parameters; the page translates it.
+    assert message("warning.not_exact", query="inceptoin", title="Inception") in warnings
 
 
 def test_feature_search_by_genre_returns_movies(engine):
@@ -83,14 +85,13 @@ def test_find_movie_id_rejects_junk(engine, query):
 def test_overlong_query_is_cut_to_100_characters(engine):
     _, warnings = engine.recommend_by_similarity("x" * 5000)
 
-    assert warnings
-    assert all(len(warning) < 300 for warning in warnings)
+    assert warnings == [message("warning.movie_not_found", query="x" * 100)]
 
 
 def test_overlong_director_query_is_cut_to_100_characters(engine):
     _, warnings = engine.recommend_by_features(director_query="q" * 5000)
 
-    assert warnings == [f"'{'q' * 100}' adlı yönetmen bulunamadı."]
+    assert warnings == [message("warning.director_not_found", query="q" * 100)]
 
 
 def test_exact_title_has_no_fuzzy_warning(engine):
@@ -116,7 +117,16 @@ def test_missing_title_asks_for_one(engine, query):
     results, warnings = engine.recommend_by_similarity(query)
 
     assert results == []
-    assert warnings == ["Lütfen bir film adı girin."]
+    assert warnings == [message("warning.empty_query")]
+
+
+def test_a_filter_search_without_criteria_asks_for_one(engine):
+    assert engine.recommend_by_features() == ([], [message("warning.no_criteria")])
+    # The warning about a bad number still says what went wrong.
+    assert engine.recommend_by_features(min_rating="abc") == (
+        [],
+        [message("warning.no_criteria"), message("warning.invalid_number")],
+    )
 
 
 def test_single_genre_string_is_treated_as_one_genre(engine):
@@ -141,7 +151,7 @@ def test_low_vote_feature_results_fall_back_with_a_warning(engine):
     results, warnings = engine.recommend_by_features(genres=["Foreign"])
 
     assert results
-    assert any("daha az bilinen" in warning for warning in warnings)
+    assert message("warning.less_known") in warnings
 
 
 def _feature_ids(results):
@@ -179,7 +189,7 @@ def test_genre_with_no_matches_plus_director_and_year_finds_nothing(engine):
     )
 
     assert results == []
-    assert warnings == ["Seçtiğiniz kriterlere tam olarak uyan hiçbir film bulunamadı."]
+    assert warnings == [message("warning.no_match")]
 
 
 def test_co_directors_are_searchable(engine):
@@ -203,7 +213,7 @@ def test_fuzzy_director_resolves(engine, query, director):
     results, warnings = engine.recommend_by_features(director_query=query)
 
     assert results
-    assert warnings == [f"Yönetmen '{query}' bulunamadı. '{director}' kullanılıyor."]
+    assert warnings == [message("warning.director_fuzzy", query=query, name=director)]
 
 
 @pytest.mark.parametrize("query", ["Zzqx Qwerty", "John Smith"])
@@ -213,7 +223,7 @@ def test_unknown_director_returns_nothing(engine, query):
     )
 
     assert results == []
-    assert warnings == [f"'{query}' adlı yönetmen bulunamadı."]
+    assert warnings == [message("warning.director_not_found", query=query)]
 
 
 def test_turkish_decimal_comma_is_accepted(engine):
@@ -229,7 +239,7 @@ def test_one_invalid_number_keeps_the_other_filters(engine):
         min_rating="abc", min_year="2010.0", max_year="nan", num=30
     )
 
-    assert warnings == ["Geçersiz puan veya yıl formatı girildi. Lütfen sadece sayı kullanın."]
+    assert warnings == [message("warning.invalid_number")]
     assert (_rows(engine, results)["year"] >= 2010).all()
 
 
@@ -237,13 +247,13 @@ def test_one_invalid_number_keeps_the_other_filters(engine):
 def test_out_of_range_number_is_rejected(engine, field, value):
     _, warnings = engine.recommend_by_features(genres=["Drama"], **{field: value})
 
-    assert warnings == ["Geçersiz puan veya yıl formatı girildi. Lütfen sadece sayı kullanın."]
+    assert warnings == [message("warning.invalid_number")]
 
 
 def test_reversed_year_range_is_swapped(engine):
     results, warnings = engine.recommend_by_features(min_year="2020", max_year="2000", num=30)
 
-    assert warnings == ["Yıl aralığı ters girilmişti, düzeltildi."]
+    assert warnings == [message("warning.years_swapped")]
     assert _rows(engine, results)["year"].between(2000, 2020).all()
 
 

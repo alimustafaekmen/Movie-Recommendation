@@ -1,5 +1,5 @@
 {% extends "base.html" %}
-{% set heading = 'Sayfa bulunamadı' if code == 404 else 'Bir sorun oluştu' %}
+{% set heading = t('error.not_found_title') if code == 404 else t('error.title') %}
 
 {% block title %}{{ heading }} · MovieRec{% endblock %}
 
@@ -8,8 +8,8 @@
     <div class="panel error-panel">
         {% if code %}<p class="error-code">{{ code }}</p>{% endif %}
         <h1 class="page-title">{{ heading }}</h1>
-        <p class="error-page-message">{{ message | default('Beklenmedik bir hata oluştu. Lütfen daha sonra tekrar deneyin.') }}</p>
-        <a href="{{ url_for('movies.home') }}" class="btn btn-primary">Ana Sayfaya Dön</a>
+        <p class="error-page-message">{{ message | default(t('error.server_error')) }}</p>
+        <a href="{{ url_for('movies.home') }}" class="btn btn-primary">{{ t('error.home') }}</a>
     </div>
 </div>
 {% endblock %}

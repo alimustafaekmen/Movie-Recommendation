@@ -121,11 +121,25 @@ def test_answers_that_read_the_language_tell_caches_so(client, path):
     assert {"Accept-Language", "Cookie"} <= set(response.vary)
 
 
+def test_a_flash_redirect_reads_the_language_too(client):
+    response = client.post("/search_movie_redirect", data={"search_query": ""})
+
+    assert response.status_code == 302
+    assert {"Accept-Language", "Cookie"} <= set(response.vary)
+
+
 @pytest.mark.parametrize("path", ["/api/titles", "/static/css/base.css", "/api/nope", "/health"])
 def test_answers_that_do_not_read_the_language_stay_one_copy_for_caches(client, path):
     response = client.get(path)
 
     assert "Accept-Language" not in response.vary
+
+
+def test_json_errors_are_codes_in_every_language(client):
+    for lang in ("tr", "en"):
+        response = client.get(f"/api/nope?lang={lang}")
+
+        assert response.get_json() == {"status": "error", "error": "not_found"}
 
 
 @pytest.mark.parametrize(

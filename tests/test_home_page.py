@@ -327,7 +327,7 @@ def test_filter_search_is_a_shareable_url_and_keeps_its_values(client):
     url = "/?tur=Action&tur=Science+Fiction&yonetmen=&min_yil=1990&max_yil=2015&min_puan=7&n=3"
     body, page = _get(client, url)
 
-    assert "Türler: Aksiyon, Bilim Kurgu" in _text(body)
+    assert "Türler: Aksiyon, Bilim Kurgu · Yıl: 1990 - 2015 · Min. puan: 7" in _text(body)
     assert any(heading.startswith("Filtre sonuçları") for heading in _headings(body))
     assert [box["value"] for box in page.all("input", name="tur") if "checked" in box] == [
         "Action",
@@ -352,10 +352,57 @@ def test_a_reversed_year_range_is_shown_in_order(client):
     assert "Yıl aralığı ters girilmişti, düzeltildi." in _text(body)
 
 
+def test_an_english_page_shows_the_warning_and_the_filters_in_english(client):
+    url = "/?tur=Action&tur=Science+Fiction&yonetmen=nolan&min_yil=2015&max_yil=1990&min_puan=7.5"
+    _, page = _get(client, f"{url}&lang=en")
+
+    summary = (
+        "Genres: Action, Science Fiction · Director: nolan · Years: 1990 - 2015 · Min. rating: 7.5"
+    )
+    assert texts(page, "p", "results-summary") == [summary]
+    assert texts(page, class_="search-warnings") == [
+        "Director 'nolan' not found. Using 'Christopher Nolan'. "
+        "The year range was reversed and has been corrected."
+    ]
+    # The fields show the range in order, whatever the language.
+    assert [page.all("input", name=name)[0]["value"] for name in ("min_yil", "max_yil")] == [
+        "1990",
+        "2015",
+    ]
+
+
+def test_a_fuzzy_match_warns_in_english(client):
+    _, page = _get(client, f"{SEARCHES['warning']}&lang=en")
+
+    assert texts(page, class_="search-warnings") == [
+        "No exact match for 'Avatr'. Showing results for the closest title, 'Avatar'."
+    ]
+
+
+@pytest.mark.parametrize(
+    ("url", "message"),
+    [
+        (SEARCHES["empty"], "No film matches all of the criteria you chose."),
+        ("/?film=xyzzyplugh", "No film with a title like 'xyzzyplugh' was found."),
+        ("/?film=", "Please enter a film title."),
+        (
+            "/?yonetmen=&min_yil=&max_yil=&min_puan=",
+            "Please enter at least one criterion (genre, director, etc.) to search.",
+        ),
+    ],
+)
+def test_a_search_without_results_explains_it_in_english(client, url, message):
+    _, page = _get(client, f"{url}&lang=en")
+
+    assert texts(page, "p", "empty-state-message") == [message]
+
+
 def test_one_genre_is_named_in_the_singular(client):
     body, _ = _get(client, "/?tur=Science%20Fiction")
+    english, _ = _get(client, "/?tur=Science%20Fiction&lang=en")
 
     assert "Tür: Bilim Kurgu" in _text(body)
+    assert "Genre: Science Fiction" in _text(english)
 
 
 def test_a_repeated_genre_counts_once(client):

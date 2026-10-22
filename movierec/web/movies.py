@@ -9,10 +9,12 @@ from flask import Blueprint, abort, flash, jsonify, redirect, render_template, r
 from movierec.config import DEFAULT_RECOMMENDATION_COUNT
 from movierec.engine import RecommendationEngine, clamp_count
 from movierec.genres import genre_label
+from movierec.i18n import decimal_text, message
 from movierec.people import find_person
 from movierec.search_filters import YEARS_SWAPPED_WARNING
 from movierec.tmdb import TmdbUnavailableError
 from movierec.web import MOVIE_ID_CONVERTER, get_details, get_engine
+from movierec.web.language import get_lang, t, t_count, t_message
 from movierec.web.redirects import redirect_back
 
 logger = logging.getLogger(__name__)
@@ -32,23 +34,23 @@ _FILTER_FIELDS = ("tur", *_SINGLE_VALUE_FIELDS)
 # "Daha fazla göster" adds one more grid of results; a longer ?n= still works by URL.
 _MORE_RESULTS_LIMIT = 2 * DEFAULT_RECOMMENDATION_COUNT
 # Shown instead of results when the engine fails; the error itself only goes to the log.
-_SEARCH_FAILED_WARNING = "Öneriler sayfaya yüklenirken bir hata oluştu."
+_SEARCH_FAILED_WARNING = message("warning.search_failed")
 
 
 def _filter_summary(genres: list[str], filters: dict[str, str]) -> str:
     """Return the description of the active filters shown under the results heading."""
+    lang = get_lang()
     parts = []
     if genres:
-        label = "Tür" if len(genres) == 1 else "Türler"
-        genre_names = ", ".join(genre_label(genre, "tr") for genre in genres)
-        parts.append(f"{label}: {genre_names}")
+        genre_names = ", ".join(genre_label(genre, lang) for genre in genres)
+        parts.append(t_count("summary.genres", len(genres), genres=genre_names))
     if filters["yonetmen"]:
-        parts.append(f"Yönetmen: {filters['yonetmen']}")
+        parts.append(t("summary.director", name=filters["yonetmen"]))
     years = [year for year in (filters["min_yil"], filters["max_yil"]) if year]
     if years:
-        parts.append("Yıl: " + " - ".join(years))
+        parts.append(t("summary.years", years=" - ".join(years)))
     if filters["min_puan"]:
-        parts.append("Min. puan: " + filters["min_puan"].replace(".", ","))
+        parts.append(t("summary.min_rating", rating=decimal_text(filters["min_puan"], lang)))
     return " · ".join(parts)
 
 
@@ -172,8 +174,8 @@ def home():
     """Home page: popular movies, or the results of a ?film= or filter search."""
     engine = get_engine()
     if engine is None:
-        message = "Öneri motoru şu anda kullanılamıyor. Lütfen daha sonra tekrar deneyin."
-        return render_template("error.html", code=503, message=message), 503
+        text = t("error.engine_unavailable")
+        return render_template("error.html", code=503, message=text), 503
 
     args = request.args
     if any(args.getlist("genre")):
@@ -189,6 +191,8 @@ def home():
         popular = engine.popular_cards()
         # Posters come from TMDb; during its cooldown the grid shows placeholders instead.
         get_details().add_posters(popular)
+    # The engine returns catalogue keys; the page shows them in its language.
+    search["warnings"] = [t_message(warning) for warning in search["warnings"]]
     return render_template(
         "home.html",
         **search,
@@ -207,12 +211,12 @@ def movie_detail(movie_id: int):
     try:
         movie_data = get_details().get_movie_details(movie_id)
     except TmdbUnavailableError:
-        message = "Film detayı şu anda alınamıyor."
-        return render_template("error.html", code=503, message=message), 503
+        text = t("error.movie_unavailable")
+        return render_template("error.html", code=503, message=text), 503
     except Exception:
         logger.exception("Movie details failed for id %s", movie_id)
-        message = "Film detayı şu anda alınamıyor."
-        return render_template("error.html", code=500, message=message), 500
+        text = t("error.movie_unavailable")
+        return render_template("error.html", code=500, message=text), 500
     if movie_data is None:
         abort(404)
     return render_template("movie_detail.html", movie=movie_data)
@@ -225,21 +229,19 @@ def genre(genre_name: str):
     return redirect(url_for("movies.home", tur=genre_name.replace("+", " ")), 301)
 
 
-def _render_person_page(name: str, person_type: str, role_label: str):
+def _render_person_page(name: str, person_type: str, not_found_key: str):
     """Render the person page, or go home with a message when TMDb fails or knows nobody.
 
-    role_label: the Turkish role for the message, e.g. "yönetmen".
+    not_found_key: the catalogue key of the message for a name TMDb does not know.
     """
+    # Flashes are written in the request's language; the page that shows them is the next one.
     try:
         person = find_person(name, person_type)
     except TmdbUnavailableError:
-        flash(
-            "Kişi bilgileri şu anda TMDb'den alınamıyor. Lütfen daha sonra tekrar deneyin.",
-            "warning",
-        )
+        flash(t("flash.person_unavailable"), "warning")
         return redirect(url_for("movies.home"))
     if person is None:
-        flash(f"'{name[:_MAX_ECHOED_LENGTH]}' adlı {role_label} bulunamadı.", "warning")
+        flash(t(not_found_key, name=name[:_MAX_ECHOED_LENGTH]), "warning")
         return redirect(url_for("movies.home"))
     return render_template("person_detail.html", person=person)
 
@@ -247,13 +249,13 @@ def _render_person_page(name: str, person_type: str, role_label: str):
 @bp.route("/director/<path:director_name>")
 def director(director_name: str):
     """Director page with biography and filmography from TMDb."""
-    return _render_person_page(director_name, "director", "yönetmen")
+    return _render_person_page(director_name, "director", "person.not_found_director")
 
 
 @bp.route("/actor/<path:actor_name>")
 def actor(actor_name: str):
     """Actor page with biography and filmography from TMDb."""
-    return _render_person_page(actor_name, "actor", "oyuncu")
+    return _render_person_page(actor_name, "actor", "person.not_found_actor")
 
 
 @bp.route("/search_movie_redirect", methods=["POST"])
@@ -261,17 +263,17 @@ def header_search():
     """Header search: open the closest-matching movie, or go back with a message."""
     engine = get_engine()
     if engine is None:
-        flash("Öneri motoru kullanılamıyor.", "danger")
+        flash(t("flash.engine_unavailable"), "danger")
         return redirect(url_for("movies.home"))
 
     query = request.form.get("search_query", "").strip()
     if not query:
-        flash("Lütfen bir film adı girin.", "warning")
+        flash(t("warning.empty_query"), "warning")
         return redirect_back()
 
     movie_id = engine.find_movie_id(query)
     if movie_id is None:
-        flash(f"'{query[:_MAX_ECHOED_LENGTH]}' ismine benzer hiçbir film bulamadık.", "warning")
+        flash(t("flash.movie_not_found", query=query[:_MAX_ECHOED_LENGTH]), "warning")
         return redirect_back()
     return redirect(url_for("movies.movie_detail", movie_id=movie_id))
 

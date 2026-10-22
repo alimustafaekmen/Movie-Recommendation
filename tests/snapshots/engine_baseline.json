@@ -799,7 +799,13 @@
         ]
       ],
       "warnings": [
-        "'inceptoin' adında tam bir eşleşme bulunamadı. Bunun yerine en yakın isim olan 'Inception' için sonuçlar gösteriliyor."
+        {
+          "key": "warning.not_exact",
+          "params": {
+            "query": "inceptoin",
+            "title": "Inception"
+          }
+        }
       ]
     }
   }

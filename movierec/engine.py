@@ -15,6 +15,7 @@ from movierec.config import (
 )
 from movierec.dataset import load_movies
 from movierec.genres import is_excluded
+from movierec.i18n import message
 from movierec.search_filters import (
     apply_filters,
     genre_keys,
@@ -178,32 +179,29 @@ class RecommendationEngine:
 
     def recommend_by_similarity(
         self, movie_title_query: str, num: int | str = DEFAULT_RECOMMENDATION_COUNT
-    ) -> tuple[list[dict], list[str]]:
-        """Recommend movies similar to the given title; returns (results, warnings)."""
+    ) -> tuple[list[dict], list[dict]]:
+        """Recommend movies similar to the given title; returns (results, warnings).
+
+        Each warning is a movierec.i18n.message(), which the page shows in its language.
+        """
         if not isinstance(movie_title_query, str) or not movie_title_query.strip():
-            return [], ["Lütfen bir film adı girin."]
+            return [], [message("warning.empty_query")]
         num = clamp_count(num)
         query = movie_title_query.strip()[:MAX_QUERY_LENGTH]
         match = self._resolve_title(query)
         if match is None:
-            return [], [f"'{query}' ismine benzer bir film bulunamadı."]
+            return [], [message("warning.movie_not_found", query=query)]
 
         row, is_exact = match
         title = self.movies_df["title"].iat[row]
         warnings = []
         if not is_exact:
-            warnings.append(
-                f"'{query}' adında tam bir eşleşme bulunamadı. Bunun yerine en yakın isim olan "
-                f"'{title}' için sonuçlar gösteriliyor."
-            )
+            warnings.append(message("warning.not_exact", query=query, title=title))
         ranked_rows = self.rank_neighbours(row)
         # rank_neighbours keeps films under MIN_VOTES_THRESHOLD only if its pool has nothing better.
         is_well_voted = self._vote_count[ranked_rows] >= MIN_VOTES_THRESHOLD
         if not is_well_voted.any():
-            warnings.append(
-                f"'{title}' için çok fazla oy almış popüler benzer film bulamadık. "
-                "Daha az bilinen filmleri listeliyoruz."
-            )
+            warnings.append(message("warning.less_known_similar", title=title))
         neighbours = self.movies_df.iloc[ranked_rows]
         return self.format_results(neighbours, num), warnings
 
@@ -277,8 +275,11 @@ class RecommendationEngine:
         min_year: str | int | None = None,
         max_year: str | int | None = None,
         num: int | str = DEFAULT_RECOMMENDATION_COUNT,
-    ) -> tuple[list[dict], list[str]]:
-        """Recommend movies matching genre, director, rating and year filters."""
+    ) -> tuple[list[dict], list[dict]]:
+        """Recommend movies matching genre, director, rating and year filters.
+
+        Returns (results, warnings) like recommend_by_similarity.
+        """
         num = clamp_count(num)
         wanted_genres = genre_keys(genres)
         warnings = []
@@ -302,26 +303,22 @@ class RecommendationEngine:
             bool(wanted_genres) or director_match is not None or numeric_filters.has_bounds
         )
         if not has_criteria:
-            return [], [
-                "Lütfen arama yapmak için en az bir kriter (tür, yönetmen vb.) girin."
-            ] + warnings
+            return [], [message("warning.no_criteria"), *warnings]
 
         matches = apply_filters(self.movies_df, wanted_genres, director_match, numeric_filters)
         if matches.empty:
-            return [], ["Seçtiğiniz kriterlere tam olarak uyan hiçbir film bulunamadı."] + warnings
+            return [], [message("warning.no_match"), *warnings]
 
         candidates = matches[matches["vote_count"] >= MIN_VOTES_THRESHOLD]
         if candidates.empty:
             candidates = matches
-            warnings.append(
-                "Yeterli oy sayısına sahip film bulunamadı; daha az bilinen filmler listeleniyor."
-            )
+            warnings.append(message("warning.less_known"))
         scores = feature_score(candidates)
         ranked = candidates.assign(feature_score=scores)
         ranked = ranked.sort_values("feature_score", ascending=False, kind="stable")
         return self.format_results(ranked, num), warnings
 
-    def _match_director(self, query: str) -> tuple[str | None, str | None]:
+    def _match_director(self, query: str) -> tuple[str | None, dict | None]:
         """Return (director name or None, warning or None) for a free-text director query."""
         wanted = query.casefold()
         for name in self.all_director_names:
@@ -329,8 +326,8 @@ class RecommendationEngine:
                 return name, None
         closest = self._find_best_match(query, self.all_director_names)
         if closest is not None and is_plausible_name(query, closest):
-            return closest, f"Yönetmen '{query}' bulunamadı. '{closest}' kullanılıyor."
-        return None, f"'{query}' adlı yönetmen bulunamadı."
+            return closest, message("warning.director_fuzzy", query=query, name=closest)
+        return None, message("warning.director_not_found", query=query)
 
 
 def clamp_count(num: int | str | None) -> int:

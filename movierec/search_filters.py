@@ -9,6 +9,7 @@ from dataclasses import dataclass
 import pandas as pd
 from thefuzz import fuzz
 
+from movierec.i18n import message
 from movierec.similarity import RATING_MAX
 
 MIN_YEAR = 1900
@@ -18,8 +19,9 @@ MIN_YEAR = 1900
 NAME_CLOSE_RATIO = 85
 NAME_TOKEN_RATIO = 70
 
-INVALID_NUMBER_WARNING = "Geçersiz puan veya yıl formatı girildi. Lütfen sadece sayı kullanın."
-YEARS_SWAPPED_WARNING = "Yıl aralığı ters girilmişti, düzeltildi."
+# Shared dicts that no code changes; they compare by value, so `in warnings` finds them.
+INVALID_NUMBER_WARNING = message("warning.invalid_number")
+YEARS_SWAPPED_WARNING = message("warning.years_swapped")
 
 # Runs of anything but letters and digits; \W alone would keep "_".
 _NON_ALNUM = re.compile(r"[\W_]+")
@@ -32,7 +34,7 @@ class NumericFilters:
     min_rating: float | None = None
     min_year: int | None = None
     max_year: int | None = None
-    warnings: tuple[str, ...] = ()
+    warnings: tuple[dict, ...] = ()
 
     @property
     def has_bounds(self) -> bool:

@@ -28,14 +28,14 @@ from movierec.web.redirects import API_PREFIXES
 
 logger = logging.getLogger(__name__)
 
-# HTTP status -> (error name for JSON answers, Turkish message for the error page).
+# HTTP status -> (error name for JSON answers, catalogue key of the error page's message).
 _ERRORS = {
-    400: ("bad_request", "İstek işlenemedi. Lütfen tekrar deneyin."),
-    404: ("not_found", "Aradığınız sayfa bulunamadı."),
-    405: ("method_not_allowed", "Bu adres bu şekilde kullanılamaz."),
-    413: ("payload_too_large", "Gönderilen istek çok büyük."),
-    500: ("server_error", "Beklenmedik bir hata oluştu. Lütfen daha sonra tekrar deneyin."),
-    503: ("unavailable", "Servis şu anda kullanılamıyor. Lütfen daha sonra tekrar deneyin."),
+    400: ("bad_request", "error.bad_request"),
+    404: ("not_found", "error.not_found"),
+    405: ("method_not_allowed", "error.method_not_allowed"),
+    413: ("payload_too_large", "error.payload_too_large"),
+    500: ("server_error", "error.server_error"),
+    503: ("unavailable", "error.unavailable"),
 }
 # The only request body is the header search form. Werkzeug reads a urlencoded body whole,
 # so without a limit one request could fill the memory.
@@ -196,12 +196,12 @@ def _set_security_headers(response):
 
 
 def _handle_http_error(error):
-    """Answer an HTTP error with JSON under /api/ and with the Turkish error page elsewhere."""
+    """Answer an HTTP error with a JSON code under /api/ and with the error page elsewhere."""
     code = error.code
-    name, message = _ERRORS[code]
+    name, message_key = _ERRORS[code]
     if request.path.startswith(API_PREFIXES):
         return jsonify(status="error", error=name), code
-    return render_template("error.html", code=code, message=message), code
+    return render_template("error.html", code=code, message=t(message_key)), code
 
 
 def _register_template_helpers(app: Flask) -> None:

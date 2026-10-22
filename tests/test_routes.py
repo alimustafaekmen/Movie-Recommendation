@@ -37,6 +37,55 @@ def test_unknown_path_returns_turkish_404(client):
     assert texts(page, class_="error-code") == ["404"]
 
 
+@pytest.mark.parametrize(
+    ("lang", "heading", "message", "home"),
+    [
+        ("tr", "Sayfa bulunamadı", "Aradığınız sayfa bulunamadı.", "Ana Sayfaya Dön"),
+        ("en", "Page not found", "The page you are looking for was not found.", "Back to home"),
+    ],
+)
+def test_the_404_page_speaks_the_page_language(client, lang, heading, message, home):
+    page = Page(client.get(f"/does-not-exist?lang={lang}").get_data(as_text=True))
+
+    assert texts(page, "h1") == [heading]
+    assert texts(page, "title") == [f"{heading} · MovieRec"]
+    assert texts(page, class_="error-page-message") == [message]
+    assert texts(page, "a", "btn-primary") == [home]
+
+
+@pytest.mark.parametrize(
+    ("method", "url", "status", "message"),
+    [
+        ("get", "/search_movie_redirect", 405, "This address cannot be used this way."),
+        ("post", "/search_movie_redirect", 413, "The request sent is too large."),
+    ],
+)
+def test_error_pages_speak_english_to_an_english_visitor(client, method, url, status, message):
+    client.set_cookie("lang", "en")
+
+    response = getattr(client, method)(url, data={"search_query": "q" * 20_000})
+
+    assert response.status_code == status
+    page = Page(response.get_data(as_text=True))
+    assert texts(page, "h1") == ["Something went wrong"]
+    assert texts(page, class_="error-page-message") == [message]
+
+
+def test_pages_that_need_the_engine_say_so_in_english(client, app_module, monkeypatch):
+    monkeypatch.setitem(app_module.app.extensions, "engine", None)
+
+    home = client.get("/?lang=en")
+    movie = client.get("/movie/155?lang=en")
+
+    assert home.status_code == movie.status_code == 503
+    assert texts(home.get_data(as_text=True), class_="error-page-message") == [
+        "The recommendation engine is unavailable right now. Please try again later."
+    ]
+    assert texts(movie.get_data(as_text=True), class_="error-page-message") == [
+        "The service is unavailable right now. Please try again later."
+    ]
+
+
 def test_unknown_api_path_returns_json_404(client):
     response = client.get("/api/nope")
 
@@ -56,6 +105,10 @@ def test_movie_detail_failure_hides_exception_text(client, details, monkeypatch)
     body = response.get_data(as_text=True)
     assert "Film detayı şu anda alınamıyor." in body
     assert "secret internals" not in body
+    english = client.get("/movie/155?lang=en").get_data(as_text=True)
+    assert texts(english, class_="error-page-message") == [
+        "The film details cannot be loaded right now."
+    ]
 
 
 @pytest.mark.parametrize(
@@ -74,6 +127,8 @@ def test_failed_recommendation_shows_a_generic_warning(client, engine, monkeypat
     body = response.get_data(as_text=True)
     assert "Öneriler sayfaya yüklenirken bir hata oluştu." in body
     assert "boom" not in body
+    english = client.get(f"{url}&lang=en").get_data(as_text=True)
+    assert "Something went wrong while loading the recommendations." in english
 
 
 def test_unhandled_error_renders_turkish_500(client, app_module, engine, monkeypatch):
@@ -89,6 +144,10 @@ def test_unhandled_error_renders_turkish_500(client, app_module, engine, monkeyp
     body = response.get_data(as_text=True)
     assert "Beklenmedik bir hata oluştu." in body
     assert "boom" not in body
+    english = client.get("/?lang=en").get_data(as_text=True)
+    assert texts(english, class_="error-page-message") == [
+        "An unexpected error occurred. Please try again later."
+    ]
 
 
 def test_person_page_does_not_need_the_engine(client, app_module, monkeypatch):
@@ -148,6 +207,28 @@ def test_header_search_without_match_returns_to_the_previous_page(client):
         [(category, message)] = session["_flashes"]
     assert category == "warning"
     assert message == f"'{'q' * 100}' ismine benzer hiçbir film bulamadık."
+
+
+def _flashes(client):
+    with client.session_transaction() as session:
+        return session["_flashes"]
+
+
+def test_header_search_messages_follow_the_visitors_language(client, app_module, monkeypatch):
+    # The form carries no ?lang=; the stored choice decides.
+    client.set_cookie("lang", "en")
+
+    client.post("/search_movie_redirect", data={"search_query": "q" * 5000})
+    assert _flashes(client) == [("warning", f"We found no film with a title like '{'q' * 100}'.")]
+    client.get("/")
+
+    client.post("/search_movie_redirect", data={"search_query": " "})
+    assert _flashes(client) == [("warning", "Please enter a film title.")]
+    client.get("/")
+
+    monkeypatch.setitem(app_module.app.extensions, "engine", None)
+    client.post("/search_movie_redirect", data={"search_query": "Heat"})
+    assert _flashes(client) == [("danger", "The recommendation engine is unavailable.")]
 
 
 def test_header_search_with_empty_query_redirects(client):
@@ -221,6 +302,22 @@ def test_unknown_person_flashes_not_found(client, monkeypatch):
     )
 
 
+@pytest.mark.parametrize(
+    ("path", "message"),
+    [
+        ("/director/Nobody%20Here", "No director named 'Nobody Here' was found."),
+        ("/actor/Nobody%20Here", "No actor named 'Nobody Here' was found."),
+    ],
+)
+def test_unknown_person_flashes_in_english(client, monkeypatch, path, message):
+    monkeypatch.setattr("movierec.web.movies.find_person", lambda name, person_type: None)
+    client.set_cookie("lang", "en")
+
+    response = client.get(path, follow_redirects=True)
+
+    assert message in html.unescape(response.get_data(as_text=True))
+
+
 def test_tmdb_outage_on_person_page_flashes_a_warning(client, monkeypatch):
     from movierec.tmdb import TmdbUnavailableError
 
@@ -234,6 +331,10 @@ def test_tmdb_outage_on_person_page_flashes_a_warning(client, monkeypatch):
     assert response.request.path == "/"
     assert "Kişi bilgileri şu anda TMDb'den alınamıyor." in html.unescape(
         response.get_data(as_text=True)
+    )
+    english = client.get("/actor/Christian+Bale?lang=en", follow_redirects=True)
+    assert "Person details cannot be loaded from TMDb right now." in html.unescape(
+        english.get_data(as_text=True)
     )
 
 
