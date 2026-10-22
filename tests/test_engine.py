@@ -287,3 +287,11 @@ def test_every_count_is_a_prefix_of_the_full_list(engine, movie_id):
 def test_toy_story_neighbours_are_not_matched_on_a_character_name(engine):
     # The 40 Year Old Virgin used to rank fifth only because both overviews mention "Andy".
     assert 6957 not in engine.similar_movie_ids(862)
+
+
+@pytest.mark.real_dataset
+def test_dark_knight_keeps_the_earlier_batman_films_near_the_top(engine):
+    # Too much director weight let Inception and Scarface push these down to #10-11.
+    top = engine.similar_movie_ids(155, 6)
+
+    assert {364, 414} <= set(top)  # Batman Returns, Batman Forever

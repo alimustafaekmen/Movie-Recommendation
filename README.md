@@ -12,53 +12,70 @@ There are no accounts. Favourites and the watchlist are kept in the visitor's br
 
 ## How recommendations work
 
-**Similar movies.** Each film gets four TF-IDF blocks: its genres and its directors as whole names ("Science Fiction" and "Christopher Nolan" are one term each), the words of its keywords, and its overview and tagline as English text (stop words removed, up to 20,000 terms). Each block is L2-normalised and weighted (genres 0.4, directors 0.3, keywords 0.3, text 0.6), and the joined vector is normalised again, so the cosine similarity between two films is a dot product. Separate blocks keep a long overview from drowning out the metadata, so a shared character name counts for less. Only the sparse matrix (about 2.5 MB) is kept in memory; a film's similarity row is computed when it is needed.
+**Similar movies.** Each film becomes four TF-IDF blocks:
 
-For a query film, the 91 most similar films form a candidate pool, and each candidate gets a weighted score in which every signal is scaled to 0-1 within the pool. Popularity and vote count are log-scaled first, so one blockbuster in the pool does not push every other film's score to zero:
+- its genres and its directors, as whole names ("Science Fiction" and "Christopher Nolan" are one term each; co-directors stay separate),
+- the words of its keywords (over half of the keyword phrases belong to a single film, but words such as "toy" are shared),
+- its overview and tagline as English text (stop words removed, at most 20,000 terms).
 
-| Signal | Weight |
-|---|---|
-| Content similarity (relative to the best match in the pool) | 0.50 |
-| Vote average / 10 | 0.20 |
-| log(1 + popularity) | 0.20 |
-| log(1 + vote count) | 0.10 |
+Each block is L2-normalised and multiplied by its weight (genres 0.3, directors 0.2, keywords 0.4, text 0.6), and the joined row is normalised again. The cosine between two films is then a weighted mean of the four block cosines, where each block counts with the square of its weight. For a film with all four fields that is text 55%, keywords 25%, genres 14% and directors 6%.
 
-TMDb ratings are noisy below 100 votes, so such films are dropped whenever the pool contains a film with at least 100 votes. Because the pool size is fixed, asking for more results never reorders the top ones.
+Separate blocks cap how much the overview can decide. In the earlier model all fields formed one text, so a rare character name could link unrelated films: Toy Story's top 5 included *The 40 Year Old Virgin* because both overviews mention "Andy".
 
-**Filter search.** Films that match every selected genre, the director and the year and rating bounds are ranked by `0.40 * rating + 0.45 * popularity + 0.15 * vote count` (each scaled to 0-1). Co-directed films match any of their directors.
+- Before: Toy Story 2, Toy Story 3, Monsters, Inc., Small Soldiers, The 40 Year Old Virgin
+- After: Toy Story 3, Toy Story 2, Monsters, Inc., Big Hero 6, Inside Out
+
+The model is a sparse 4,803 × 29,665 matrix of about 2.5 MB. No film-by-film similarity table is stored; a film's similarities are one sparse product, computed when needed.
+
+**Re-ranking.** The 91 films with the highest cosine (three times the longest list of 30, plus one) form a candidate pool. Each candidate gets a weighted score:
+
+| Signal | Scaled as | Weight |
+|---|---|---|
+| Content similarity | divided by the best match in the pool | 0.50 |
+| Vote average | divided by 10 | 0.20 |
+| Popularity | log(1 + x), divided by the pool's maximum | 0.20 |
+| Vote count | log(1 + x), divided by the pool's maximum | 0.10 |
+
+Raw cosines in a pool sit close together, so similarity is divided by the best match to use the full 0-1 range. Popularity and vote counts are heavy-tailed (popularity has a median of 13 and a maximum of 876), so they are log-scaled; scaled linearly, one blockbuster would push every other film's term close to 0. TMDb ratings are noisy below 100 votes, so such films are dropped whenever the pool has a film with at least 100 votes. Because the pool size is fixed, asking for more results never reorders the top ones.
+
+**How the weights were chosen.** They are round, hand-picked values; there is no user data to tune against. They were checked by reading the lists of well-known films and with the columns of `scripts/evaluate.py`, including two that the model does not use (shared lead actor and series recall). The director weight started at 0.5, but then 438 films got 8 or more of their 12 picks from their own director, and Jaws's top 8 was all Spielberg. At 0.3, with genres at 0.4, that fell to 26, but same-genre lookalikes pushed out films with the same theme (Seven Samurai got boxing films), Inception and Scarface ranked above the earlier Batman films for The Dark Knight, and series recall dropped from 75.4% to 70.9%. With directors at 0.2, genres at 0.3 and keywords at 0.4 it is 1 film, the Batman films are back at #3-5, and series recall is 75.1%, about the earlier model's level. The weights live in [movierec/config.py](movierec/config.py).
+
+**Filter search.** Films that match every selected genre, the director and the year and rating bounds are ranked by `0.40 * rating + 0.45 * popularity + 0.15 * vote count`. The rating is divided by 10; popularity and vote count are divided by the largest value among the matches. Films under 100 votes are left out unless nothing else matches. Co-directed films match any of their directors.
 
 **Title search.** Exact, case-insensitive title matches win; otherwise the closest title by fuzzy matching (thefuzz `WRatio`, cutoff 75) is used. When several films share a title, the most-voted one is chosen.
 
-The weights live in [movierec/config.py](movierec/config.py).
-
 ## Evaluation
 
-There is no user data to test against, so `scripts/evaluate.py` uses every film in the dataset as a seed and measures how its 12 similar movies agree with it on metadata, how much of the catalogue they reach and how popular they are:
+There is no user data to test against, so `scripts/evaluate.py` uses every film as a seed and checks its 12 similar movies. It asks whether they agree with the seed on metadata, whether they find its series, how much of the catalogue they reach and how popular they are.
 
 ```bash
 python scripts/evaluate.py
 ```
 
-| Method | Genre overlap | Same director | Catalog coverage | Median votes |
-|---|---|---|---|---|
-| Pure cosine | 0.845 | 10.7% | 98.9% | 206 |
-| MovieRec (hybrid) | 0.814 | 8.4% | 58.3% | 1,486 |
-| Most-voted baseline | 0.159 | 0.1% | 0.3% | 10,099 |
+| Method | Genre overlap | Same director | Shared lead actor | Series recall | Catalog coverage | Median votes |
+|---|---|---|---|---|---|---|
+| Pure cosine | 0.744 | 5.6% | 3.48% | 76.7% | 98.5% | 191 |
+| MovieRec (hybrid) | 0.739 | 5.0% | 3.55% | 75.1% | 61.7% | 1,350 |
+| Most-voted baseline | 0.159 | 0.1% | 0.75% | 1.1% | 0.3% | 10,099 |
+| Earlier model, pure cosine | 0.356 | 4.5% | 3.23% | 76.4% | 98.6% | 284 |
+| Earlier model, hybrid | 0.335 | 4.0% | 3.15% | 75.4% | 64.1% | 1,630 |
 
-Before the field-weighted blocks and log scaling, when all fields formed one text, pure cosine scored 0.356 / 4.5% / 98.6% / 284 and the hybrid 0.335 / 4.0% / 64.1% / 1,630.
+*Pure cosine* is the top 12 by content similarity alone, *MovieRec (hybrid)* is what the app shows, and the *most-voted baseline* gives everyone the same 12 most-voted films. The earlier model (commit dc815a0) used one TF-IDF over all fields and linear popularity; its rows come from the same metric code run on that commit's engine.
 
-Toy Story's top 5, before and after:
+- **Genre overlap:** the mean Jaccard index of the seed's and the recommendation's genres (seeds without genres are skipped).
+- **Same director:** the share of recommendations that share a director with the seed.
+- **Shared lead actor:** the share whose three top-billed actors include one of the seed's three. Cast is not a model input.
+- **Series recall:** of the seed's same-series films (matched by title stem, at least 100 votes), the share found in the 12, averaged over the 464 films that have such siblings. About 1 title group in 10 is not a real series (Kung Fu Hustle and Kung Fu Panda).
+- **Catalog coverage:** the share of all films recommended at least once.
+- **Median votes:** the median vote count of all recommendations, counting a film each time it is recommended (the dataset median is 235).
 
-- Before: Toy Story 2, Toy Story 3, Monsters, Inc., Small Soldiers, The 40 Year Old Virgin (both overviews mention "Andy")
-- After: Toy Story 2, Toy Story 3, A Bug's Life, Monsters, Inc., Cars
+What the numbers show, and what they do not:
 
-The median film in the dataset has 235 votes. *Pure cosine* is the top 12 by TF-IDF similarity alone, *MovieRec (hybrid)* is exactly what the app shows, and the *most-voted baseline* recommends the same 12 most-voted films to everyone. Genre overlap is the mean Jaccard index between the seed's and each recommendation's genre sets (seeds without genres are skipped), same director is the share of recommendations that share a director with the seed, catalog coverage is the share of all films recommended at least once, and median votes is the median vote count of all recommendations, counting a film each time it is recommended.
-
-- These are proxies for metadata agreement, not accuracy: they show whether the lists are coherent, not whether people would like them.
-- Genres and directors are now blocks of their own in the model, so the first two columns are largely circular: most of the jump in genre overlap (0.335 to 0.814) is the model rewarding exactly what the column counts. Coverage and median votes do not depend on the model's inputs.
-- The weights are round, hand-picked values, not a tuned optimum. The director weight started at 0.5 and was lowered to 0.3 after reading the lists: at 0.5, 438 films got 8 or more of their 12 picks from their own director, so prolific directors pushed out sequels (Harry Potter, Jaws). At 0.3 it is 26 films.
-- The hybrid gives up a little agreement against pure cosine (genre overlap 0.845 to 0.814) and over a third of the catalogue for better-known films: its picks have a median of 1,486 votes against 206 for pure cosine. The log scaling lowers that median on purpose (1,660 with linear scaling), so the biggest blockbusters no longer decide the order.
-- Catalog coverage got worse, 64.1% to 58.3%, because of the new blocks. Most of the gap to pure cosine comes from the 100-vote floor: only 3,162 films (65.8%) have 100 votes or more, and the hybrid reaches 88% of them (97% before).
+- They measure coherence, not accuracy: whether the lists hang together, not whether people would like them.
+- Genres and directors are model inputs, so the first two columns are largely circular. With the genre weight set to 0, the hybrid's genre overlap is 0.312. So the jump from 0.335 mostly shows the model doing what it was told.
+- Shared lead actor rises with the director weight, because directors reuse actors. Without same-director pairs, every model scores about 2.0-2.2%, so this column does not show the new model is better. Series recall is partly circular too, because character names in overviews link sequels.
+- The hybrid trades a little agreement and about 37 points of coverage for better-known films (median 1,350 votes against 191). Log scaling lowers that median on purpose (1,553 with linear scaling).
+- Most of the coverage gap comes from the 100-vote floor. Only 3,162 films (65.8%) have 100 votes or more, and the hybrid reaches 94% of them.
 
 ## Project layout
 
@@ -135,7 +152,11 @@ Without the Kaggle CSVs, pytest runs against a 158-film fixture taken from the d
 ## Limitations
 
 - The dataset ends in 2017, and recommendations only come from its 4,803 films.
-- Recommendations are purely content-based; they do not learn from what users like.
+- Recommendations are purely content-based and do not learn from users. Without user data the weights are hand-picked and the evaluation can only check coherence.
+- Films with thin metadata still get lists that mostly share their genres (Casablanca gets romances rather than WWII films, Forrest Gump gets romantic comedies), and some franchises live only in titles: Saw's list has none of its six sequels.
+- Well-known films are favoured on purpose. The lists reach about 62% of the catalogue, and films under 100 votes appear only when nothing better is similar.
+- Non-English films rarely get recommendations in their own language: for the 298 non-English films, 2.9% of the picks share the film's original language.
+- Filter search still scales popularity and vote count linearly, unlike similar movies.
 - Lists need JavaScript, belong to one browser on one device and disappear when its site data is cleared.
 
 ## License and credits
@@ -148,6 +169,6 @@ The icons in `static/icons.svg` are from [Font Awesome Free 6.5.1](https://fonta
 
 ## Türkçe özet
 
-MovieRec, TMDB 5000 veri seti üzerinde çalışan, Flask ile yazılmış içerik tabanlı bir film öneri sistemidir. Beğendiğiniz bir filme benzeyen filmleri ya da seçtiğiniz tür, yönetmen, yıl ve puan filtrelerine uyan filmleri sıralar. Benzerlik, filmlerin tür, anahtar kelime, yönetmen, özet ve slogan metinlerinden üretilen TF-IDF vektörleriyle hesaplanır; sonuçlar puan, popülerlik ve oy sayısıyla birlikte ağırlıklandırılır. Benzer film listeleri, kullanıcı verisi olmadan `scripts/evaluate.py` ile meta veri üzerinden değerlendirilir: tür örtüşmesi, aynı yönetmen oranı, katalog kapsamı ve önerilen filmlerin popülerliği.
+MovieRec, TMDB 5000 veri seti üzerinde çalışan, Flask ile yazılmış içerik tabanlı bir film öneri sistemidir. Beğendiğiniz bir filme benzeyen filmleri ya da seçtiğiniz tür, yönetmen, yıl ve puan filtrelerine uyan filmleri sıralar. Benzerlik için her filmin türleri, yönetmenleri, anahtar kelimeleri ve özet ile slogan metni ayrı TF-IDF bloklarına dönüştürülür ve her blok kendi ağırlığıyla birleştirilir; böylece özette geçen bir karakter adı ya da bir yönetmenin filmografisi sonucu tek başına belirleyemez. En benzer 91 film benzerlik, puan, popülerlik ve oy sayısıyla yeniden sıralanır; popülerlik ve oy sayısı logaritmik ölçeklenir. Ağırlıklar elle seçilmiştir. Kullanıcı verisi olmadığı için `scripts/evaluate.py` listeleri ölçer: tür örtüşmesi, aynı yönetmen, ortak başrol oyuncusu, seri filmlerini bulma oranı, katalog kapsamı ve önerilen filmlerin popülerliği. Bu ölçümler listelerin tutarlı olduğunu gösterir, insanların onları beğeneceğini göstermez.
 
 Üyelik yoktur: beğeniler ve izleme listesi ziyaretçinin tarayıcısında saklanır, bu yüzden veritabanı gerekmez. Proje ticari olmayan kullanım için PolyForm Noncommercial 1.0.0 lisansıyla paylaşılmıştır. Kurulum adımları yukarıdaki bölümlerdedir.

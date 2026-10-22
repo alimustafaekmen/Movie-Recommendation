@@ -52,9 +52,9 @@ POPULARITY_WEIGHT = 0.20
 
 # Content-similarity weights of the TF-IDF blocks; each block is L2-normalised first, so
 # a block's share of the cosine grows with the square of its weight.
-TFIDF_GENRE_WEIGHT = 0.4
-TFIDF_DIRECTOR_WEIGHT = 0.3
-TFIDF_KEYWORD_WEIGHT = 0.3
+TFIDF_GENRE_WEIGHT = 0.3
+TFIDF_DIRECTOR_WEIGHT = 0.2
+TFIDF_KEYWORD_WEIGHT = 0.4
 TFIDF_TEXT_WEIGHT = 0.6
 
 # Feature-search score weights; they sum to 1.

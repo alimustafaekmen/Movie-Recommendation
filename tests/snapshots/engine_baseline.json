@@ -49,16 +49,16 @@
       "similar_movie_ids": [
         49026,
         272,
-        27205,
-        111,
-        629,
-        22803,
-        156022,
-        64690,
-        320,
-        414,
         364,
-        2034
+        414,
+        268,
+        238,
+        142061,
+        209112,
+        22803,
+        629,
+        156022,
+        415
       ],
       "title": "The Dark Knight"
     },
@@ -74,17 +74,17 @@
       "runtime_formatted": "2 sa 42 dk",
       "similar_movie_ids": [
         679,
-        218,
-        280,
-        2756,
-        118340,
         54138,
-        127585,
+        118340,
+        76757,
+        1891,
         18,
-        22,
+        869,
+        348,
+        13475,
+        603,
         271110,
-        49521,
-        76757
+        49047
       ],
       "title": "Avatar"
     },
@@ -100,18 +100,18 @@
       "genres": "Family Adventure Comedy Science Fiction Crime",
       "runtime_formatted": "1 sa 45 dk",
       "similar_movie_ids": [
-        105,
-        165,
         817,
-        818,
-        196,
-        772,
+        8914,
         62,
-        7453,
+        818,
+        105,
+        49521,
+        165,
+        211672,
         10138,
-        88751,
-        102899,
-        926
+        1924,
+        11,
+        297761
       ],
       "title": "Batman"
     },
@@ -126,16 +126,16 @@
       "similar_movie_ids": [
         364,
         415,
-        209112,
         155,
-        4011,
-        122,
-        587,
-        162,
         272,
-        12155,
         49026,
-        22
+        209112,
+        414,
+        49521,
+        122,
+        558,
+        22,
+        12155
       ],
       "title": "Batman"
     }
@@ -447,40 +447,40 @@
           "Aliens"
         ],
         [
-          218,
-          "The Terminator"
-        ],
-        [
-          280,
-          "Terminator 2: Judgment Day"
-        ],
-        [
-          2756,
-          "The Abyss"
+          54138,
+          "Star Trek Into Darkness"
         ],
         [
           118340,
           "Guardians of the Galaxy"
         ],
         [
-          54138,
-          "Star Trek Into Darkness"
+          76757,
+          "Jupiter Ascending"
         ],
         [
-          127585,
-          "X-Men: Days of Future Past"
+          1891,
+          "The Empire Strikes Back"
         ],
         [
           18,
           "The Fifth Element"
         ],
         [
-          22,
-          "Pirates of the Caribbean: The Curse of the Black Pearl"
+          869,
+          "Planet of the Apes"
         ],
         [
-          271110,
-          "Captain America: Civil War"
+          348,
+          "Alien"
+        ],
+        [
+          13475,
+          "Star Trek"
+        ],
+        [
+          603,
+          "The Matrix"
         ]
       ],
       "warnings": []
@@ -496,36 +496,36 @@
           "Batman & Robin"
         ],
         [
-          209112,
-          "Batman v Superman: Dawn of Justice"
-        ],
-        [
           155,
           "The Dark Knight"
-        ],
-        [
-          4011,
-          "Beetlejuice"
-        ],
-        [
-          122,
-          "The Lord of the Rings: The Return of the King"
-        ],
-        [
-          587,
-          "Big Fish"
-        ],
-        [
-          162,
-          "Edward Scissorhands"
         ],
         [
           272,
           "Batman Begins"
         ],
         [
-          12155,
-          "Alice in Wonderland"
+          49026,
+          "The Dark Knight Rises"
+        ],
+        [
+          209112,
+          "Batman v Superman: Dawn of Justice"
+        ],
+        [
+          414,
+          "Batman Forever"
+        ],
+        [
+          49521,
+          "Man of Steel"
+        ],
+        [
+          122,
+          "The Lord of the Rings: The Return of the King"
+        ],
+        [
+          558,
+          "Spider-Man 2"
         ]
       ],
       "warnings": []
@@ -545,32 +545,32 @@
           "The Prestige"
         ],
         [
-          155,
-          "The Dark Knight"
-        ],
-        [
-          320,
-          "Insomnia"
+          118340,
+          "Guardians of the Galaxy"
         ],
         [
           76341,
           "Mad Max: Fury Road"
         ],
         [
-          118340,
-          "Guardians of the Galaxy"
+          155,
+          "The Dark Knight"
         ],
         [
-          49026,
-          "The Dark Knight Rises"
+          11362,
+          "The Count of Monte Cristo"
         ],
         [
           180,
           "Minority Report"
         ],
         [
-          198663,
-          "The Maze Runner"
+          593,
+          "Solaris"
+        ],
+        [
+          177677,
+          "Mission: Impossible - Rogue Nation"
         ]
       ],
       "warnings": []
@@ -586,36 +586,36 @@
           "Batman Begins"
         ],
         [
-          27205,
-          "Inception"
+          364,
+          "Batman Returns"
         ],
         [
-          111,
-          "Scarface"
+          414,
+          "Batman Forever"
         ],
         [
-          629,
-          "The Usual Suspects"
+          268,
+          "Batman"
+        ],
+        [
+          238,
+          "The Godfather"
+        ],
+        [
+          142061,
+          "Batman: The Dark Knight Returns, Part 2"
+        ],
+        [
+          209112,
+          "Batman v Superman: Dawn of Justice"
         ],
         [
           22803,
           "Law Abiding Citizen"
         ],
         [
-          156022,
-          "The Equalizer"
-        ],
-        [
-          64690,
-          "Drive"
-        ],
-        [
-          320,
-          "Insomnia"
-        ],
-        [
-          414,
-          "Batman Forever"
+          629,
+          "The Usual Suspects"
         ]
       ],
       "warnings": []
@@ -631,36 +631,36 @@
           "The Godfather: Part III"
         ],
         [
-          278,
-          "The Shawshank Redemption"
-        ],
-        [
           769,
           "GoodFellas"
+        ],
+        [
+          155,
+          "The Dark Knight"
+        ],
+        [
+          278,
+          "The Shawshank Redemption"
         ],
         [
           272,
           "Batman Begins"
         ],
         [
-          227,
-          "The Outsiders"
+          261023,
+          "Black Mass"
+        ],
+        [
+          190955,
+          "Blood Ties"
+        ],
+        [
+          106646,
+          "The Wolf of Wall Street"
         ],
         [
           311,
           "Once Upon a Time in America"
-        ],
-        [
-          640,
-          "Catch Me If You Can"
-        ],
-        [
-          627,
-          "Trainspotting"
-        ],
-        [
-          103,
-          "Taxi Driver"
         ]
       ],
       "warnings": []
@@ -676,32 +676,32 @@
           "The Fault in Our Stars"
         ],
         [
+          10229,
+          "A Walk to Remember"
+        ],
+        [
+          142,
+          "Brokeback Mountain"
+        ],
+        [
+          264644,
+          "Room"
+        ],
+        [
           216015,
           "Fifty Shades of Grey"
         ],
         [
-          280,
-          "Terminator 2: Judgment Day"
+          109424,
+          "Captain Phillips"
         ],
         [
           796,
           "Cruel Intentions"
         ],
         [
-          36955,
-          "True Lies"
-        ],
-        [
-          679,
-          "Aliens"
-        ],
-        [
           84892,
           "The Perks of Being a Wallflower"
-        ],
-        [
-          9833,
-          "The Phantom of the Opera"
         ],
         [
           64682,
@@ -713,44 +713,44 @@
     "Toy Story": {
       "results": [
         [
-          863,
-          "Toy Story 2"
-        ],
-        [
           10193,
           "Toy Story 3"
         ],
         [
-          9487,
-          "A Bug's Life"
+          863,
+          "Toy Story 2"
         ],
         [
           585,
           "Monsters, Inc."
         ],
         [
-          920,
-          "Cars"
+          177572,
+          "Big Hero 6"
         ],
         [
           150540,
           "Inside Out"
         ],
         [
-          93456,
-          "Despicable Me 2"
+          10895,
+          "Pinocchio"
+        ],
+        [
+          9487,
+          "A Bug's Life"
         ],
         [
           20352,
           "Despicable Me"
         ],
         [
-          8587,
-          "The Lion King"
+          920,
+          "Cars"
         ],
         [
-          12,
-          "Finding Nemo"
+          8587,
+          "The Lion King"
         ]
       ],
       "warnings": []
@@ -770,32 +770,32 @@
           "The Prestige"
         ],
         [
-          155,
-          "The Dark Knight"
-        ],
-        [
-          320,
-          "Insomnia"
+          118340,
+          "Guardians of the Galaxy"
         ],
         [
           76341,
           "Mad Max: Fury Road"
         ],
         [
-          118340,
-          "Guardians of the Galaxy"
+          155,
+          "The Dark Knight"
         ],
         [
-          49026,
-          "The Dark Knight Rises"
+          11362,
+          "The Count of Monte Cristo"
         ],
         [
           180,
           "Minority Report"
         ],
         [
-          198663,
-          "The Maze Runner"
+          593,
+          "Solaris"
+        ],
+        [
+          177677,
+          "Mission: Impossible - Rogue Nation"
         ]
       ],
       "warnings": [
