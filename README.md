@@ -171,7 +171,7 @@ What the tests protect:
 - **Security:** the Content Security Policy and other headers on every response, request size limits, and redirects that stay on the site.
 - **Lists and evaluation:** the browser list store and the lists page (with `node:test`), and the metric helpers in `scripts/evaluate.py`.
 
-Without the Kaggle CSVs, pytest uses a 158-film sample in `tests/fixtures/` and skips the tests that need the full dataset. CI runs the same commands on every push and pull request. It fails below 95% line and branch coverage of `movierec/` and `app.py`. The sample run measures about 96%. CI also builds the Docker image and checks that the app runs as the non-root user.
+Without the Kaggle CSVs, pytest uses a 158-film sample in `tests/fixtures/` and skips the tests that need the full dataset. Its overviews, taglines and keywords are short hand-written texts, not TMDB's. CI runs the same commands on every push and pull request. It fails below 95% line and branch coverage of `movierec/` and `app.py`. The sample run measures about 96%. CI also builds the Docker image and checks that the app runs as the non-root user.
 
 ## Configuration
 

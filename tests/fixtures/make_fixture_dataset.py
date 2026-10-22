@@ -1,9 +1,12 @@
 """Write the small TMDB dataset in tests/fixtures/dataset/ from the full Kaggle CSVs.
 
 The fixture lets the test suite run in CI, where the 46 MB dataset/ files are not available.
-It holds real rows only: the movies the tests refer to, every film of the directors they
-search for, and the most-voted films, so similarity and filter tests have neighbours to rank.
-Credits are cut down to what the app reads. Regenerate after changing REQUIRED_IDS:
+It holds the movies the tests refer to, every film of the directors they search for, and the
+most-voted films, so similarity and filter tests have neighbours to rank. Ids, titles, dates,
+genres, numbers and credits come from the Kaggle rows; credits are cut down to what the app
+reads. The overviews, taglines and keywords are not TMDB's: the public fixture has short
+synthetic ones, written by hand, which this script keeps. A film new to the fixture gets
+none, and its title is printed so they can be written. Regenerate after changing REQUIRED_IDS:
 
     python tests/fixtures/make_fixture_dataset.py
 """
@@ -41,6 +44,7 @@ MOST_VOTED = 100
 # Low-vote films of a genre the app does not offer as a filter, for the "less known" fallback.
 LOW_VOTE_GENRE = "Foreign"
 LOW_VOTE_COUNT = 3
+SYNTHETIC_COLUMNS = ["overview", "tagline", "keywords"]
 
 
 def compact(items):
@@ -58,6 +62,16 @@ def trim_credits(row):
             "crew": compact([{key: p[key] for key in ("id", "name", "job")} for p in crew]),
         }
     )
+
+
+def keep_synthetic_texts(movies):
+    """Swap TMDB's texts for the synthetic ones in the current fixture; new films get none."""
+    texts = pd.read_csv(TARGET / "tmdb_5000_movies.csv", usecols=["id", *SYNTHETIC_COLUMNS])
+    merged = movies.drop(columns=SYNTHETIC_COLUMNS).merge(texts, on="id", how="left")
+    missing = merged.loc[merged["overview"].isna(), "title"].tolist()
+    if missing:
+        print("Write synthetic texts for:", ", ".join(missing))
+    return merged[movies.columns]
 
 
 def pick_ids(movies, credits):
@@ -82,7 +96,7 @@ def main():
     credits = pd.read_csv(SOURCE / "tmdb_5000_credits.csv", usecols=CREDIT_COLUMNS)
     ids = pick_ids(movies, credits)
 
-    movies = movies[movies["id"].isin(ids)].sort_values("id")
+    movies = keep_synthetic_texts(movies[movies["id"].isin(ids)].sort_values("id"))
     credits = credits[credits["movie_id"].isin(ids)].sort_values("movie_id")
     credits = credits.apply(trim_credits, axis=1)
 
