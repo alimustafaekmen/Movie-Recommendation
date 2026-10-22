@@ -6,12 +6,15 @@ import subprocess
 import sys
 
 import pytest
-from conftest import FIXTURE_DATASET_DIR, REPO
+from conftest import DATASET_DIR, FIXTURE_DATASET_DIR, REPO
 from flask import Response
 
+from movierec import config
 
-def _run(code, **env):
-    """Run Python code in a fresh process from the repo, as gunicorn or python app.py would."""
+
+def _run(code, cwd=REPO, **env):
+    """Run Python code in a fresh process (from the repo unless cwd says otherwise), as
+    gunicorn or python app.py would."""
     environment = {
         **os.environ,
         "TMDB_API_KEY": "",
@@ -22,7 +25,7 @@ def _run(code, **env):
     }
     return subprocess.run(
         [sys.executable, "-c", code],
-        cwd=REPO,
+        cwd=cwd,
         env=environment,
         capture_output=True,
         text=True,
@@ -60,6 +63,24 @@ def test_a_csv_without_the_expected_columns_is_reported_without_a_traceback(tmp_
     assert result.returncode == 0, result.stderr
     assert "Traceback" not in result.stderr
     assert "Recommendation engine failed to start: " in result.stderr
+
+
+def test_a_relative_dataset_dir_is_read_from_the_repo_folder(tmp_path):
+    # Started from another folder, as python /path/to/app.py would be.
+    result = _run(
+        "from movierec import config; print(config.DATASET_DIR)",
+        cwd=tmp_path,
+        PYTHONPATH=str(REPO),
+        DATASET_DIR="tests/fixtures/dataset",
+    )
+
+    assert result.returncode == 0, result.stderr
+    assert result.stdout.strip() == str(FIXTURE_DATASET_DIR)
+
+
+def test_the_suite_reads_only_the_dataset_conftest_picked():
+    # A DATASET_DIR in .env, such as the refreshed catalogue, must never reach the tests.
+    assert str(DATASET_DIR) == config.DATASET_DIR
 
 
 def test_a_working_setup_logs_no_warning():

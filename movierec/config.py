@@ -35,8 +35,9 @@ TMDB_API_KEY = _resolve_tmdb_key(os.getenv("TMDB_API_KEY"))
 TMDB_IMAGE_BASE_URL = "https://image.tmdb.org/t/p/"
 TMDB_API_BASE_URL = "https://api.themoviedb.org/3"
 
-# Files. DATASET_DIR holds the TMDB 5000 CSVs; the app writes no files.
-DATASET_DIR = os.getenv("DATASET_DIR") or str(BASE_DIR / "dataset")
+# Files. DATASET_DIR holds the TMDB 5000 CSVs; the app writes no files. A relative path is
+# read from the repo folder, so it works whatever folder the app is started from.
+DATASET_DIR = str(BASE_DIR / (os.getenv("DATASET_DIR") or "dataset"))
 MOVIES_CSV = os.path.join(DATASET_DIR, "tmdb_5000_movies.csv")
 CREDITS_CSV = os.path.join(DATASET_DIR, "tmdb_5000_credits.csv")
 

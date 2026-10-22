@@ -20,12 +20,12 @@ USE_FIXTURE_DATASET = os.getenv("USE_FIXTURE_DATASET") == "1" or not all(
 DATASET_DIR = FIXTURE_DATASET_DIR if USE_FIXTURE_DATASET else KAGGLE_DATASET_DIR
 
 # These must be set before anything imports movierec.config. load_dotenv() never overrides
-# variables that already exist, and every TMDb call is skipped while the key is empty,
-# so the suite runs offline and deterministically even when .env holds a real key.
+# variables that already exist, so the suite runs offline and deterministically even when
+# .env holds a real key or points DATASET_DIR at another catalogue: every TMDb call is
+# skipped while the key is empty, and the tests read only the dataset picked above.
 os.environ["TMDB_API_KEY"] = ""
 os.environ["FLASK_SECRET_KEY"] = "test-secret-key"
-if USE_FIXTURE_DATASET:
-    os.environ["DATASET_DIR"] = str(FIXTURE_DATASET_DIR)
+os.environ["DATASET_DIR"] = str(DATASET_DIR)
 
 # The key the fake TMDb session expects; tests check that it never leaks into logs.
 FAKE_TMDB_KEY = "SECRET123"

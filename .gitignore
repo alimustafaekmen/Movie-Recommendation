@@ -28,6 +28,8 @@ coverage.xml
 .DS_Store
 Thumbs.db
 
-# The Kaggle CSVs are not redistributed; the tests fall back to the small fixture CSVs.
-**/dataset/*.csv
+# TMDb data never enters git: neither the Kaggle CSVs nor the catalogue fetched into
+# dataset/refreshed/. The tests fall back to the small fixture CSVs.
+**/dataset/**/*.csv
 !tests/fixtures/dataset/*.csv
+dataset/refreshed/fetched_on.txt
