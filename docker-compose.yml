@@ -1,9 +1,13 @@
+name: movierec
+
 services:
   web:
     build: .
-    container_name: movie_recommender_app
+    container_name: movierec
     ports:
       - "5001:5001"
+    # Without a .env the app still starts: no TMDb data, and a random key for the session.
     env_file:
-      - .env
+      - path: .env
+        required: false
     restart: unless-stopped

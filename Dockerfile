@@ -1,14 +1,18 @@
-FROM python:3.12-slim
+# The exact Python of the CI and the development setup, so a rebuild gets the same interpreter.
+FROM python:3.12.15-slim-trixie
 
 ENV PYTHONDONTWRITEBYTECODE=1 \
-    PYTHONUNBUFFERED=1
+    PYTHONUNBUFFERED=1 \
+    PIP_NO_CACHE_DIR=1 \
+    PIP_DISABLE_PIP_VERSION_CHECK=1
 
 WORKDIR /app
 
 COPY requirements.txt .
-RUN pip install --no-cache-dir -r requirements.txt
+RUN pip install -r requirements.txt
 
-# The dataset CSVs are copied in as well; the app only reads them and writes no files.
+# The dataset CSVs are copied in as well; the app only reads them and writes no files, so the
+# files stay owned by root and the app user cannot change them.
 COPY . .
 RUN useradd --create-home appuser
 USER appuser
