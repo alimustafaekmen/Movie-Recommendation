@@ -96,14 +96,18 @@ def feature_score(df: pd.DataFrame) -> pd.Series:
     """Return the rank score of each filter result, evaluated left to right in this order:
 
         vote_average / RATING_MAX * FEATURE_RATING_WEIGHT
-        + popularity / max(popularity, 1) * FEATURE_POPULARITY_WEIGHT
+        + log1p(popularity) / max(log1p(popularity), 1) * FEATURE_POPULARITY_WEIGHT
         + vote_count / max(vote_count, 1) * FEATURE_VOTE_COUNT_WEIGHT
 
     df: the filter results, rows of the movies table; maxima are taken over df.
     """
     max_votes = max(df["vote_count"].max(), 1.0)
-    max_popularity = max(df["popularity"].max(), 1.0)
     rating_term = df["vote_average"] / RATING_MAX * FEATURE_RATING_WEIGHT
-    popularity_term = df["popularity"] / max_popularity * FEATURE_POPULARITY_WEIGHT
+    # Popularity is a trend score: scaled linearly, the one film trending most in the results
+    # gets the whole weight and the rest about 0. Vote counts stay linear, as log scaling
+    # them also lifts new films with few votes.
+    log_popularity = np.log1p(df["popularity"])
+    largest_log_popularity = max(log_popularity.max(), 1.0)
+    popularity_term = log_popularity / largest_log_popularity * FEATURE_POPULARITY_WEIGHT
     votes_term = df["vote_count"] / max_votes * FEATURE_VOTE_COUNT_WEIGHT
     return rating_term + popularity_term + votes_term

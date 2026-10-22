@@ -94,7 +94,7 @@ Arama; seçilen her türe, yönetmene, yıl ve puan sınırlarına uyan filmleri
 0.40 * puan + 0.45 * popülerlik + 0.15 * oy sayısı
 ```
 
-Puan 10'a bölünür. Popülerlik ve oy sayısı, eşleşen filmler arasındaki en büyük değere bölünür.
+Puan 10'a bölünür. Popülerlik, benzer filmlerdeki gibi log(1 + x) olarak alınır; böylece tek bir popüler film diğer bütün filmlerin popülerlik puanını 0'a yaklaştırmaz. Popülerlik ve oy sayısı, eşleşen filmler arasındaki en büyük değere bölünür.
 
 ### Başlık araması
 
@@ -219,7 +219,7 @@ tests/                  pytest testleri. tests/js/ içinde node:test testleri va
 - Bazı seriler yalnızca başlıklarıyla birbirine bağlıdır. Saw'un listesinde altı devam filminin hiçbiri yoktur.
 - Tanınmış filmler bilerek öne çıkarılır, bu yüzden listeler kataloğun yalnızca yaklaşık %62'sine ulaşır.
 - İngilizce olmayan filmlere nadiren kendi dillerinde öneri gelir. İngilizce olmayan 298 filmde önerilerin %2,9'u filmin özgün diliyle aynı dildedir.
-- Filtreli arama, benzer filmlerden farklı olarak popülerliği ve oy sayısını hâlâ doğrusal ölçekler.
+- Filtreli arama, benzer filmlerden farklı olarak oy sayısını hâlâ doğrusal ölçekler.
 - Listeler JavaScript gerektirir. Tek bir cihazdaki tek bir tarayıcıya aittir ve site verileri silinince kaybolur.
 
 ## Lisans ve kaynaklar

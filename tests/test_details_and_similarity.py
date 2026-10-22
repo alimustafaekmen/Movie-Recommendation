@@ -4,9 +4,14 @@ import numpy as np
 import pandas as pd
 import pytest
 
-from movierec.config import POPULARITY_WEIGHT, SIMILARITY_WEIGHT, VOTE_COUNT_WEIGHT
+from movierec.config import (
+    FEATURE_POPULARITY_WEIGHT,
+    POPULARITY_WEIGHT,
+    SIMILARITY_WEIGHT,
+    VOTE_COUNT_WEIGHT,
+)
 from movierec.movie_details import cast_names, format_runtime
-from movierec.similarity import build_tfidf_matrix, hybrid_score
+from movierec.similarity import build_tfidf_matrix, feature_score, hybrid_score
 
 
 @pytest.mark.parametrize(
@@ -70,6 +75,18 @@ def test_hybrid_votes_and_popularity_are_log_scaled(vote_count, popularity, weig
 
     # Linear scaling would put the gap at 0.9 * weight.
     gap = weight * (1 - np.log1p(10.0) / np.log1p(100.0))
+    assert scores[0] - scores[1] == pytest.approx(gap)
+
+
+def test_feature_popularity_is_log_scaled():
+    films = pd.DataFrame(
+        {"vote_average": [8.0, 8.0], "vote_count": [100, 100], "popularity": [100.0, 10.0]}
+    )
+
+    scores = feature_score(films)
+
+    # Linear scaling would put the gap at 0.9 * weight.
+    gap = FEATURE_POPULARITY_WEIGHT * (1 - np.log1p(10.0) / np.log1p(100.0))
     assert scores[0] - scores[1] == pytest.approx(gap)
 
 

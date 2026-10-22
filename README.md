@@ -94,7 +94,7 @@ The search keeps films that match every selected genre, the director, and the ye
 0.40 * rating + 0.45 * popularity + 0.15 * vote count
 ```
 
-Rating is divided by 10. Popularity and vote count are divided by the largest value among the matches.
+Rating is divided by 10. Popularity is taken as log(1 + x), as in similar movies, so one trending film does not push every other film's popularity score close to 0. Popularity and vote count are divided by the largest value among the matches.
 
 ### Title search
 
@@ -219,7 +219,7 @@ tests/                  pytest suite. tests/js/ holds the node:test suite
 - Some series are linked only by their titles. Saw's list has none of its six sequels.
 - Well-known films are favoured on purpose, so the lists reach only about 62% of the catalogue.
 - Non-English films rarely get picks in their own language. For the 298 non-English films, 2.9% of the picks share the film's original language.
-- Filter search still scales popularity and vote count linearly, unlike similar movies.
+- Filter search still scales vote count linearly, unlike similar movies.
 - The lists need JavaScript. They belong to one browser on one device and disappear when its site data is cleared.
 
 ## License and credits
