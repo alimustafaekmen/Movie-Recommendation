@@ -7,7 +7,9 @@
 
 **Contents:** [Screenshots](#screenshots) · [Features](#features) · [How it works](#how-it-works) · [Evaluation](#evaluation) · [Run locally](#run-locally) · [Tests](#tests) · [Configuration](#configuration) · [Project layout](#project-layout) · [Limitations](#limitations) · [License and credits](#license-and-credits)
 
-MovieRec is a content-based movie recommender built with Flask on the [TMDB 5000 dataset](https://www.kaggle.com/datasets/tmdb/tmdb-movie-metadata) of 4,803 films. Give it a film you like and it finds similar films. You can also search by genre, director, year and rating. The interface is in Turkish.
+MovieRec is a content-based movie recommender built with Flask. Give it a film you like and it finds similar films. You can also search by genre, director, year and rating. The interface is in Turkish.
+
+By default it uses the 4,803 films of the [TMDB 5000 dataset](https://www.kaggle.com/datasets/tmdb/tmdb-movie-metadata) on Kaggle, which ends in late 2016. It can also use a fresh catalogue of about 9,000 films up to 2026, which `scripts/fetch_catalogue.py` fetches with your own TMDb API key (see [Run locally](#run-locally)). Unless a section says otherwise, the numbers in this README were measured on the Kaggle files.
 
 **Live demo:** [movierec.pages.dev](https://movierec.pages.dev)
 
@@ -108,6 +110,8 @@ There is no user data to test against. So `scripts/evaluate.py` takes every film
 python scripts/evaluate.py
 ```
 
+On the Kaggle files (4,803 films):
+
 | Method | Genre overlap | Same director | Shared lead actor | Series recall | Catalog coverage | Median votes |
 |---|---|---|---|---|---|---|
 | Pure cosine | 0.744 | 5.6% | 3.48% | 76.7% | 98.5% | 191 |
@@ -133,6 +137,21 @@ What the numbers show and what they do not:
 - The hybrid trades a little agreement and about 37 percentage points of coverage for better-known films (median 1,350 votes against 191). Log scaling lowers that median on purpose. With linear scaling it is 1,553.
 - Most of the coverage gap comes from the 100-vote floor. Only 3,162 films (65.8%) have 100 votes or more, and the hybrid reaches 94% of them.
 
+On the refreshed catalogue fetched on 2026-10-22 (8,966 films, dataset median 780 votes), with `DATASET_DIR=dataset/refreshed python scripts/evaluate.py`:
+
+| Method | Genre overlap | Same director | Shared lead actor | Series recall | Catalog coverage | Median votes |
+|---|---|---|---|---|---|---|
+| Pure cosine | 0.758 | 5.5% | 3.68% | 64.8% | 99.3% | 764 |
+| MovieRec (hybrid) | 0.761 | 5.0% | 3.66% | 62.0% | 81.4% | 3,593 |
+| Most-voted baseline | 0.160 | 0.1% | 0.71% | 0.4% | 0.1% | 33,218 |
+
+These numbers cannot be reproduced without a TMDb API key, and they change with each refresh.
+
+- Genre overlap, same director and shared lead actor stay about the same.
+- Coverage rises from 61.7% to 81.4%, mostly because 8,274 films (92.3%) have 100 votes or more.
+- Median votes are higher because today's vote counts are about 3 times higher. Against the dataset median, the hybrid leans less on popular films: 4.6 times the median, against 5.7 times on the Kaggle files.
+- Series recall falls from 75.1% to 62.0%. Many more seeds have series films (1,362 against 464), so the title groups are bigger and noisier. Counting only Kaggle seeds and their Kaggle series films, it is 71.3%, about 4 points below the Kaggle files, because new films take some of their places.
+
 ## Run locally
 
 You need Python 3.12 and the two Kaggle CSV files.
@@ -153,7 +172,15 @@ You need Python 3.12 and the two Kaggle CSV files.
 
 The dev server only listens on this computer (`HOST=127.0.0.1`). It uses port 5001 because macOS uses 5000 for AirPlay Receiver. `PORT=8000 python app.py` picks another port.
 
-**Docker.** Put the CSVs in `dataset/` first, because the image copies them in. Then `docker compose up --build` serves the app with gunicorn at http://localhost:5001. The container runs as a non-root user with a health check and no Linux capabilities. Its file system is read-only apart from an in-memory `/tmp`, and only this computer can reach it.
+**Refreshed catalogue.** The Kaggle files end in late 2016. To add newer films, put your `TMDB_API_KEY` in `.env` and run:
+
+```bash
+python scripts/fetch_catalogue.py
+```
+
+The script keeps the Kaggle films and adds, for each release year since 2016, the 400 most-voted films that have at least 100 votes. It still needs the Kaggle files in `dataset/`, because it starts from their film ids. The run on 2026-10-22 wrote 8,966 films up to 2026 (18 MB) with about 9,200 requests in about 8 minutes. `--limit 50` makes a small trial run first. The files go to `dataset/refreshed/`, which git ignores. Set `DATASET_DIR=dataset/refreshed` in `.env` to use them. TMDb's terms allow keeping its data for at most 6 months, so run the script again at least every 6 months.
+
+**Docker.** Put the Kaggle CSVs in `dataset/` first, and fetch the refreshed catalogue if you use it, because the image copies them in. An image built with them holds TMDb data, so never push it to a registry. Then `docker compose up --build` serves the app with gunicorn at http://localhost:5001. The container runs as a non-root user with a health check and no Linux capabilities. Its file system is read-only apart from an in-memory `/tmp`, and only this computer can reach it.
 
 ## Tests
 
@@ -171,7 +198,7 @@ What the tests protect:
 - **Security:** the Content Security Policy and other headers on every response, request size limits, and redirects that stay on the site.
 - **Lists and evaluation:** the browser list store and the lists page (with `node:test`), and the metric helpers in `scripts/evaluate.py`.
 
-Without the Kaggle CSVs, pytest uses a 158-film sample in `tests/fixtures/` and skips the tests that need the full dataset. Its overviews, taglines and keywords are short hand-written texts, not TMDB's. CI runs the same commands on every push and pull request. It fails below 95% line and branch coverage of `movierec/` and `app.py`. The sample run measures about 96%. CI also builds the Docker image and checks that the app runs as the non-root user.
+Without the Kaggle CSVs, pytest uses a 158-film sample in `tests/fixtures/` and skips the tests that need the full dataset. Its overviews, taglines and keywords are short hand-written texts, not TMDB's. pytest never reads the refreshed catalogue, even when `.env` sets `DATASET_DIR`. CI runs the same commands on every push and pull request. It fails below 95% line and branch coverage of `movierec/` and `app.py`. The sample run measures about 96%. CI also builds the Docker image and checks that the app runs as the non-root user.
 
 ## Configuration
 
@@ -181,7 +208,7 @@ Set these in `.env` (`.env.example` lists them) or in the environment, which win
 |---|---|---|
 | `TMDB_API_KEY` | TMDb API key (v3) | unset (dataset only) |
 | `FLASK_SECRET_KEY` | signs the flash-message cookie | random on each start |
-| `DATASET_DIR` | folder with the two CSVs | `dataset/` |
+| `DATASET_DIR` | folder with the two CSVs, such as `dataset/refreshed` | `dataset/` |
 | `SESSION_COOKIE_SECURE` | set to `1` behind HTTPS for a Secure cookie and HSTS | off |
 | `HOST`, `PORT`, `FLASK_DEBUG` | dev server options | `127.0.0.1`, `5001`, off |
 | `LOG_LEVEL` | log level, also under gunicorn | `INFO` |
@@ -207,17 +234,22 @@ movierec/
     redirects.py        safe redirects back to the previous page
 templates/              Jinja templates
 static/                 CSS, JavaScript and icons. js/list_store.js keeps the lists in localStorage
-scripts/evaluate.py     offline evaluation of the similar-movies lists
+scripts/
+  evaluate.py           offline evaluation of the similar-movies lists
+  fetch_catalogue.py    fetches a fresh catalogue from TMDb into dataset/refreshed/
 tests/                  pytest suite. tests/js/ holds the node:test suite
 ```
 
 ## Limitations
 
-- The dataset ends in 2017. Recommendations only come from its 4,803 films.
+- The catalogue is a snapshot. The Kaggle files end in late 2016. The refreshed catalogue ends on the day it was fetched, so films released after that are missing until the next fetch. Recommendations only come from the films loaded.
+- The films before 2016 are an uneven selection. They come only from the Kaggle set, which has 122 of TMDb's 250 most-voted 2015 films. From 2016 on, each year has its 400 most-voted films, but 2026 has only 248 so far, because no more have reached 100 votes.
+- Popularity is TMDb's trend score on the fetch day, not lasting fame. Films in cinemas on that day move up, and the lists change with each refresh. In the refreshed catalogue, 2025 and 2026 films are 7.2% of the films but get 11.8% of the places in similar-movie lists.
+- The refreshed catalogue needs your own TMDb API key. TMDb's terms allow keeping it for at most 6 months, so it must be fetched again at least that often.
 - Recommendations use content only and do not learn from users.
 - Films with thin metadata get lists that mostly share their genres. Casablanca gets romances, not WWII films. Forrest Gump gets romantic comedies.
 - Some series are linked only by their titles. Saw's list has none of its six sequels.
-- Well-known films are favoured on purpose, so the lists reach only about 62% of the catalogue.
+- Well-known films are favoured on purpose, so the lists reach only about 62% of the Kaggle catalogue (81% of the refreshed one).
 - Non-English films rarely get picks in their own language. For the 298 non-English films, 2.9% of the picks share the film's original language.
 - Filter search still scales vote count linearly, unlike similar movies.
 - The lists need JavaScript. They belong to one browser on one device and disappear when its site data is cleared.
