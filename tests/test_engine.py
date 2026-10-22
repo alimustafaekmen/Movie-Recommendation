@@ -257,3 +257,9 @@ def test_every_count_is_a_prefix_of_the_full_list(engine, movie_id):
     assert len(full) == 30
     for num in range(1, 30):
         assert engine.similar_movie_ids(movie_id, num) == full[:num]
+
+
+@pytest.mark.real_dataset
+def test_toy_story_neighbours_are_not_matched_on_a_character_name(engine):
+    # The 40 Year Old Virgin used to rank fifth only because both overviews mention "Andy".
+    assert 6957 not in engine.similar_movie_ids(862)

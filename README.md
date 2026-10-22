@@ -12,16 +12,16 @@ There are no accounts. Favourites and the watchlist are kept in the visitor's br
 
 ## How recommendations work
 
-**Similar movies.** Each film is turned into one text made of its genres, keywords, director, overview and tagline. A TF-IDF vectorizer (English stop words, up to 20,000 terms) converts these texts into L2-normalised vectors, so the cosine similarity between two films is a dot product. Only the sparse TF-IDF matrix is kept in memory; a film's similarity row is computed when it is needed.
+**Similar movies.** Each film gets four TF-IDF blocks: its genres and its directors as whole names ("Science Fiction" and "Christopher Nolan" are one term each), the words of its keywords, and its overview and tagline as English text (stop words removed, up to 20,000 terms). Each block is L2-normalised and weighted (genres 0.4, directors 0.3, keywords 0.3, text 0.6), and the joined vector is normalised again, so the cosine similarity between two films is a dot product. Separate blocks keep a long overview from drowning out the metadata, so a shared character name counts for less. Only the sparse matrix (about 2.5 MB) is kept in memory; a film's similarity row is computed when it is needed.
 
-For a query film, the 91 most similar films form a candidate pool, and each candidate gets a weighted score in which every signal is scaled to 0-1 within the pool:
+For a query film, the 91 most similar films form a candidate pool, and each candidate gets a weighted score in which every signal is scaled to 0-1 within the pool. Popularity and vote count are log-scaled first, so one blockbuster in the pool does not push every other film's score to zero:
 
 | Signal | Weight |
 |---|---|
 | Content similarity (relative to the best match in the pool) | 0.50 |
 | Vote average / 10 | 0.20 |
-| Popularity | 0.20 |
-| Vote count | 0.10 |
+| log(1 + popularity) | 0.20 |
+| log(1 + vote count) | 0.10 |
 
 TMDb ratings are noisy below 100 votes, so such films are dropped whenever the pool contains a film with at least 100 votes. Because the pool size is fixed, asking for more results never reorders the top ones.
 
@@ -41,17 +41,24 @@ python scripts/evaluate.py
 
 | Method | Genre overlap | Same director | Catalog coverage | Median votes |
 |---|---|---|---|---|
-| Pure cosine | 0.356 | 4.5% | 98.6% | 284 |
-| MovieRec (hybrid) | 0.335 | 4.0% | 64.1% | 1,630 |
+| Pure cosine | 0.845 | 10.7% | 98.9% | 206 |
+| MovieRec (hybrid) | 0.814 | 8.4% | 58.3% | 1,486 |
 | Most-voted baseline | 0.159 | 0.1% | 0.3% | 10,099 |
+
+Before the field-weighted blocks and log scaling, when all fields formed one text, pure cosine scored 0.356 / 4.5% / 98.6% / 284 and the hybrid 0.335 / 4.0% / 64.1% / 1,630.
+
+Toy Story's top 5, before and after:
+
+- Before: Toy Story 2, Toy Story 3, Monsters, Inc., Small Soldiers, The 40 Year Old Virgin (both overviews mention "Andy")
+- After: Toy Story 2, Toy Story 3, A Bug's Life, Monsters, Inc., Cars
 
 The median film in the dataset has 235 votes. *Pure cosine* is the top 12 by TF-IDF similarity alone, *MovieRec (hybrid)* is exactly what the app shows, and the *most-voted baseline* recommends the same 12 most-voted films to everyone. Genre overlap is the mean Jaccard index between the seed's and each recommendation's genre sets (seeds without genres are skipped), same director is the share of recommendations that share a director with the seed, catalog coverage is the share of all films recommended at least once, and median votes is the median vote count of all recommendations, counting a film each time it is recommended.
 
 - These are proxies for metadata agreement, not accuracy: they show whether the lists are coherent, not whether people would like them.
-- Genres and director are part of the text the model compares, so the first two columns are partly circular. Coverage and median votes do not depend on the model's inputs.
-- The hybrid weights were set by hand; the table shows their effect, not a tuned optimum.
-- The hybrid trades a little agreement (genre overlap 0.356 to 0.335, same director 4.5% to 4.0%) and about a third of the catalogue for better-known films: its picks have a median of 1,630 votes against 284 for pure cosine.
-- Most of the coverage drop comes from the 100-vote floor: only 3,162 films (65.8%) have 100 votes or more, and the hybrid reaches almost all of them.
+- Genres and directors are now blocks of their own in the model, so the first two columns are largely circular: most of the jump in genre overlap (0.335 to 0.814) is the model rewarding exactly what the column counts. Coverage and median votes do not depend on the model's inputs.
+- The weights are round, hand-picked values, not a tuned optimum. The director weight started at 0.5 and was lowered to 0.3 after reading the lists: at 0.5, 438 films got 8 or more of their 12 picks from their own director, so prolific directors pushed out sequels (Harry Potter, Jaws). At 0.3 it is 26 films.
+- The hybrid gives up a little agreement against pure cosine (genre overlap 0.845 to 0.814) and over a third of the catalogue for better-known films: its picks have a median of 1,486 votes against 206 for pure cosine. The log scaling lowers that median on purpose (1,660 with linear scaling), so the biggest blockbusters no longer decide the order.
+- Catalog coverage got worse, 64.1% to 58.3%, because of the new blocks. Most of the gap to pure cosine comes from the 100-vote floor: only 3,162 films (65.8%) have 100 votes or more, and the hybrid reaches 88% of them (97% before).
 
 ## Project layout
 

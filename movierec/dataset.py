@@ -63,8 +63,8 @@ def _preprocess(movies: pd.DataFrame, credits: pd.DataFrame) -> pd.DataFrame:
     df = movies.merge(credits, left_on="id", right_on="movie_id", how="inner")
     df = df.drop(columns=["movie_id"]).fillna(TEXT_DEFAULTS)
 
-    # The list columns keep co-directors and multi-word genres intact for filtering and
-    # display; the space-joined strings feed TF-IDF.
+    # The list columns keep co-directors and multi-word genres intact for TF-IDF, filtering
+    # and display; TF-IDF reads keywords from the space-joined string, word by word.
     df["directors"] = df["crew"].apply(parse_name_list, job="Director")
     df["director"] = df["directors"].str[0].fillna("")
     df["genre_list"] = df["genres"].apply(parse_name_list)
