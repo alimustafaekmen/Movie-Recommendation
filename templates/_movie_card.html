@@ -17,7 +17,7 @@
         {% set rating = movie.vote_average | format_rating %}
         <p class="movie-card-meta meta-line">
             {% if movie.year %}<span class="movie-card-year">{{ movie.year }}</span>{% endif %}
-            {% if rating %}<span class="movie-card-rating rating">{{ icon('star', class='rating-star') }}<span class="sr-only">Puan:</span> {{ rating }}</span>{% endif %}
+            {% if rating %}<span class="movie-card-rating rating">{{ icon('star', class='rating-star') }}<span class="sr-only">{{ t('card.rating') }}</span> {{ rating }}</span>{% endif %}
         </p>
         {% if note %}
         <p class="movie-card-note">

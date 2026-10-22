@@ -23,6 +23,7 @@ from movierec.engine import RecommendationEngine
 from movierec.genres import genre_label
 from movierec.i18n import format_date, format_number, format_rating
 from movierec.movie_details import MovieDetails
+from movierec.web.language import get_lang, lang_url, remember_language, t
 from movierec.web.redirects import API_PREFIXES
 
 logger = logging.getLogger(__name__)
@@ -135,7 +136,6 @@ def create_app() -> Flask:
     # content, so browsers may keep them for a year. Not in debug mode, so edits show on reload.
     if not app.debug:
         app.config["SEND_FILE_MAX_AGE_DEFAULT"] = ONE_YEAR_SECONDS
-    app.jinja_env.globals["genre_label"] = lambda name: genre_label(name, "tr")
     if SECRET_KEY_IS_EPHEMERAL:
         logger.warning(
             "FLASK_SECRET_KEY is not set; using a random key, sessions will not survive a restart"
@@ -147,6 +147,7 @@ def create_app() -> Flask:
         )
 
     app.after_request(_set_security_headers)
+    app.after_request(remember_language)
     for code in _ERRORS:
         app.register_error_handler(code, _handle_http_error)
     _register_template_helpers(app)
@@ -204,7 +205,7 @@ def _handle_http_error(error):
 
 
 def _register_template_helpers(app: Flask) -> None:
-    """Give templates asset_url(), icon_view_box(), current_year and the format filters."""
+    """Give templates asset_url(), icon_view_box(), current_year, lang, t() and the formats."""
     # Hashed once at startup: static files only change with a deploy, which restarts the app.
     asset_versions = build_asset_versions(app.static_folder)
     # Read once for the same reason. templates/_icon.html puts the symbol's viewBox on each
@@ -227,9 +228,14 @@ def _register_template_helpers(app: Flask) -> None:
         return icon_view_boxes[name]
 
     @app.context_processor
-    def inject_current_year():
-        return {"current_year": datetime.date.today().year}
+    def inject_year_and_language():
+        return {"current_year": datetime.date.today().year, "lang": get_lang()}
 
-    app.add_template_filter(lambda value: format_date(value, "tr"), "format_date")
-    app.add_template_filter(lambda value: format_number(value, "tr"), "format_number")
-    app.add_template_filter(lambda value: format_rating(value, "tr"), "format_rating")
+    # Globals, not context values: a macro imported with {% from %}, such as the movie card,
+    # does not see the context. The labels and formats follow the page language.
+    app.add_template_global(t)
+    app.add_template_global(lang_url)
+    app.add_template_global(lambda name: genre_label(name, get_lang()), "genre_label")
+    app.add_template_filter(lambda value: format_date(value, get_lang()), "format_date")
+    app.add_template_filter(lambda value: format_number(value, get_lang()), "format_number")
+    app.add_template_filter(lambda value: format_rating(value, get_lang()), "format_rating")

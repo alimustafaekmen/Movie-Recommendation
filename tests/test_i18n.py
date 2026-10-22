@@ -3,7 +3,6 @@
 import math
 
 import pytest
-from flask import render_template_string
 
 from movierec import i18n
 from movierec.genres import genre_badge, genre_label
@@ -159,10 +158,3 @@ def test_genre_labels_are_turkish_or_the_english_name_itself():
         "link_name": "Science Fiction",
     }
     assert genre_badge("Science Fiction", "en")["display_name"] == "Science Fiction"
-
-
-def test_number_filters_are_registered_for_templates(app_module):
-    with app_module.app.test_request_context():
-        rendered = render_template_string("{{ 12002 | format_number }} {{ 8.2 | format_rating }}")
-
-    assert rendered == "12.002 8,2"

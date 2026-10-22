@@ -1,10 +1,20 @@
-// Behaviour shared by every page: flash messages, disclosure buttons, title suggestions for the
-// header search, the home page's search panel, and a note when a page's module did not load.
+// Behaviour shared by every page: the language switch's ?lang=, flash messages, disclosure
+// buttons, title suggestions for the header search, the home page's search panel, and a note
+// when a page's module did not load.
 // base.html loads this at the end of <body>, so the page is already parsed and the search panel
 // is set up before it is first drawn.
 (() => {
     // A results page takes a few seconds at most (the TMDb timeouts bound the poster requests).
     const LOADING_RESET_MS = 20000;
+
+    // The header's language switch adds ?lang=, which the server has stored in a cookie by
+    // now. It leaves the address bar, so Back, a reload or a bookmark of this URL cannot store
+    // that language again over a later choice.
+    const pageUrl = new URL(window.location.href);
+    if (pageUrl.searchParams.has('lang')) {
+        pageUrl.searchParams.delete('lang');
+        window.history.replaceState(window.history.state, '', pageUrl.href);
+    }
 
     // Delegated, so content added later (the my_lists.js toggles) works too.
     document.addEventListener('click', (event) => {

@@ -1,7 +1,43 @@
 {
+  "alert.close": {
+    "en": "Close",
+    "tr": "Kapat"
+  },
+  "card.rating": {
+    "en": "Rating:",
+    "tr": "Puan:"
+  },
   "date.unknown": {
     "en": "Unknown",
     "tr": "Bilinmiyor"
+  },
+  "header.language": {
+    "en": "Language",
+    "tr": "Dil"
+  },
+  "header.search_button": {
+    "en": "Search",
+    "tr": "Ara"
+  },
+  "header.search_label": {
+    "en": "Search films",
+    "tr": "Film Ara"
+  },
+  "header.search_placeholder": {
+    "en": "Search films...",
+    "tr": "Film Ara..."
+  },
+  "header.skip_link": {
+    "en": "Skip to content",
+    "tr": "İçeriğe geç"
+  },
+  "nav.lists": {
+    "en": "My lists",
+    "tr": "Listelerim"
+  },
+  "nav.main": {
+    "en": "Main menu",
+    "tr": "Ana menü"
   },
   "runtime.hours": {
     "en": "{hours} h",
@@ -14,5 +50,13 @@
   "runtime.minutes": {
     "en": "{minutes} min",
     "tr": "{minutes} dk"
+  },
+  "theme.to_dark": {
+    "en": "Switch to dark theme",
+    "tr": "Koyu temaya geç"
+  },
+  "theme.to_light": {
+    "en": "Switch to light theme",
+    "tr": "Açık temaya geç"
   }
 }

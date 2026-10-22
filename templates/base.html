@@ -1,7 +1,7 @@
 {% from "_icon.html" import icon -%}
 {% from "_logo.html" import logo -%}
 <!DOCTYPE html>
-<html lang="tr">
+<html lang="{{ lang }}">
 
 <head>
     <meta charset="UTF-8">
@@ -31,7 +31,7 @@
 </head>
 
 <body class="{% block body_class %}{% endblock %}">
-    <a class="skip-link" href="#main-content">İçeriğe geç</a>
+    <a class="skip-link" href="#main-content">{{ t('header.skip_link') }}</a>
     <header class="header">
         <div class="container header-bar">
             {# The home page's title is its h1; every other page has its own. #}
@@ -40,14 +40,22 @@
             <a href="{{ url_for('movies.home') }}" class="header-brand" aria-label="MovieRec">
                 <{{ brand_tag }} class="site-title">{{ logo() }}<span class="sr-only">MovieRec</span></{{ brand_tag }}>
             </a>
-            <nav class="header-nav" aria-label="Ana menü">
+            <nav class="header-nav" aria-label="{{ t('nav.main') }}">
                 <a href="{{ url_for('lists.my_lists') }}" class="nav-link"
-                    {% if request.endpoint == 'lists.my_lists' %}aria-current="page"{% endif %}>{{ icon('bookmark') }} <span class="nav-label">Listelerim</span></a>
+                    {% if request.endpoint == 'lists.my_lists' %}aria-current="page"{% endif %}>{{ icon('bookmark') }} <span class="nav-label">{{ t('nav.lists') }}</span></a>
             </nav>
-            {# static/js/theme.js wires it and keeps the label in step with the theme; without the
-               script css/base.css hides it. The icon shows the theme a click switches to. #}
-            <button type="button" class="theme-toggle" data-theme-toggle aria-label="Koyu temaya geç"
-                title="Koyu temaya geç">{{ icon('moon', class='theme-moon') }}{{ icon('sun', class='theme-sun') }}</button>
+            {# Links, so the switch works without scripts; the server stores the choice. The visible
+               code starts each link's name, and the language is named in itself. #}
+            <nav class="lang-switch" aria-label="{{ t('header.language') }}">
+                <a href="{{ lang_url('tr') }}" hreflang="tr" lang="tr" {% if lang == 'tr' %}aria-current="true"{% endif %}>TR<span class="sr-only"> – Türkçe</span></a>
+                <a href="{{ lang_url('en') }}" hreflang="en" lang="en" {% if lang == 'en' %}aria-current="true"{% endif %}>EN<span class="sr-only"> – English</span></a>
+            </nav>
+            {# static/js/theme.js wires it and keeps the label in step with the theme, taking the label
+               for each theme from data-label-light and data-label-dark; without the script
+               css/base.css hides it. The icon shows the theme a click switches to. #}
+            <button type="button" class="theme-toggle" data-theme-toggle aria-label="{{ t('theme.to_dark') }}"
+                title="{{ t('theme.to_dark') }}" data-label-light="{{ t('theme.to_dark') }}"
+                data-label-dark="{{ t('theme.to_light') }}">{{ icon('moon', class='theme-moon') }}{{ icon('sun', class='theme-sun') }}</button>
             {% include '_header_search_form.html' %}
         </div>
     </header>

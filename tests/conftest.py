@@ -29,6 +29,8 @@ os.environ["DATASET_DIR"] = str(DATASET_DIR)
 
 # The key the fake TMDb session expects; tests check that it never leaks into logs.
 FAKE_TMDB_KEY = "SECRET123"
+# The Accept-Language header of a browser set to Turkish.
+TURKISH_BROWSER = "tr-TR,tr;q=0.9"
 
 # What movierec.people.find_person returns, for tests that stub it.
 PERSON = {
@@ -94,7 +96,10 @@ def app_module():
 @pytest.fixture
 def client(app_module):
     app_module.app.config["TESTING"] = True
-    return app_module.app.test_client()
+    client = app_module.app.test_client()
+    # A Turkish browser, so the pages are Turkish unless a test asks for another language.
+    client.environ_base["HTTP_ACCEPT_LANGUAGE"] = TURKISH_BROWSER
+    return client
 
 
 @pytest.fixture(scope="session")

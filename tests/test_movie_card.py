@@ -3,6 +3,7 @@
 from urllib.parse import urlsplit
 
 import pytest
+from conftest import TURKISH_BROWSER
 from flask import render_template_string
 from pages import Page, texts
 
@@ -18,7 +19,7 @@ MOVIE = {
 @pytest.fixture
 def render_card(app_module):
     def render(movie, **kwargs):
-        with app_module.app.test_request_context():
+        with app_module.app.test_request_context(headers={"Accept-Language": TURKISH_BROWSER}):
             return render_template_string(
                 '{% from "_movie_card.html" import movie_card %}{{ movie_card(movie, **kwargs) }}',
                 movie=movie,

@@ -66,18 +66,27 @@ class FakeElement {
 }
 
 /** Run the script over a page: found maps the selectors of document.querySelectorAll to their
- * elements, byId the ids of document.getElementById. */
-function loadPage({ found = {}, byId = {}, fetch = async () => ({ ok: false, status: 404 }) } = {}) {
+ * elements, byId the ids of document.getElementById; href is the page's URL. */
+function loadPage({ found = {}, byId = {}, fetch = async () => ({ ok: false, status: 404 }), href = 'http://localhost/' } = {}) {
   const document = new FakeElement();
   document.queries = found;
   document.getElementById = (id) => byId[id] ?? null;
   const window = new FakeElement();
+  window.location = { href };
+  window.history = {
+    state: { scroll: 1 },
+    replaced: [],
+    replaceState(state, unused, url) {
+      this.replaced.push({ state, url });
+    },
+  };
   const timers = new Map();
   let nextTimer = 1;
   const context = vm.createContext({
     document,
     window,
     fetch,
+    URL,
     Option: class {
       constructor(text) {
         this.text = text;
@@ -297,4 +306,26 @@ test('a status still marked when the page is parsed shows its load error', () =>
   document.dispatch('DOMContentLoaded');
 
   assert.equal(status.textContent, 'Listeler şu anda kullanılamıyor.');
+});
+
+// --- The language switch ---
+test('the ?lang= of the language switch leaves the address bar; the rest of the URL stays', () => {
+  const { window } = loadPage({ href: 'http://localhost/?tur=Action&lang=en&tur=Drama#sonuc-13' });
+
+  // The server stored the choice; an old ?lang= in the history must not store it again.
+  assert.deepEqual(window.history.replaced, [
+    { state: { scroll: 1 }, url: 'http://localhost/?tur=Action&tur=Drama#sonuc-13' },
+  ]);
+});
+
+test('a page without ?lang= keeps its URL', () => {
+  const { window } = loadPage({ href: 'http://localhost/movie/155?tab=cast' });
+
+  assert.deepEqual(window.history.replaced, []);
+});
+
+test('a ?lang= alone leaves the bare path', () => {
+  const { window } = loadPage({ href: 'http://localhost/my_lists?lang=tr' });
+
+  assert.deepEqual(window.history.replaced.map(({ url }) => url), ['http://localhost/my_lists']);
 });

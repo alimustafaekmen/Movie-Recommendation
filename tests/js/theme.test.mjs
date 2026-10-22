@@ -8,9 +8,11 @@ import vm from 'node:vm';
 const SOURCE = readFileSync(new URL('../../static/js/theme.js', import.meta.url), 'utf8');
 const KEY = 'movierec:theme';
 
+// The page writes the label for each theme on the button, in the page's language.
 function makeButton() {
   return {
     attributes: {}, title: '', onClick: [],
+    dataset: { labelLight: 'Koyu temaya geç', labelDark: 'Açık temaya geç' },
     setAttribute(name, value) { this.attributes[name] = value; },
     addEventListener(_, fn) { this.onClick.push(fn); },
   };
@@ -195,4 +197,15 @@ test('a page restored from the back/forward cache draws the current choice', () 
 
   assert.equal(page.theme(), 'light');
   assert.equal(page.button.attributes['aria-label'], 'Koyu temaya geç');
+});
+
+test('the labels come from the button, so an English page gets English ones', () => {
+  const page = loadPage({ stored: 'dark' });
+  page.button.dataset = { labelLight: 'Switch to dark theme', labelDark: 'Switch to light theme' };
+  page.ready();
+  assert.equal(page.button.attributes['aria-label'], 'Switch to light theme');
+
+  page.click();
+
+  assert.equal(page.button.title, 'Switch to dark theme');
 });

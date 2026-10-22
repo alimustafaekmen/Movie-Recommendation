@@ -18,8 +18,6 @@ function nextTheme(current) {
 
 (() => {
     const KEY = 'movierec:theme';
-    // The label says what a click does, so it names the other theme.
-    const LABELS = { light: 'Koyu temaya geç', dark: 'Açık temaya geç' };
     const root = document.documentElement;
     // Missing in very old browsers, which then draw the light theme unless a choice is stored.
     const darkSchemeQuery = window.matchMedia?.('(prefers-color-scheme: dark)');
@@ -33,11 +31,14 @@ function nextTheme(current) {
         }
     }
 
+    // The label says what a click does, so it names the other theme; the page writes the label
+    // for each theme on the button, in the page's language.
     function apply(theme) {
         root.dataset.theme = theme;
         document.querySelectorAll('[data-theme-toggle]').forEach((button) => {
-            button.setAttribute('aria-label', LABELS[theme]);
-            button.title = LABELS[theme];
+            const label = theme === 'dark' ? button.dataset.labelDark : button.dataset.labelLight;
+            button.setAttribute('aria-label', label);
+            button.title = label;
         });
     }
 
