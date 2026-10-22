@@ -1,48 +1,33 @@
 # Python
 __pycache__/
 *.py[cod]
-*$py.class
-*.so
-.Python
-build/
-dist/
-*.egg-info/
-*.egg
 
-# Virtual Environment
+# Virtual environments
+.venv/
 venv/
-ENV/
 env/
-.venv
+
+# Local settings with secrets; .env.example is the template
 .env
+.env.*
+!.env.example
 
-# IDE
-.vscode/
-.idea/
-*.swp
-*.swo
-*~
-
-# Tool caches
+# Test, lint and coverage output
 .pytest_cache/
 .ruff_cache/
 .coverage
-node_modules/
+.coverage.*
+htmlcov/
+coverage.xml
 
-# Environment variables
-.env.local
-
-# Logs
-*.log
-logs/
-
-# OS
+# Editors and OS files
+.vscode/
+.idea/
+*.swp
+*~
 .DS_Store
 Thumbs.db
 
-# Dataset
+# The Kaggle CSVs are not redistributed; the tests fall back to the small fixture CSVs.
 **/dataset/*.csv
-**/dataset/*.json
-**/dataset/.*.tmp
-# The small CSVs the tests fall back to without the Kaggle files
 !tests/fixtures/dataset/*.csv

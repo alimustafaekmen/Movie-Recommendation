@@ -12,6 +12,7 @@ target-version = "py312"
 
 [tool.ruff.lint]
 select = ["E", "F", "W", "I", "B", "UP", "SIM", "RET"]
+# ruff format wraps code; the long lines left are strings and URLs it cannot split.
 ignore = ["E501"]
 
 [tool.coverage.run]
@@ -19,7 +20,8 @@ source = ["movierec", "app"]
 branch = true
 
 [tool.coverage.report]
-# The fixture-dataset number (CI has no Kaggle CSVs), rounded down, minus 1.
+# Line and branch coverage of the fixture-dataset run (CI has no Kaggle CSVs), rounded down,
+# minus 1.
 fail_under = 95
 exclude_also = ["if __name__ == .__main__.:"]
 show_missing = true

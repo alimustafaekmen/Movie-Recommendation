@@ -1,4 +1,4 @@
-# The exact Python of the CI and the development setup, so a rebuild gets the same interpreter.
+# Pinned to a patch release, so a rebuild gets the same interpreter; CI also runs Python 3.12.
 FROM python:3.12.15-slim-trixie
 
 ENV PYTHONDONTWRITEBYTECODE=1 \
@@ -8,13 +8,14 @@ ENV PYTHONDONTWRITEBYTECODE=1 \
 
 WORKDIR /app
 
+# Dependencies first, so a code change does not reinstall them.
 COPY requirements.txt .
 RUN pip install -r requirements.txt
 
-# The dataset CSVs are copied in as well; the app only reads them and writes no files, so the
-# files stay owned by root and the app user cannot change them.
+# The code and the dataset CSVs stay owned by root: the app only reads them, so its user
+# cannot change them. The user has no home directory, as nothing the app runs writes one.
 COPY . .
-RUN useradd --create-home appuser
+RUN useradd --system --no-create-home appuser
 USER appuser
 
 EXPOSE 5001

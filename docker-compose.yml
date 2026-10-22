@@ -4,10 +4,21 @@ services:
   web:
     build: .
     container_name: movierec
+    restart: unless-stopped
+    # Only this computer can reach the app; a reverse proxy would publish it further.
     ports:
-      - "5001:5001"
+      - "127.0.0.1:5001:5001"
     # Without a .env the app still starts: no TMDb data, and a random key for the session.
     env_file:
       - path: .env
         required: false
-    restart: unless-stopped
+    # The app writes no files. Gunicorn keeps its worker heartbeat file in the default temp
+    # directory, /tmp, so that is the one writable path, held in memory.
+    read_only: true
+    tmpfs:
+      - /tmp
+    # A non-root server on port 5001 needs no Linux capabilities and never gains privileges.
+    cap_drop:
+      - ALL
+    security_opt:
+      - no-new-privileges:true

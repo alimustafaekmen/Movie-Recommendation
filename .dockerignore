@@ -1,10 +1,15 @@
-# Allowlist: the build context holds only what the image runs.
+# Allowlist: the build context holds only what the image runs. Everything else, such as the
+# tests, .env, screenshots and local caches, stays out.
 *
 !app.py
 !movierec/
 !templates/
 !static/
 !requirements.txt
+# The Kaggle CSVs, when present; CI builds without them and mounts the fixture dataset.
 !dataset/tmdb_5000_movies.csv
 !dataset/tmdb_5000_credits.csv
+
+# Leftovers inside the allowed folders
 **/__pycache__
+**/.DS_Store
