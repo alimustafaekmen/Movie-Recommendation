@@ -3,24 +3,29 @@ from pathlib import Path
 
 import pytest
 import requests
+from pages import body_text
 
 REPO = Path(__file__).resolve().parents[1]
-KAGGLE_DATASET = REPO / "dataset"
-FIXTURE_DATASET = REPO / "tests" / "fixtures" / "dataset"
-KAGGLE_CSVS = [KAGGLE_DATASET / name for name in ("tmdb_5000_movies.csv", "tmdb_5000_credits.csv")]
+KAGGLE_DATASET_DIR = REPO / "dataset"
+FIXTURE_DATASET_DIR = REPO / "tests" / "fixtures" / "dataset"
+KAGGLE_CSVS = [
+    KAGGLE_DATASET_DIR / name for name in ("tmdb_5000_movies.csv", "tmdb_5000_credits.csv")
+]
 
 # Without the Kaggle CSVs (a fresh clone, CI) the suite runs on a small fixture dataset;
 # USE_FIXTURE_DATASET=1 forces that locally. Tests marked real_dataset need the full CSVs.
-USE_FIXTURE = os.getenv("USE_FIXTURE_DATASET") == "1" or not all(p.exists() for p in KAGGLE_CSVS)
-DATASET = FIXTURE_DATASET if USE_FIXTURE else KAGGLE_DATASET
+USE_FIXTURE_DATASET = os.getenv("USE_FIXTURE_DATASET") == "1" or not all(
+    p.exists() for p in KAGGLE_CSVS
+)
+DATASET_DIR = FIXTURE_DATASET_DIR if USE_FIXTURE_DATASET else KAGGLE_DATASET_DIR
 
 # These must be set before anything imports movierec.config. load_dotenv() never overrides
 # variables that already exist, and every TMDb call is skipped while the key is empty,
 # so the suite runs offline and deterministically even when .env holds a real key.
 os.environ["TMDB_API_KEY"] = ""
 os.environ["FLASK_SECRET_KEY"] = "test-secret-key"
-if USE_FIXTURE:
-    os.environ["DATASET_DIR"] = str(FIXTURE_DATASET)
+if USE_FIXTURE_DATASET:
+    os.environ["DATASET_DIR"] = str(FIXTURE_DATASET_DIR)
 
 # The key the fake TMDb session expects; tests check that it never leaks into logs.
 FAKE_TMDB_KEY = "SECRET123"
@@ -33,7 +38,6 @@ PERSON = {
     "birthday": "1974-01-30",
     "deathday": None,
     "place_of_birth": "Haverfordwest, Wales, UK",
-    "profile_path": "/profile.jpg",
     "known_for_department": "Acting",
     "profile_image_url": "https://image.tmdb.org/t/p/h632/profile.jpg",
     "homepage": None,
@@ -42,19 +46,24 @@ PERSON = {
             "id": 155,
             "title": "The Dark Knight",
             "poster_url": "https://image.tmdb.org/t/p/w342/poster.jpg",
-            "release_date": "2008-07-16",
-            "overview": "Batman raises the stakes in his war on crime...",
+            "year": 2008,
             "vote_average": 8.2,
             "character": "Bruce Wayne",
         }
     ],
     "person_type_tr": "Oyuncu",
-    "page_title_name": "Christian Bale",
+}
+
+# Home page searches, each a shareable GET URL: results, a warning and the empty state.
+SEARCHES = {
+    "results": "/?film=Avatar&n=5",
+    "warning": "/?film=Avatr&n=5",
+    "empty": "/?tur=Documentary&min_puan=8.5&min_yil=1900&max_yil=1905",
 }
 
 
 def pytest_collection_modifyitems(items):
-    if not USE_FIXTURE:
+    if not USE_FIXTURE_DATASET:
         return
     skip = pytest.mark.skip(reason="needs the full Kaggle dataset")
     for item in items:
@@ -96,6 +105,30 @@ def engine(app_module):
 @pytest.fixture(scope="session")
 def details(app_module):
     return app_module.app.extensions["details"]
+
+
+@pytest.fixture
+def person_client(client, monkeypatch):
+    monkeypatch.setattr("movierec.web.movies.find_person", lambda name, person_type: dict(PERSON))
+    return client
+
+
+def _pages(client, person_client):
+    """Every page type once."""
+    return {
+        "home": client.get("/"),
+        "genre": client.get("/?tur=Action"),
+        "results": client.get(SEARCHES["results"]),
+        "movie": client.get("/movie/155"),
+        "person": person_client.get("/actor/Christian+Bale"),
+        "my_lists": client.get("/my_lists"),
+        "not_found": client.get("/does-not-exist"),
+    }
+
+
+@pytest.fixture
+def pages(client, person_client):
+    return {name: body_text(response) for name, response in _pages(client, person_client).items()}
 
 
 @pytest.fixture
@@ -145,9 +178,11 @@ class FakeSession:
 @pytest.fixture
 def fake(monkeypatch):
     """A configured TMDb client whose requests go to a FakeSession; unknown paths are 404."""
-    from movierec import tmdb
+    from movierec import people, tmdb
 
     session = FakeSession()
+    # Person lookups are cached in memory; each test starts without one.
+    monkeypatch.setattr(people, "_person_cache", {})
     monkeypatch.setattr(tmdb, "_session", session)
     monkeypatch.setattr(tmdb, "TMDB_API_KEY", FAKE_TMDB_KEY)
     monkeypatch.setattr(tmdb, "_cooldown_until", 0.0)

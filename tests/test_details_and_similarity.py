@@ -4,8 +4,7 @@ import numpy as np
 import pytest
 
 from movierec.config import SIMILARITY_WEIGHT
-from movierec.details import format_runtime
-from movierec.engine import short_cast
+from movierec.movie_details import cast_names, format_runtime
 from movierec.similarity import hybrid_score
 
 
@@ -32,14 +31,17 @@ def test_format_runtime(minutes, expected):
 @pytest.mark.parametrize(
     ("cast", "expected"),
     [
-        ("A, B, C", "A, B, C"),
-        ("A, B, C, D", "A, B, C, ..."),
-        (" A , ,B", "A, B"),
-        ("", ""),
+        ("A, B, C", ["A", "B", "C"]),
+        (" A , ,B", ["A", "B"]),
+        ("", []),
+        ("Sammy Davis, Jr., Frank Sinatra", ["Sammy Davis, Jr.", "Frank Sinatra"]),
+        ("Page Joseph Falkinburg, Jr", ["Page Joseph Falkinburg, Jr"]),
+        ("Jr., A", ["Jr.", "A"]),
+        (", ".join(f"Name {n}" for n in range(15)), [f"Name {n}" for n in range(12)]),
     ],
 )
-def test_short_cast(cast, expected):
-    assert short_cast(cast) == expected
+def test_cast_names(cast, expected):
+    assert cast_names(cast) == expected
 
 
 def test_hybrid_similarity_is_normalised_within_the_pool():

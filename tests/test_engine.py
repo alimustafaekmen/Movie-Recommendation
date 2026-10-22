@@ -1,9 +1,6 @@
-import re
-
 import pytest
-from flask import url_for
 
-from movierec.engine import RecommendationEngine
+from movierec.engine import DETAIL_SIMILAR_COUNT, RecommendationEngine, clamp_count
 
 
 def test_similarity_excludes_the_query_movie(engine):
@@ -38,7 +35,9 @@ def test_duplicate_titles_get_their_own_neighbours(details):
 
 
 def test_similar_movie_ids_match_the_detail_page(engine, details):
-    assert engine.similar_movie_ids(155, num=8) == _similar_ids(details, 155)
+    assert engine.similar_movie_ids(155) == _similar_ids(details, 155)
+    # Twelve fills grid rows of 2, 3, 4 or 6 cards.
+    assert DETAIL_SIMILAR_COUNT == 12
     assert len(engine.similar_movie_ids(155, num=30)) == 30
 
 
@@ -62,26 +61,36 @@ def test_overlong_query_is_cut_to_100_characters(engine):
     assert all(len(warning) < 300 for warning in warnings)
 
 
+def test_overlong_director_query_is_cut_to_100_characters(engine):
+    _, warnings = engine.recommend_by_features(director_query="q" * 5000)
+
+    assert warnings == [f"'{'q' * 100}' adlı yönetmen bulunamadı."]
+
+
 def test_exact_title_has_no_fuzzy_warning(engine):
     _, warnings = engine.recommend_by_similarity("alien³")
 
     assert warnings == []
 
 
-@pytest.mark.parametrize(("num", "limit"), [(-5, 1), (0, 1), ("5", 5), ("abc", 15), (999, 30)])
-def test_result_count_is_clamped(engine, num, limit):
+@pytest.mark.parametrize(
+    ("num", "count"), [(-5, 1), (0, 1), ("5", 5), ("abc", 12), ("", 12), (None, 12), (999, 30)]
+)
+def test_result_count_is_clamped(engine, num, count):
     similar, _ = engine.recommend_by_similarity("Avatar", num=num)
     by_genre, _ = engine.recommend_by_features(genres=["Drama"], num=num)
 
-    assert 1 <= len(similar) <= limit
-    assert 1 <= len(by_genre) <= limit
+    assert clamp_count(num) == count
+    assert 1 <= len(similar) <= count
+    assert 1 <= len(by_genre) <= count
 
 
-def test_non_string_title_returns_a_warning(engine):
-    results, warnings = engine.recommend_by_similarity(5)
+@pytest.mark.parametrize("query", [5, None, "", "   "])
+def test_missing_title_asks_for_one(engine, query):
+    results, warnings = engine.recommend_by_similarity(query)
 
     assert results == []
-    assert warnings == ["Lütfen aramak için bir film ismi girin veya listeden seçin."]
+    assert warnings == ["Lütfen bir film adı girin."]
 
 
 def test_single_genre_string_is_treated_as_one_genre(engine):
@@ -92,7 +101,7 @@ def test_single_genre_string_is_treated_as_one_genre(engine):
 
 @pytest.mark.parametrize("movie_id", ["abc", None, 1.5j])
 def test_list_card_for_invalid_id_is_none(details, movie_id):
-    assert details.get_movie_info_for_list(movie_id) is None
+    assert details.get_list_card(movie_id) is None
 
 
 def test_missing_dataset_raises(tmp_path):
@@ -207,11 +216,9 @@ def test_detail_badges_use_turkish_labels(details):
     movie = details.get_movie_details(19995)
 
     assert {"display_name": "Bilim Kurgu", "link_name": "Science Fiction"}.items() <= next(
-        badge
-        for badge in movie["genre_details_for_display"]
-        if badge["link_name"] == "Science Fiction"
+        badge for badge in movie["genre_badges"] if badge["link_name"] == "Science Fiction"
     ).items()
-    assert [badge["display_name"] for badge in movie["genre_details_for_display"]] == [
+    assert [badge["display_name"] for badge in movie["genre_badges"]] == [
         "Aksiyon",
         "Macera",
         "Fantastik",
@@ -230,36 +237,6 @@ def test_details_list_every_director(details):
 
     assert movie["directors"] == ["Joel Coen", "Ethan Coen"]
     assert movie["director"] == "Joel Coen"
-
-
-def _home_genre_url(app_module, genre):
-    with app_module.app.test_request_context():
-        return url_for("movies.home", genre=genre)
-
-
-def _assert_lists_only_science_fiction(engine, body):
-    ids = [
-        int(movie_id)
-        for movie_id in re.findall(r'href="/movie/(\d+)" class="film-card-link"', body)
-    ]
-    assert ids
-    assert all(
-        "Science Fiction" in genres
-        for genres in engine.movies_df.set_index("id").loc[ids, "genre_list"]
-    )
-
-
-def test_genre_link_lists_only_that_genre(client, app_module, engine):
-    body = client.get(_home_genre_url(app_module, "Science Fiction")).get_data(as_text=True)
-
-    _assert_lists_only_science_fiction(engine, body)
-
-
-@pytest.mark.parametrize("path", ["/genre/Science+Fiction", "/genre/Science%20Fiction"])
-def test_genre_route_redirects_to_a_listing_of_that_genre(client, engine, path):
-    response = client.get(path, follow_redirects=True)
-
-    _assert_lists_only_science_fiction(engine, response.get_data(as_text=True))
 
 
 def test_close_franchise_match_outranks_a_popular_weak_match(engine):

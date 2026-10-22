@@ -1,59 +1,15 @@
 import html
+import logging
+import re
 from urllib.parse import urlparse
 
 import pytest
 from conftest import PERSON
+from pages import Page, texts
 
 
 def _location_path(response):
     return urlparse(response.headers["Location"]).path
-
-
-def test_home_page_renders_both_search_forms(client):
-    response = client.get("/")
-
-    assert response.status_code == 200
-    body = response.get_data(as_text=True)
-    assert 'id="similarity-form"' in body
-    assert 'id="feature-form"' in body
-
-
-def test_genre_query_parameter_lists_movies(client):
-    response = client.get("/?genre=Action")
-
-    assert response.status_code == 200
-    assert "film-card-link" in response.get_data(as_text=True)
-
-
-def test_similarity_search_returns_at_most_requested_count(client):
-    response = client.post(
-        "/",
-        data={"film_ismi": "Avatar", "submit_similarity": "1", "num_recommendations": "5"},
-    )
-
-    assert response.status_code == 200
-    assert 1 <= response.get_data(as_text=True).count("film-card-link") <= 5
-
-
-def test_non_numeric_recommendation_count_shows_validation_message(client):
-    response = client.post(
-        "/",
-        data={"film_ismi": "Avatar", "submit_similarity": "1", "num_recommendations": "abc"},
-    )
-
-    assert response.status_code == 200
-    assert "Lütfen sayısal alanlara sadece geçerli sayılar girin." in response.get_data(
-        as_text=True
-    )
-
-
-def test_feature_search_by_genre_returns_results(client):
-    response = client.post(
-        "/", data={"submit_features": "1", "tur": "Action", "num_recommendations": "10"}
-    )
-
-    assert response.status_code == 200
-    assert 1 <= response.get_data(as_text=True).count("film-card-link") <= 10
 
 
 @pytest.mark.parametrize(("movie_id", "title"), [(19995, "Avatar"), (155, "The Dark Knight")])
@@ -76,9 +32,9 @@ def test_unknown_path_returns_turkish_404(client):
     response = client.get("/does-not-exist")
 
     assert response.status_code == 404
-    body = response.get_data(as_text=True)
-    assert "Aradığınız sayfa bulunamadı." in body
-    assert '<p class="error-code">404</p>' in body
+    page = Page(response.get_data(as_text=True))
+    assert "Aradığınız sayfa bulunamadı." in page.text
+    assert texts(page, class_="error-code") == ["404"]
 
 
 def test_unknown_api_path_returns_json_404(client):
@@ -102,14 +58,28 @@ def test_movie_detail_failure_hides_exception_text(client, details, monkeypatch)
     assert "secret internals" not in body
 
 
-def test_unhandled_error_renders_turkish_500(client, app_module, engine, monkeypatch):
+def test_failed_recommendation_shows_a_generic_warning(client, engine, monkeypatch):
     def broken(**kwargs):
         raise RuntimeError("boom")
 
     monkeypatch.setattr(engine, "recommend_by_features", broken)
+
+    response = client.get("/?tur=Action")
+
+    assert response.status_code == 200
+    body = response.get_data(as_text=True)
+    assert "Öneriler sayfaya yüklenirken bir hata oluştu." in body
+    assert "boom" not in body
+
+
+def test_unhandled_error_renders_turkish_500(client, app_module, engine, monkeypatch):
+    def broken(*args, **kwargs):
+        raise RuntimeError("boom")
+
+    monkeypatch.setattr(engine, "popular_cards", broken)
     monkeypatch.setitem(app_module.app.config, "PROPAGATE_EXCEPTIONS", False)
 
-    response = client.get("/?genre=Action")
+    response = client.get("/")
 
     assert response.status_code == 500
     body = response.get_data(as_text=True)
@@ -190,6 +160,9 @@ def test_header_search_with_empty_query_redirects(client):
         ("http://localhost/\\evil.example/x", "/"),
         ("http://localhost/api/movies?ids=155", "/"),
         ("http://localhost/movie/155?tab=cast", "/movie/155?tab=cast"),
+        # urlsplit raises on a broken IPv6 host; a header like that must not fail the search.
+        ("http://[", "/"),
+        ("http://[::1/movie/155", "/"),
     ],
 )
 def test_header_search_returns_only_to_same_site_referrer(client, referrer, expected):
@@ -201,13 +174,6 @@ def test_header_search_returns_only_to_same_site_referrer(client, referrer, expe
     assert response.headers["Location"] == expected
 
 
-def test_genre_route_redirects_to_filtered_home(client):
-    response = client.get("/genre/Action")
-
-    assert response.status_code == 302
-    assert "genre=Action" in response.headers["Location"]
-
-
 def test_director_route_without_tmdb_key_redirects_home(client):
     response = client.get("/director/Christopher+Nolan")
 
@@ -215,16 +181,16 @@ def test_director_route_without_tmdb_key_redirects_home(client):
     assert _location_path(response) == "/"
 
 
-def test_person_page_renders(client, monkeypatch):
+def test_person_page_shows_the_name_filmography_and_birthday(client, monkeypatch):
     monkeypatch.setattr("movierec.web.movies.find_person", lambda name, person_type: dict(PERSON))
 
     response = client.get("/actor/Christian+Bale")
 
     assert response.status_code == 200
-    body = response.get_data(as_text=True)
-    assert "Christian Bale" in body
-    assert 'href="/movie/155"' in body
-    assert "30 Ocak 1974" in body
+    page = Page(response.get_data(as_text=True))
+    assert "Christian Bale" in texts(page, "h1")
+    assert page.find("a", href="/movie/155")
+    assert "30 Ocak 1974" in page.text
 
 
 def test_person_lookup_gets_the_decoded_name_and_role(client, monkeypatch):
@@ -252,10 +218,10 @@ def test_unknown_person_flashes_not_found(client, monkeypatch):
 
 
 def test_tmdb_outage_on_person_page_flashes_a_warning(client, monkeypatch):
-    from movierec.tmdb import TmdbUnavailable
+    from movierec.tmdb import TmdbUnavailableError
 
     def unavailable(name, person_type):
-        raise TmdbUnavailable("down")
+        raise TmdbUnavailableError("down")
 
     monkeypatch.setattr("movierec.web.movies.find_person", unavailable)
 
@@ -267,20 +233,24 @@ def test_tmdb_outage_on_person_page_flashes_a_warning(client, monkeypatch):
     )
 
 
-def test_genre_listing_title_uses_the_turkish_label(client):
-    body = client.get("/?genre=Science%20Fiction").get_data(as_text=True)
-
-    assert "Tür: Bilim Kurgu" in body
-
-
-def test_feature_results_title_lists_turkish_genre_labels(client):
-    response = client.post(
-        "/",
-        data={
-            "submit_features": "1",
-            "tur": ["Action", "Science Fiction"],
-            "num_recommendations": "3",
-        },
+@pytest.mark.parametrize("field", ["film", "yonetmen", "min_yil", "max_yil", "min_puan"])
+def test_echoed_search_values_are_cut_to_the_fields_100_characters(client, field):
+    # The film and director inputs have maxlength="100" and the engine reads no further, so
+    # a longer value from a pasted URL is cut before the page shows it again.
+    body = client.get("/", query_string={"tur": "Action", field: "7" + "x" * 3000}).get_data(
+        as_text=True
     )
 
-    assert "Türler: Aksiyon, Bilim Kurgu" in response.get_data(as_text=True)
+    assert max(len(run) for run in re.findall("x+", body)) == 99
+
+
+def test_a_query_without_letters_or_digits_finds_nothing_quietly(client, engine, caplog):
+    # thefuzz warns for every query its processor reduces to nothing; any visitor could fill
+    # the log with them.
+    with caplog.at_level(logging.WARNING):
+        assert engine.find_movie_id("?!") is None
+        response = client.get("/", query_string={"film": "“…”", "n": 3})
+        client.post("/search_movie_redirect", data={"search_query": "😀😀"})
+
+    assert response.status_code == 200
+    assert caplog.records == []

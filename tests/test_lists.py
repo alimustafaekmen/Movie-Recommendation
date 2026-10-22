@@ -1,9 +1,14 @@
 """The lists page and /api/movies; the favourites and watchlist themselves live in the browser."""
 
 import re
+from pathlib import Path
 
 import pytest
 from conftest import FakeResponse
+from flask import render_template_string, url_for
+from pages import Element, Page, body_text
+
+STATIC = Path(__file__).resolve().parents[1] / "static"
 
 DARK_KNIGHT = {
     "id": 155,
@@ -37,25 +42,130 @@ def test_my_lists_renders_both_sections_empty(client):
     assert "Daha Sonra İzleyeceklerim" in body
     assert "Henüz beğendiğiniz bir film bulunmuyor." in body
     assert "İzleme listenizde henüz bir film bulunmuyor." in body
-    for list_name, grid_id in [
-        ("favorites", "liked-movies-grid"),
-        ("watchlist", "watchlist-movies-grid"),
-    ]:
-        assert re.search(rf'<section [^>]*data-list="{list_name}"', body)
-        assert re.search(rf'<div class="movies-grid" id="{grid_id}"[^>]*>\s*</div>', body)
+    page = Page(body)
+    for list_name, grid_id in [("favorites", "favorites-grid"), ("watchlist", "watchlist-grid")]:
+        [section] = page.find("section", data_list=list_name)
+        [grid] = section.find("ul", id=grid_id)
+        # Empty and hidden until my_lists.js fills it.
+        assert "movie-grid" in grid.classes
+        assert "hidden" in grid.attrs
+        assert grid.text == "" and not grid.find()
     # The collapse toggles are added by my_lists.js once a list has movies.
-    assert "aria-controls" not in body
+    assert not [tag for _, tag in page.tags if "aria-controls" in tag]
 
 
-def test_my_lists_carries_the_card_template_and_loads_its_module(client):
-    body = client.get("/my_lists").get_data(as_text=True)
+def test_my_lists_empty_messages_say_where_lists_live_and_link_home(client):
+    body = body_text(client.get("/my_lists"))
 
-    template = body[body.index("<template") : body.index("</template>")]
-    assert 'class="movie-card-personal"' in template
-    assert "movie-card-personal-title" in template
-    assert "movie-card-personal-rating" in template
-    assert "poster-placeholder" in template
-    assert re.search(r'<script type="module" src="/static/my_lists\.js\?v=[0-9a-f]{12}">', body)
+    # Plain panels, hidden until my_lists.js finds a list empty: the movie page's button labels
+    # in quotes, and a link home.
+    messages = Page(body).find("div", "empty-list")
+    assert len(messages) == 2
+    for message, button in zip(messages, ("Beğen", "İzleme listesine ekle"), strict=True):
+        assert "panel" in message.classes
+        assert "hidden" in message.attrs
+        assert f"Film sayfalarındaki “{button}” düğmesiyle ekleyebilirsiniz." in message.text
+        assert "Listeler bu tarayıcıda saklanır." in message.text
+        [link] = message.find("a")
+        assert link.attrs["href"] == "/"
+        assert message.text.endswith("Film keşfetmeye başla")
+
+
+def test_my_lists_headings_are_one_h1_and_an_h2_per_list(client):
+    page = Page(body_text(client.get("/my_lists")))
+    headings = [element for element in page.root.descendants() if element.tag in ("h1", "h2")]
+
+    [h1] = page.find("h1")
+    assert "page-title" in h1.classes
+    assert [(heading.tag, heading.text) for heading in headings] == [
+        ("h1", "Kişisel Film Listelerim"),
+        ("h2", "Beğendiğim Filmler"),
+        ("h2", "Daha Sonra İzleyeceklerim"),
+    ]
+    # Plain headings; my_lists.js adds only the collapse chevron.
+    assert not any(heading.find("svg") for heading in headings)
+
+
+def _markup(root, dropped=()):
+    """(tag, attributes) of every element in `root` (HTML or an element), in order, without
+    the per-movie attributes and without the elements of a `dropped` class and their content."""
+    skip = {"href", "src", "alt"}
+    found = []
+
+    def walk(element):
+        for child in element.children:
+            if isinstance(child, Element) and not set(child.classes) & set(dropped):
+                found.append((child.tag, {k: v for k, v in child.attrs.items() if k not in skip}))
+                walk(child)
+
+    walk(Page(root).root if isinstance(root, str) else root)
+    return found
+
+
+def _macro_card(app_module, poster_url):
+    movie = {"id": 1, "title": "T", "year": 2000, "vote_average": 7.5, "poster_url": poster_url}
+    with app_module.app.test_request_context():
+        return render_template_string(
+            '{% from "_movie_card.html" import movie_card %}{{ movie_card(movie) }}', movie=movie
+        )
+
+
+def test_my_lists_card_template_has_the_movie_card_markup(client, app_module):
+    [template] = Page(body_text(client.get("/my_lists"))).find("template", id="movie-card-template")
+
+    # One list item per card; my_lists.js keeps either the poster or the placeholder with its
+    # icon, as the macro does.
+    [card] = [child for child in template.children if isinstance(child, Element)]
+    assert card.tag == "li"
+    assert _markup(card, dropped=("movie-card-placeholder",)) == _markup(
+        _macro_card(app_module, "https://image.tmdb.org/t/p/w342/poster.jpg")
+    )
+    assert _markup(card, dropped=("movie-card-poster",)) == _markup(_macro_card(app_module, None))
+
+
+def test_my_lists_toggle_chevron_waits_in_a_template(client):
+    page = Page(body_text(client.get("/my_lists")))
+
+    # my_lists.js adds this chevron to the collapse button of each list with movies.
+    [template] = page.find("template", id="list-toggle-chevron-template")
+    span, svg, use = template.find()
+    assert (span.tag, svg.tag, use.tag) == ("span", "svg", "use")
+    assert "list-toggle-chevron" in span.classes
+    assert svg.attrs["aria-hidden"] == "true"
+    assert use.attrs["href"].endswith("#chevron-down")
+
+
+def test_my_lists_takes_its_urls_from_the_server(client, app_module):
+    body = body_text(client.get("/my_lists"))
+
+    # my_lists.js fetches the cards from data-cards-url and links each card to data-movie-url
+    # with the movie's id in place of the 0, so no script knows the site's routes.
+    [page] = [tag for tag in Page(body).all("div") if "my-lists-page" in tag.get("class", "")]
+    with app_module.app.test_request_context():
+        assert page["data-cards-url"] == url_for("lists.api_movies")
+        assert page["data-movie-url"] == url_for("movies.movie_detail", movie_id=0)
+
+
+def test_scripts_hard_code_no_path_of_this_site():
+    scripts = list((STATIC / "js").glob("*.js"))
+    assert scripts
+    for script in scripts:
+        code = script.read_text(encoding="utf-8")
+        # Comments may name paths; "https://" is not a comment.
+        code = re.sub(r"/\*.*?\*/|(?<![:\w])//[^\n]*", "", code, flags=re.S)
+        assert not re.findall(r"""["'`]/(?![/*])""", code), script.name
+
+
+def test_my_lists_loads_its_module_before_the_first_frame(client):
+    body = body_text(client.get("/my_lists"))
+    head = body[: body.index("</head>")]
+
+    # Render-blocking, so the placeholders or empty messages are in the first frame.
+    [script] = [tag for tag in Page(head).all("script") if "my_lists.js" in tag.get("src", "")]
+    assert script["type"] == "module"
+    assert script["blocking"] == "render"
+    assert re.fullmatch(r"/static/js/my_lists\.js\?v=[0-9a-f]{12}", script["src"])
+    assert body.count("my_lists.js") == 1
 
 
 def test_my_lists_renders_without_the_engine(client, app_module, monkeypatch):
@@ -144,3 +254,31 @@ def test_api_movies_without_engine_returns_503_json(client, app_module, monkeypa
 
     assert response.status_code == 503
     assert response.get_json() == {"status": "error", "error": "unavailable"}
+
+
+def test_api_movies_stops_looking_up_ids_on_tmdb_after_its_time_budget(
+    client, fake, cold_details, monkeypatch
+):
+    from movierec.web import lists
+
+    # Each TMDb answer takes 3 s on this clock; the budget is 8 s.
+    clock = [0.0]
+    monkeypatch.setattr(lists, "monotonic", lambda: clock[0])
+    monkeypatch.setattr(lists, "TMDB_LOOKUP_SECONDS", 8.0)
+    answer = fake.get
+
+    def slow_get(url, params=None, timeout=None):
+        clock[0] += 3
+        return answer(url, params, timeout)
+
+    monkeypatch.setattr(fake, "get", slow_get)
+    unknown = list(range(900001, 900007))
+    for movie_id in unknown:
+        fake.routes[f"/movie/{movie_id}"] = FakeResponse({**TMDB_ONLY, "id": movie_id})
+    # The dataset film's poster is known, so only the lookups below take time.
+    cold_details.poster_cache[155] = None
+
+    cards = _cards(client, ",".join(map(str, [*unknown, 155])))
+
+    # Lookups start at 0, 3 and 6 s; the fourth would start at 9 s. Dataset ids still come.
+    assert [card["id"] for card in cards] == [*unknown[:3], 155]

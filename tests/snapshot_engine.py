@@ -52,9 +52,7 @@ def _details(movie):
         "director": movie["director"],
         "genres": movie["genres"],
         "runtime_formatted": movie["runtime_formatted"],
-        "genre_display_names": [
-            genre["display_name"] for genre in movie["genre_details_for_display"]
-        ],
+        "genre_display_names": [genre["display_name"] for genre in movie["genre_badges"]],
         "similar_movie_ids": [int(similar["id"]) for similar in movie["similar_movies"]],
     }
 
@@ -80,7 +78,7 @@ def build_snapshot(engine, details):
         "all_genres": list(engine.all_genres),
         "movie_title_count": len(engine.all_movie_titles),
         "director_name_count": len(engine.all_director_names),
-        "popular_movies_top10": list(engine.popular_movies_list[:10]),
+        "popular_movies_top10": list(engine.popular_titles[:10]),
     }
 
     return {
@@ -112,8 +110,8 @@ def _load():
     # Same offline conditions as the test suite: with an empty key the engine never calls TMDb.
     os.environ["TMDB_API_KEY"] = ""
     sys.path.insert(0, str(REPO))
-    from movierec.details import MovieDetails
     from movierec.engine import RecommendationEngine
+    from movierec.movie_details import MovieDetails
 
     dataset = REPO / "dataset"
     engine = RecommendationEngine(
