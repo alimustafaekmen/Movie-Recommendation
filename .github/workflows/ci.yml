@@ -24,7 +24,8 @@ jobs:
       - run: ruff check .
       - run: ruff format --check .
       # The Kaggle CSVs are not in the repo, so the tests use tests/fixtures/dataset/.
-      - run: pytest -q
+      # Fails below the branch coverage set in pyproject.toml.
+      - run: pytest -q --cov
       # The node tests need no packages, so there is nothing to cache.
       - uses: actions/setup-node@949feb2413d6458794dcd2491c4babbbce0c15c1 # v7.1.0
         with:

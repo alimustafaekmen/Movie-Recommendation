@@ -26,6 +26,7 @@ env/
 # Tool caches
 .pytest_cache/
 .ruff_cache/
+.coverage
 node_modules/
 
 # Environment variables
