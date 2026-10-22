@@ -26,7 +26,7 @@ def test_feature_search_by_genre_returns_movies(engine):
 
 
 def _similar_ids(details, movie_id):
-    return [movie["id"] for movie in details.get_movie_details(movie_id)["similar_movies"]]
+    return [movie["id"] for movie in details.get_movie_details(movie_id, "tr")["similar_movies"]]
 
 
 def test_duplicate_titles_get_their_own_neighbours(details):
@@ -137,7 +137,7 @@ def test_single_genre_string_is_treated_as_one_genre(engine):
 
 @pytest.mark.parametrize("movie_id", ["abc", None, 1.5j])
 def test_list_card_for_invalid_id_is_none(details, movie_id):
-    assert details.get_list_card(movie_id) is None
+    assert details.get_list_card(movie_id, "tr") is None
 
 
 def test_missing_dataset_raises(tmp_path):
@@ -258,7 +258,7 @@ def test_reversed_year_range_is_swapped(engine):
 
 
 def test_detail_badges_use_turkish_labels(details):
-    movie = details.get_movie_details(19995)
+    movie = details.get_movie_details(19995, "tr")
 
     assert {"display_name": "Bilim Kurgu", "link_name": "Science Fiction"}.items() <= next(
         badge for badge in movie["genre_badges"] if badge["link_name"] == "Science Fiction"
@@ -278,7 +278,7 @@ def test_director_names_are_stripped(engine):
 
 
 def test_details_list_every_director(details):
-    movie = details.get_movie_details(6977)  # No Country for Old Men
+    movie = details.get_movie_details(6977, "tr")  # No Country for Old Men
 
     assert movie["directors"] == ["Joel Coen", "Ethan Coen"]
     assert movie["director"] == "Joel Coen"

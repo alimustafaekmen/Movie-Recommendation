@@ -69,8 +69,9 @@ def build_snapshot(engine, details):
         results, warnings = engine.recommend_by_features(**criteria, num=FEATURE_COUNT)
         features[label] = {"results": _ranked(results), "warnings": list(warnings)}
 
+    # The baseline holds the Turkish details.
     detail_pages = {
-        str(movie_id): _details(details.get_movie_details(movie_id))
+        str(movie_id): _details(details.get_movie_details(movie_id, "tr"))
         for movie_id in DETAIL_MOVIE_IDS
     }
 

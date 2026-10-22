@@ -294,7 +294,7 @@ def test_api_movies_stops_looking_up_ids_on_tmdb_after_its_time_budget(
     for movie_id in unknown:
         fake.routes[f"/movie/{movie_id}"] = FakeResponse({**TMDB_ONLY, "id": movie_id})
     # The dataset film's poster is known, so only the lookups below take time.
-    cold_details.poster_cache[155] = None
+    cold_details.poster_cache[(155, "tr")] = None
 
     cards = _cards(client, ",".join(map(str, [*unknown, 155])))
 
@@ -313,7 +313,7 @@ def test_api_recommendations_are_list_cards_of_the_engine_ranking(client, engine
 
     ids = engine.recommend_from_favourites([155, 19995], [])
     assert len(ids) == 12
-    assert cards == [details.get_list_card(movie_id) for movie_id in ids]
+    assert cards == [details.get_list_card(movie_id, "tr") for movie_id in ids]
 
 
 def test_api_recommendations_leave_out_the_watchlist(client, engine):

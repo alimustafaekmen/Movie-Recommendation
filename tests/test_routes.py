@@ -152,7 +152,9 @@ def test_unhandled_error_renders_turkish_500(client, app_module, engine, monkeyp
 
 def test_person_page_does_not_need_the_engine(client, app_module, monkeypatch):
     monkeypatch.setitem(app_module.app.extensions, "engine", None)
-    monkeypatch.setattr("movierec.web.movies.find_person", lambda name, person_type: dict(PERSON))
+    monkeypatch.setattr(
+        "movierec.web.movies.find_person", lambda name, person_type, lang: dict(PERSON)
+    )
 
     response = client.get("/director/Christopher+Nolan")
 
@@ -267,7 +269,9 @@ def test_director_route_without_tmdb_key_redirects_home(client):
 
 
 def test_person_page_shows_the_name_filmography_and_birthday(client, monkeypatch):
-    monkeypatch.setattr("movierec.web.movies.find_person", lambda name, person_type: dict(PERSON))
+    monkeypatch.setattr(
+        "movierec.web.movies.find_person", lambda name, person_type, lang: dict(PERSON)
+    )
 
     response = client.get("/actor/Christian+Bale")
 
@@ -282,17 +286,17 @@ def test_person_lookup_gets_the_decoded_name_and_role(client, monkeypatch):
     calls = []
     monkeypatch.setattr(
         "movierec.web.movies.find_person",
-        lambda name, person_type: calls.append((name, person_type)),
+        lambda name, person_type, lang: calls.append((name, person_type, lang)),
     )
 
     client.get("/director/Christopher%20Nolan")
-    client.get("/actor/Zo%C3%AB%20Salda%C3%B1a")
+    client.get("/actor/Zo%C3%AB%20Salda%C3%B1a?lang=en")
 
-    assert calls == [("Christopher Nolan", "director"), ("Zoë Saldaña", "actor")]
+    assert calls == [("Christopher Nolan", "director", "tr"), ("Zoë Saldaña", "actor", "en")]
 
 
 def test_unknown_person_flashes_not_found(client, monkeypatch):
-    monkeypatch.setattr("movierec.web.movies.find_person", lambda name, person_type: None)
+    monkeypatch.setattr("movierec.web.movies.find_person", lambda name, person_type, lang: None)
 
     response = client.get("/director/Nobody%20Here", follow_redirects=True)
 
@@ -310,7 +314,7 @@ def test_unknown_person_flashes_not_found(client, monkeypatch):
     ],
 )
 def test_unknown_person_flashes_in_english(client, monkeypatch, path, message):
-    monkeypatch.setattr("movierec.web.movies.find_person", lambda name, person_type: None)
+    monkeypatch.setattr("movierec.web.movies.find_person", lambda name, person_type, lang: None)
     client.set_cookie("lang", "en")
 
     response = client.get(path, follow_redirects=True)
@@ -321,7 +325,7 @@ def test_unknown_person_flashes_in_english(client, monkeypatch, path, message):
 def test_tmdb_outage_on_person_page_flashes_a_warning(client, monkeypatch):
     from movierec.tmdb import TmdbUnavailableError
 
-    def unavailable(name, person_type):
+    def unavailable(name, person_type, lang):
         raise TmdbUnavailableError("down")
 
     monkeypatch.setattr("movierec.web.movies.find_person", unavailable)

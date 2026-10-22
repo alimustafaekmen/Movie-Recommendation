@@ -24,9 +24,10 @@
         <header class="detail-header">
             <h1 class="page-title detail-title">{{ person.name }}</h1>
             {# The role of this page (director or actor page), then what TMDb knows them for when that
-               differs; known_for_label is missing for departments without a Turkish label. #}
+               differs; movierec/people.py leaves known_for_label out otherwise, and for departments
+               without a label. #}
             <p class="person-role">{% if person_type == 'director' %}{{ t('person.role_director') }}{% else %}{{ t('person.role_actor') }}{% endif %}</p>
-            {% if person.known_for_label and person.known_for_label != person.person_type_tr %}
+            {% if person.known_for_label %}
             <p class="person-known-for">{{ t('person.known_for', label=person.known_for_label) }}</p>
             {% endif %}
         </header>
@@ -49,8 +50,8 @@
             </dl>
             {% endif %}
 
-            {% if person.biography %}
-            {% set biography = person.biography %}
+            {# TMDb may have no biography in the page language; the section then says so. #}
+            {% set biography = person.biography or t('person.no_biography') %}
             {# Cut at a word boundary near 600 characters; the rest sits behind "Read more". #}
             {% set preview = biography | truncate(600, false, '') %}
             {% set is_long = preview | length < biography | length %}
@@ -64,7 +65,6 @@
                 </details>
                 {% endif %}
             </section>
-            {% endif %}
         </div>
     </article>
 

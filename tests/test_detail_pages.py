@@ -22,8 +22,6 @@ DIRECTOR = {
     **PERSON,
     "name": "Christopher Nolan",
     "known_for_department": "Directing",
-    "known_for_label": "Yönetmen",
-    "person_type_tr": "Yönetmen",
     "movies": [
         {"id": 27205, "title": "Inception", "poster_url": None, "year": 2010, "vote_average": 8.369}
     ],
@@ -50,8 +48,8 @@ def _icon_names(markup):
 def _patch_movie(details, monkeypatch, **fields):
     original = details.get_movie_details
 
-    def patched(movie_id):
-        movie = original(movie_id)
+    def patched(movie_id, lang):
+        movie = original(movie_id, lang)
         movie.update(fields)
         return movie
 
@@ -59,7 +57,9 @@ def _patch_movie(details, monkeypatch, **fields):
 
 
 def _patch_person(monkeypatch, person):
-    monkeypatch.setattr("movierec.web.movies.find_person", lambda name, person_type: dict(person))
+    monkeypatch.setattr(
+        "movierec.web.movies.find_person", lambda name, person_type, lang: dict(person)
+    )
 
 
 def test_movie_page_renders_the_poster_eagerly(client, details, monkeypatch):
@@ -200,7 +200,7 @@ def test_person_and_genre_links_keep_plus_signs_and_spaces(
     asked = []
     monkeypatch.setattr(
         "movierec.web.movies.find_person",
-        lambda name, person_type: asked.append((person_type, name)),
+        lambda name, person_type, lang: asked.append((person_type, name)),
     )
     links = Page(body_text(client.get("/movie/155"))).all("a")
     hrefs = [link["href"] for link in links if {"tag", "link"} & set(_classes(link))]
@@ -232,7 +232,7 @@ def test_movie_page_links_the_cast_list(client, details, monkeypatch):
 
 
 def test_movie_page_genres_are_tags_and_people_are_plain_name_links(client, details):
-    movie = details.get_movie_details(155)
+    movie = details.get_movie_details(155, "tr")
 
     body = body_text(client.get("/movie/155"))
 
@@ -258,7 +258,7 @@ def test_movie_page_without_cast_has_no_cast_section(client, details, monkeypatc
 
 
 def test_similar_movies_use_the_shared_card_grid(client, details):
-    similar = details.get_movie_details(155)["similar_movies"]
+    similar = details.get_movie_details(155, "tr")["similar_movies"]
 
     section = _section(body_text(client.get("/movie/155")), "Benzer Filmler")
     page = Page(section)

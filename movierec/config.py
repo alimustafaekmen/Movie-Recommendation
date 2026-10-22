@@ -42,7 +42,7 @@ MOVIES_CSV = os.path.join(DATASET_DIR, "tmdb_5000_movies.csv")
 CREDITS_CSV = os.path.join(DATASET_DIR, "tmdb_5000_credits.csv")
 
 # Recommendations
-# 12 fills grid rows of 2, 3, 4 or 6 cards; "Daha fazla göster" adds 12 more.
+# 12 fills grid rows of 2, 3, 4 or 6 cards; the "Show more" link adds 12 more.
 DEFAULT_RECOMMENDATION_COUNT = 12
 MAX_RECOMMENDATION_COUNT = 30
 MIN_VOTES_THRESHOLD = 100

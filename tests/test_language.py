@@ -113,7 +113,18 @@ def test_an_unknown_language_is_ignored(client, value):
 
 
 @pytest.mark.parametrize(
-    "path", ["/", "/?tur=Action", "/movie/155", "/my_lists", "/does-not-exist", "/movie/0"]
+    "path",
+    [
+        "/",
+        "/?tur=Action",
+        "/movie/155",
+        "/my_lists",
+        "/does-not-exist",
+        "/movie/0",
+        # Their posters and the titles of films outside the dataset come from TMDb.
+        "/api/movies?ids=155",
+        "/api/recommendations?favorites=155",
+    ],
 )
 def test_answers_that_read_the_language_tell_caches_so(client, path):
     response = client.get(path)

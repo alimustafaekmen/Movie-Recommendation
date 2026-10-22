@@ -129,7 +129,7 @@ def _filmography(fake, person_type="actor", **movie_credits):
     """The filmography find_person builds from these cast/crew credits."""
     fake.routes["/search/person"] = FakeResponse({"results": [{"id": 3894}]})
     fake.routes["/person/3894"] = FakeResponse({**PERSON_DETAILS, "movie_credits": movie_credits})
-    return people.find_person("Christian Bale", person_type)["movies"]
+    return people.find_person("Christian Bale", person_type, "tr")["movies"]
 
 
 def test_unconfigured_client_raises_without_calling(fake, monkeypatch):
@@ -189,14 +189,14 @@ def test_json_that_is_not_an_object_counts_as_a_failed_call(fake, cold_details, 
     with pytest.raises(tmdb.TmdbUnavailableError):
         tmdb.get("/movie/7")
     with pytest.raises(tmdb.TmdbUnavailableError):
-        people.find_person("Christian Bale", "actor")
+        people.find_person("Christian Bale", "actor", "tr")
     cards = [{"id": 7}]
-    cold_details.add_posters(cards)
+    cold_details.add_posters(cards, "tr")
 
     assert cards[0]["poster_url"] is None
-    assert cold_details.get_movie_poster_url(7) is None
+    assert cold_details.get_movie_poster_url(7, "tr") is None
     # Like invalid JSON, a broken answer is not remembered as "no poster".
-    assert 7 not in cold_details.poster_cache
+    assert (7, "tr") not in cold_details.poster_cache
 
 
 def test_session_keeps_a_connection_for_every_concurrent_caller():
@@ -220,13 +220,13 @@ def test_session_keeps_a_connection_for_every_concurrent_caller():
     ],
 )
 def test_pick_trailer(videos, expected):
-    assert tmdb.pick_trailer(videos) == expected
+    assert tmdb.pick_trailer(videos, "tr") == expected
 
 
 def test_cold_movie_details_make_one_details_call(fake, cold_details):
     fake.routes["/movie/155"] = FakeResponse(DARK_KNIGHT_TR)
 
-    movie = cold_details.get_movie_details(155)
+    movie = cold_details.get_movie_details(155, "tr")
 
     assert fake.paths.count("/movie/155") == 1
     assert not any(path.endswith("/videos") for path in fake.paths)
@@ -234,14 +234,14 @@ def test_cold_movie_details_make_one_details_call(fake, cold_details):
     assert movie["overview"] == DARK_KNIGHT_TR["overview"]
     assert movie["trailer_key"] == "official"
     assert movie["poster_url_large"] == "https://image.tmdb.org/t/p/w500/dk.jpg"
-    assert cold_details.get_movie_poster_url(155) == "https://image.tmdb.org/t/p/w342/dk.jpg"
+    assert cold_details.get_movie_poster_url(155, "tr") == "https://image.tmdb.org/t/p/w342/dk.jpg"
     assert fake.paths.count("/movie/155") == 1
 
 
 def test_movie_details_during_an_outage_degrade_with_a_single_call(fake, cold_details):
     fake.routes["/movie/155"] = requests.Timeout()
 
-    movie = cold_details.get_movie_details(155)
+    movie = cold_details.get_movie_details(155, "tr")
 
     assert movie["title"] == "The Dark Knight"
     assert movie["poster_url_large"] is None
@@ -253,37 +253,37 @@ def test_movie_details_during_an_outage_degrade_with_a_single_call(fake, cold_de
 def test_poster_is_cached_only_after_an_answer(fake, cold_details, monkeypatch):
     fake.routes["/movie/155"] = [requests.ConnectionError(), FakeResponse(DARK_KNIGHT_TR)]
 
-    assert cold_details.get_movie_poster_url(155) is None
+    assert cold_details.get_movie_poster_url(155, "tr") is None
 
     monkeypatch.setattr(tmdb, "_cooldown_until", 0.0)
     expected = "https://image.tmdb.org/t/p/w342/dk.jpg"
-    assert cold_details.get_movie_poster_url(155) == expected
-    assert cold_details.get_movie_poster_url(155) == expected
+    assert cold_details.get_movie_poster_url(155, "tr") == expected
+    assert cold_details.get_movie_poster_url(155, "tr") == expected
     assert fake.paths == ["/movie/155", "/movie/155"]
 
 
 def test_missing_poster_is_cached_after_not_found(fake, cold_details):
-    assert cold_details.get_movie_poster_url(424242) is None
-    assert cold_details.get_movie_poster_url(424242) is None
+    assert cold_details.get_movie_poster_url(424242, "tr") is None
+    assert cold_details.get_movie_poster_url(424242, "tr") is None
     assert fake.paths == ["/movie/424242"]
 
 
-def test_poster_cache_holds_the_whole_refreshed_catalogue(fake, cold_details):
+def test_poster_cache_holds_the_whole_refreshed_catalogue_in_both_languages(fake, cold_details):
     # The refreshed catalogue has about 9,000 films.
     _poster_routes(fake, [1])
-    cold_details.poster_cache.update((f"filler-{n}", None) for n in range(9999))
+    cold_details.poster_cache.update((f"filler-{n}", None) for n in range(19999))
 
-    assert cold_details.get_movie_poster_url(1) == _poster(1)
-    assert len(cold_details.poster_cache) == 10000
+    assert cold_details.get_movie_poster_url(1, "tr") == _poster(1)
+    assert len(cold_details.poster_cache) == 20000 == POSTER_CACHE_LIMIT
 
 
-def test_poster_cache_is_emptied_once_it_holds_10000_entries(fake, cold_details):
+def test_poster_cache_is_emptied_once_it_holds_20000_entries(fake, cold_details):
     fake.routes["/movie/155"] = FakeResponse(DARK_KNIGHT_TR)
-    cold_details.poster_cache.update((f"filler-{n}", None) for n in range(10000))
+    cold_details.poster_cache.update((f"filler-{n}", None) for n in range(POSTER_CACHE_LIMIT))
 
-    assert cold_details.get_movie_poster_url(155) == "https://image.tmdb.org/t/p/w342/dk.jpg"
+    assert cold_details.get_movie_poster_url(155, "tr") == "https://image.tmdb.org/t/p/w342/dk.jpg"
     assert len(cold_details.poster_cache) == 1
-    assert cold_details.get_movie_poster_url(155, size="w500").endswith("/w500/dk.jpg")
+    assert cold_details.get_movie_poster_url(155, "tr", size="w500").endswith("/w500/dk.jpg")
     assert fake.paths == ["/movie/155"]
 
 
@@ -292,7 +292,7 @@ def test_result_posters_are_fetched_in_parallel_in_card_order(slow, cold_details
     _poster_routes(slow, ids)
     cards = [{"id": movie_id} for movie_id in ids]
 
-    cold_details.add_posters(cards)
+    cold_details.add_posters(cards, "tr")
 
     assert 1 < slow.max_in_flight <= POSTER_WORKERS
     assert [card["poster_url"] for card in cards] == [_poster(movie_id) for movie_id in ids]
@@ -301,10 +301,10 @@ def test_result_posters_are_fetched_in_parallel_in_card_order(slow, cold_details
 
 def test_add_posters_fetches_each_uncached_id_once(fake, cold_details):
     _poster_routes(fake, [1, 2])
-    cold_details.poster_cache.update({3: "/cached.jpg", 4: None})
+    cold_details.poster_cache.update({(3, "tr"): "/cached.jpg", (4, "tr"): None})
     cards = [{"id": 1}, {"id": 3}, {"id": 1}, {"id": 4}, {"id": 2}]
 
-    cold_details.add_posters(cards)
+    cold_details.add_posters(cards, "tr")
 
     assert [card["poster_url"] for card in cards] == [
         _poster(1),
@@ -314,7 +314,12 @@ def test_add_posters_fetches_each_uncached_id_once(fake, cold_details):
         _poster(2),
     ]
     assert sorted(fake.paths) == ["/movie/1", "/movie/2"]
-    assert cold_details.poster_cache == {1: "/1.jpg", 2: "/2.jpg", 3: "/cached.jpg", 4: None}
+    assert cold_details.poster_cache == {
+        (1, "tr"): "/1.jpg",
+        (2, "tr"): "/2.jpg",
+        (3, "tr"): "/cached.jpg",
+        (4, "tr"): None,
+    }
 
 
 def test_one_failed_poster_lookup_leaves_the_others(fake, cold_details):
@@ -324,14 +329,14 @@ def test_one_failed_poster_lookup_leaves_the_others(fake, cold_details):
     del fake.routes["/movie/9"]
     cards = [{"id": movie_id} for movie_id in ids]
 
-    cold_details.add_posters(cards)
+    cold_details.add_posters(cards, "tr")
 
     assert [card["poster_url"] for card in cards] == [
         None if movie_id in (7, 9) else _poster(movie_id) for movie_id in ids
     ]
     # A 404 is an answer (no poster); the broken one is tried again next time.
-    assert cold_details.poster_cache[9] is None
-    assert 7 not in cold_details.poster_cache
+    assert cold_details.poster_cache[(9, "tr")] is None
+    assert (7, "tr") not in cold_details.poster_cache
 
 
 def test_poster_lookups_stop_once_tmdb_fails(fake, cold_details):
@@ -340,9 +345,9 @@ def test_poster_lookups_stop_once_tmdb_fails(fake, cold_details):
         fake.routes[f"/movie/{movie_id}"] = requests.Timeout()
     cards = [{"id": movie_id} for movie_id in ids]
 
-    cold_details.add_posters(cards)
+    cold_details.add_posters(cards, "tr")
     calls = len(fake.calls)
-    cold_details.add_posters(cards)
+    cold_details.add_posters(cards, "tr")
 
     assert [card["poster_url"] for card in cards] == [None] * 15
     # Each worker can have one lookup under way when the first failure starts the cooldown;
@@ -358,17 +363,17 @@ def test_posters_fill_in_when_the_cache_is_emptied_during_a_batch(fake, cold_det
     cold_details.poster_cache.update((f"filler-{n}", None) for n in range(POSTER_CACHE_LIMIT))
     cards = [{"id": movie_id} for movie_id in ids]
 
-    cold_details.add_posters(cards)
+    cold_details.add_posters(cards, "tr")
 
     assert [card["poster_url"] for card in cards] == [_poster(movie_id) for movie_id in ids]
-    assert set(cold_details.poster_cache) <= set(ids)
+    assert set(cold_details.poster_cache) <= {(movie_id, "tr") for movie_id in ids}
 
 
 def test_unconfigured_add_posters_makes_no_call(fake, cold_details, monkeypatch):
     monkeypatch.setattr(tmdb, "TMDB_API_KEY", None)
     cards = [{"id": 155}, {"id": 19995}]
 
-    cold_details.add_posters(cards)
+    cold_details.add_posters(cards, "tr")
 
     assert [card["poster_url"] for card in cards] == [None, None]
     assert fake.calls == []
@@ -405,7 +410,7 @@ def test_find_person_prefers_the_requested_department(fake):
     fake.routes["/search/person"] = FakeResponse(PERSON_SEARCH)
     fake.routes["/person/3894"] = FakeResponse(PERSON_DETAILS)
 
-    person = people.find_person("Christian Bale", "actor")
+    person = people.find_person("Christian Bale", "actor", "tr")
 
     assert dict(fake.calls)["/search/person"]["query"] == "Christian Bale"
     assert person["id"] == 3894
@@ -418,13 +423,13 @@ def test_find_person_prefers_the_requested_department(fake):
     ("department", "label"),
     [("Directing", "Yönetmen"), ("Costume & Make-Up", "Kostüm ve Makyaj")],
 )
-def test_person_known_for_department_gets_a_turkish_label(fake, department, label):
+def test_person_known_for_another_department_gets_a_turkish_label(fake, department, label):
     fake.routes["/search/person"] = FakeResponse(PERSON_SEARCH)
     fake.routes["/person/3894"] = FakeResponse(
         {**PERSON_DETAILS, "known_for_department": department}
     )
 
-    person = people.find_person("Christian Bale", "actor")
+    person = people.find_person("Christian Bale", "actor", "tr")
 
     assert person["known_for_label"] == label
     assert person["known_for_department"] == department
@@ -437,7 +442,7 @@ def test_unknown_department_has_no_known_for_label(fake, department):
         {**PERSON_DETAILS, "known_for_department": department}
     )
 
-    assert "known_for_label" not in people.find_person("Christian Bale", "actor")
+    assert "known_for_label" not in people.find_person("Christian Bale", "actor", "tr")
 
 
 @pytest.mark.parametrize(
@@ -457,24 +462,24 @@ def test_person_homepage_is_kept_only_for_web_addresses(fake, homepage, expected
     fake.routes["/search/person"] = FakeResponse(PERSON_SEARCH)
     fake.routes["/person/3894"] = FakeResponse({**PERSON_DETAILS, "homepage": homepage})
 
-    assert people.find_person("Christian Bale", "actor")["homepage"] == expected
+    assert people.find_person("Christian Bale", "actor", "tr")["homepage"] == expected
 
 
 def test_find_person_returns_none_when_nobody_matches(fake):
     fake.routes["/search/person"] = FakeResponse({"results": []})
 
-    assert people.find_person("Zzqx Qwerty", "director") is None
+    assert people.find_person("Zzqx Qwerty", "director", "tr") is None
 
 
 def test_find_person_propagates_unavailable(fake):
     fake.routes["/search/person"] = FakeResponse(status_code=502)
 
     with pytest.raises(tmdb.TmdbUnavailableError):
-        people.find_person("Christopher Nolan", "director")
+        people.find_person("Christopher Nolan", "director", "tr")
 
 
 def test_overlong_person_name_makes_no_call(fake):
-    assert people.find_person("a" * 150, "director") is None
+    assert people.find_person("a" * 150, "director", "tr") is None
     assert fake.calls == []
 
 
@@ -556,12 +561,12 @@ def test_repeat_person_pages_are_served_from_memory(fake):
     fake.routes["/person/3894"] = FakeResponse(PERSON_DETAILS)
     fake.routes["/person/1"] = FakeResponse({**PERSON_DETAILS, "id": 1})
 
-    actor = people.find_person("Christian Bale", "actor")
-    assert people.find_person(" Christian Bale ", "actor") == actor
+    actor = people.find_person("Christian Bale", "actor", "tr")
+    assert people.find_person(" Christian Bale ", "actor", "tr") == actor
     assert len(fake.calls) == 2
 
     # The director page for the same name picks the person and credits differently.
-    assert people.find_person("Christian Bale", "director")["id"] == 1
+    assert people.find_person("Christian Bale", "director", "tr")["id"] == 1
     assert len(fake.calls) == 4
 
 
@@ -573,24 +578,24 @@ def test_failed_person_lookups_are_not_remembered(fake, monkeypatch):
     ]
     fake.routes["/person/3894"] = FakeResponse(PERSON_DETAILS)
 
-    assert people.find_person("Christian Bale", "actor") is None
+    assert people.find_person("Christian Bale", "actor", "tr") is None
     with pytest.raises(tmdb.TmdbUnavailableError):
-        people.find_person("Christian Bale", "actor")
+        people.find_person("Christian Bale", "actor", "tr")
     monkeypatch.setattr(tmdb, "_cooldown_until", 0.0)
 
-    assert people.find_person("Christian Bale", "actor")["name"] == "Christian Bale"
+    assert people.find_person("Christian Bale", "actor", "tr")["name"] == "Christian Bale"
 
 
 def test_person_cache_is_emptied_once_full(fake):
     fake.routes["/search/person"] = FakeResponse(PERSON_SEARCH)
     fake.routes["/person/3894"] = FakeResponse(PERSON_DETAILS)
     people._person_cache.update(
-        ((f"filler-{n}", "actor"), {}) for n in range(people.PERSON_CACHE_LIMIT)
+        ((f"filler-{n}", "actor", "tr"), {}) for n in range(people.PERSON_CACHE_LIMIT)
     )
 
-    person = people.find_person("Christian Bale", "actor")
+    person = people.find_person("Christian Bale", "actor", "tr")
 
-    assert people._person_cache == {("Christian Bale", "actor"): person}
+    assert people._person_cache == {("Christian Bale", "actor", "tr"): person}
 
 
 def test_person_page_renders_from_canned_tmdb_json(fake, client):
@@ -656,7 +661,7 @@ def test_tmdb_only_movie_page_is_unavailable_during_an_outage_not_missing(
 
 
 def test_dataset_movie_details_list_the_first_12_cast_names(cold_details):
-    movie = cold_details.get_movie_details(155)
+    movie = cold_details.get_movie_details(155, "tr")
 
     names = [name.strip() for name in movie["cast"].split(",")]
     assert len(names) == 15
@@ -674,7 +679,7 @@ def test_tmdb_only_movie_details_list_12_cast_names_from_the_credits(fake, cold_
         }
     )
 
-    movie = cold_details.get_movie_details(999004)
+    movie = cold_details.get_movie_details(999004, "tr")
 
     assert movie["cast_list"] == [actor["name"] for actor in cast[:12]]
     assert movie["cast"] == ", ".join(actor["name"] for actor in cast[:15])
@@ -683,7 +688,7 @@ def test_tmdb_only_movie_details_list_12_cast_names_from_the_credits(fake, cold_
 def test_movie_without_cast_has_an_empty_cast_list(fake, cold_details):
     fake.routes["/movie/999005"] = FakeResponse({"id": 999005, "title": "Sessiz"})
 
-    assert cold_details.get_movie_details(999005)["cast_list"] == []
+    assert cold_details.get_movie_details(999005, "tr")["cast_list"] == []
 
 
 def test_engine_construction_makes_no_tmdb_call(fake):
@@ -703,7 +708,7 @@ def test_tmdb_only_genres_are_mapped_by_id(fake, cold_details):
         }
     )
 
-    movie = cold_details.get_movie_details(999002)
+    movie = cold_details.get_movie_details(999002, "tr")
 
     assert [(b["display_name"], b["link_name"]) for b in movie["genre_badges"]] == [
         ("Bilim Kurgu", "Science Fiction")
@@ -714,7 +719,7 @@ def test_tmdb_only_genres_are_mapped_by_id(fake, cold_details):
 def test_detail_request_includes_non_turkish_videos(fake, cold_details, movie_id):
     fake.routes[f"/movie/{movie_id}"] = FakeResponse({"id": movie_id, "title": "X"})
 
-    cold_details.get_movie_details(movie_id)
+    cold_details.get_movie_details(movie_id, "tr")
 
     params = dict(fake.calls)[f"/movie/{movie_id}"]
     assert params["include_video_language"] == "tr,en,null"
@@ -728,7 +733,7 @@ def test_result_cards_and_similar_movies_get_posters(fake, cold_details, client,
     page = client.get("/", query_string={"film": "Inception", "n": 3})
     assert page.get_data(as_text=True).count(poster) == 3
 
-    similar = cold_details.get_movie_details(155)["similar_movies"]
+    similar = cold_details.get_movie_details(155, "tr")["similar_movies"]
     assert [card["poster_url"] for card in similar] == [poster] * DETAIL_SIMILAR_COUNT
 
 
@@ -768,13 +773,13 @@ def test_release_year_of_an_odd_date_is_unknown(data, year):
     ],
 )
 def test_pick_trailer_ignores_videos_of_an_odd_shape(videos):
-    assert tmdb.pick_trailer(videos) is None
+    assert tmdb.pick_trailer(videos, "tr") is None
 
 
 def test_pick_trailer_skips_odd_videos_before_a_good_one():
     videos = ["junk", {"site": "YouTube", "type": "Trailer", "key": None}, *TURKISH_VIDEOS]
 
-    assert tmdb.pick_trailer(videos) == "tr"
+    assert tmdb.pick_trailer(videos, "tr") == "tr"
 
 
 @pytest.mark.parametrize(
@@ -807,7 +812,7 @@ def test_dataset_movie_page_survives_an_odd_tmdb_answer(fake, cold_details, clie
     fake.routes["/movie/155"] = FakeResponse(ODD_DETAILS)
     row = engine.movies_df.iloc[engine.row_of[155]]
 
-    movie = cold_details.get_movie_details(155)
+    movie = cold_details.get_movie_details(155, "tr")
     response = client.get("/movie/155")
 
     # The dataset's own texts stay; nothing of the odd answer is shown.
@@ -853,7 +858,7 @@ def test_tmdb_only_movie_page_survives_odd_fields(fake, cold_details, client):
         }
     )
 
-    movie = cold_details.get_movie_details(999010)
+    movie = cold_details.get_movie_details(999010, "tr")
     response = client.get("/movie/999010")
 
     assert response.status_code == 200
@@ -882,7 +887,7 @@ def test_tmdb_only_movie_without_texts_shows_no_none(fake, cold_details):
         {"id": 999015, "title": "Sessiz", "overview": None, "tagline": None}
     )
 
-    movie = cold_details.get_movie_details(999015)
+    movie = cold_details.get_movie_details(999015, "tr")
 
     assert (movie["overview"], movie["tagline"]) == ("", "")
 
@@ -937,7 +942,7 @@ def test_person_page_survives_an_odd_tmdb_answer(fake, client):
     fake.routes["/search/person"] = FakeResponse({"results": [{"id": 3894}]})
     fake.routes["/person/3894"] = FakeResponse(ODD_PERSON)
 
-    person = people.find_person("Christian Bale", "actor")
+    person = people.find_person("Christian Bale", "actor", "tr")
     response = client.get("/actor/Christian+Bale")
 
     assert response.status_code == 200
@@ -949,7 +954,9 @@ def test_person_page_survives_an_odd_tmdb_answer(fake, client):
     assert person["homepage"] is None
     assert person["profile_image_url"] is None
     assert "known_for_label" not in person
-    assert person["biography"] == "Biyografi bilgisi bulunmamaktadır."
+    # The page says that there is no biography, in its language.
+    assert person["biography"] == ""
+    assert "Biyografi bilgisi bulunmamaktadır." in body_text(response)
 
 
 @pytest.mark.parametrize(
@@ -964,7 +971,7 @@ def test_person_page_survives_an_odd_tmdb_answer(fake, client):
 def test_person_search_without_a_usable_id_finds_nobody(fake, results):
     fake.routes["/search/person"] = FakeResponse({"results": results})
 
-    assert people.find_person("Christian Bale", "actor") is None
+    assert people.find_person("Christian Bale", "actor", "tr") is None
     assert fake.paths == ["/search/person"]
 
 
@@ -979,14 +986,14 @@ def test_person_search_skips_results_without_an_id(fake):
     )
     fake.routes["/person/3894"] = FakeResponse(PERSON_DETAILS)
 
-    assert people.find_person("Christian Bale", "actor")["id"] == 3894
+    assert people.find_person("Christian Bale", "actor", "tr")["id"] == 3894
 
 
 def test_person_without_movie_credits_has_an_empty_filmography(fake):
     fake.routes["/search/person"] = FakeResponse({"results": [{"id": 3894}]})
     fake.routes["/person/3894"] = FakeResponse({**PERSON_DETAILS, "movie_credits": ["junk"]})
 
-    assert people.find_person("Christian Bale", "actor")["movies"] == []
+    assert people.find_person("Christian Bale", "actor", "tr")["movies"] == []
 
 
 def test_an_unexpected_error_in_one_poster_lookup_leaves_the_page(
@@ -998,13 +1005,13 @@ def test_an_unexpected_error_in_one_poster_lookup_leaves_the_page(
     cards = [{"id": movie_id} for movie_id in ids]
 
     with caplog.at_level(logging.ERROR):
-        cold_details.add_posters(cards)
+        cold_details.add_posters(cards, "tr")
 
     assert [card["poster_url"] for card in cards] == [
         None if movie_id == 3 else _poster(movie_id) for movie_id in ids
     ]
     assert "Poster lookup for movie 3 failed" in caplog.text
-    assert 3 not in cold_details.poster_cache
+    assert (3, "tr") not in cold_details.poster_cache
 
 
 def test_home_page_renders_when_every_poster_lookup_fails_unexpectedly(
@@ -1030,11 +1037,13 @@ def test_a_fetched_poster_is_used_even_when_the_cache_is_emptied_meanwhile(
     fake.routes["/movie/155"] = FakeResponse(DARK_KNIGHT_TR)
     monkeypatch.setattr(details, "poster_cache", ForgetfulCache())
 
-    assert details.get_movie_poster_url(155) == "https://image.tmdb.org/t/p/w342/dk.jpg"
-    assert details.get_movie_details(155)["poster_url_large"] == (
+    assert details.get_movie_poster_url(155, "tr") == "https://image.tmdb.org/t/p/w342/dk.jpg"
+    assert details.get_movie_details(155, "tr")["poster_url_large"] == (
         "https://image.tmdb.org/t/p/w500/dk.jpg"
     )
-    assert details.get_list_card(155)["poster_url"] == "https://image.tmdb.org/t/p/w342/dk.jpg"
+    assert (
+        details.get_list_card(155, "tr")["poster_url"] == "https://image.tmdb.org/t/p/w342/dk.jpg"
+    )
 
 
 def test_a_slow_tmdb_delays_the_posters_not_the_page(fake, cold_details, monkeypatch):
@@ -1048,12 +1057,160 @@ def test_a_slow_tmdb_delays_the_posters_not_the_page(fake, cold_details, monkeyp
     cards = [{"id": movie_id} for movie_id in ids]
 
     started = time.perf_counter()
-    cold_details.add_posters(cards)
+    cold_details.add_posters(cards, "tr")
 
     assert time.perf_counter() - started < 0.8
     assert [card["poster_url"] for card in cards] == [None] * 12
     # The lookups under way still fill the cache for the next page; the queued ones are
     # dropped instead of piling more work on a slow TMDb.
     time.sleep(1.5)
-    assert sorted(cold_details.poster_cache) == ids[:POSTER_WORKERS]
+    assert sorted(cold_details.poster_cache) == [
+        (movie_id, "tr") for movie_id in ids[:POSTER_WORKERS]
+    ]
     assert len(slow.calls) == POSTER_WORKERS
+
+
+# --- The page language: TMDb texts, posters, trailers and people in Turkish or English ---
+
+
+def test_an_english_page_asks_tmdb_in_english(fake, cold_details, client):
+    fake.routes["/movie/155"] = FakeResponse({**DARK_KNIGHT_TR, "overview": "Batman goes further."})
+
+    response = client.get("/movie/155?lang=en")
+
+    params = dict(fake.calls)["/movie/155"]
+    assert (params["language"], params["include_video_language"]) == ("en-US", "en,null")
+    assert "Batman goes further." in body_text(response)
+
+
+def test_posters_are_cached_per_language(fake, cold_details):
+    fake.routes["/movie/155"] = [
+        FakeResponse({"poster_path": "/tr.jpg"}),
+        FakeResponse({"poster_path": "/en.jpg"}),
+    ]
+
+    assert cold_details.get_movie_poster_url(155, "tr").endswith("/tr.jpg")
+    assert cold_details.get_movie_poster_url(155, "en").endswith("/en.jpg")
+    assert cold_details.get_movie_poster_url(155, "tr").endswith("/tr.jpg")
+    assert [params["language"] for _, params in fake.calls] == ["tr-TR", "en-US"]
+    assert cold_details.poster_cache == {(155, "tr"): "/tr.jpg", (155, "en"): "/en.jpg"}
+
+
+def test_people_are_cached_per_language(fake):
+    fake.routes["/search/person"] = FakeResponse(PERSON_SEARCH)
+    fake.routes["/person/3894"] = [
+        FakeResponse({**PERSON_DETAILS, "biography": "Türkçe biyografi."}),
+        FakeResponse(PERSON_DETAILS),
+    ]
+
+    turkish = people.find_person("Christian Bale", "actor", "tr")
+    english = people.find_person("Christian Bale", "actor", "en")
+
+    assert turkish["biography"] == "Türkçe biyografi."
+    assert english["biography"] == PERSON_DETAILS["biography"]
+    assert people.find_person("Christian Bale", "actor", "tr") is turkish
+    assert [params["language"] for _, params in fake.calls] == ["tr-TR", "tr-TR", "en-US", "en-US"]
+
+
+def test_a_missing_english_text_falls_back_to_the_datasets(fake, cold_details, engine):
+    fake.routes["/movie/155"] = FakeResponse({**DARK_KNIGHT_TR, "overview": "", "tagline": None})
+    row = engine.movies_df.iloc[engine.row_of[155]]
+
+    movie = cold_details.get_movie_details(155, "en")
+
+    assert (movie["overview"], movie["tagline"]) == (row["overview"], row["tagline"])
+
+
+def test_english_details_have_english_genres_and_runtime(fake, cold_details):
+    fake.routes["/movie/155"] = FakeResponse(DARK_KNIGHT_TR)
+
+    movie = cold_details.get_movie_details(155, "en")
+
+    assert movie["runtime_formatted"] == "2 h 32 min"
+    badges = movie["genre_badges"]
+    assert "Action" in [badge["display_name"] for badge in badges]
+    assert all(badge["display_name"] == badge["link_name"] for badge in badges)
+
+
+def test_the_trailer_in_the_page_language_wins():
+    assert tmdb.pick_trailer(TURKISH_VIDEOS, "tr") == "tr"
+    assert tmdb.pick_trailer(TURKISH_VIDEOS, "en") == "en"
+    # An English page asks for no Turkish videos.
+    assert tmdb.VIDEO_LANGUAGES == {"tr": "tr,en,null", "en": "en,null"}
+
+
+def test_a_film_outside_the_dataset_has_its_original_title_in_both_languages(fake, cold_details):
+    fake.routes["/movie/999020"] = FakeResponse(
+        {"id": 999020, "title": "Amelie", "original_title": "Le Fabuleux Destin d'Amélie Poulain"}
+    )
+
+    movie = cold_details.get_movie_details(999020, "en")
+    card = cold_details.get_list_card(999020, "tr")
+
+    assert movie["title"] == card["title"] == "Le Fabuleux Destin d'Amélie Poulain"
+
+
+def test_tmdbs_similar_list_names_dataset_films_by_their_dataset_title(fake, cold_details):
+    fake.routes["/movie/999021"] = FakeResponse({"id": 999021, "title": "X"})
+    fake.routes["/movie/999021/similar"] = FakeResponse(
+        {
+            "results": [
+                {"id": 155, "title": "Kara Şövalye"},
+                {"id": 999022, "title": "Başka Film", "original_title": "Un autre film"},
+            ]
+        }
+    )
+
+    similar = cold_details.get_movie_details(999021, "tr")["similar_movies"]
+
+    assert [card["title"] for card in similar] == ["The Dark Knight", "Un autre film"]
+    assert dict(fake.calls)["/movie/999021/similar"]["language"] == "tr-TR"
+
+
+def test_person_pages_name_dataset_films_by_their_dataset_title(fake, client):
+    fake.routes["/search/person"] = FakeResponse({"results": [{"id": 3894}]})
+    cast = [
+        _credit(155, title="Kara Şövalye", character="Bruce Wayne", vote_count=2),
+        _credit(
+            999023, title="Yeni Film", original_title="A New Film", character="X", vote_count=1
+        ),
+    ]
+    fake.routes["/person/3894"] = FakeResponse({**PERSON_DETAILS, "movie_credits": {"cast": cast}})
+
+    page = Page(body_text(client.get("/actor/Christian+Bale")))
+
+    assert texts(page, "h3", "movie-card-title") == ["The Dark Knight", "A New Film"]
+    # The remembered person keeps TMDb's cards; only the page shows the dataset title.
+    [cached] = people._person_cache.values()
+    assert cached["movies"][0]["title"] == "Kara Şövalye"
+
+
+@pytest.mark.parametrize(
+    ("person_type", "lang", "label"),
+    [("actor", "tr", "Yönetmen"), ("actor", "en", "Director"), ("director", "en", None)],
+)
+def test_known_for_is_named_when_it_is_another_role(fake, person_type, lang, label):
+    fake.routes["/search/person"] = FakeResponse({"results": [{"id": 3894}]})
+    fake.routes["/person/3894"] = FakeResponse(
+        {**PERSON_DETAILS, "known_for_department": "Directing"}
+    )
+
+    person = people.find_person("Christian Bale", person_type, lang)
+
+    # A director page already says "Director"; the page's role is not repeated.
+    assert person.get("known_for_label") == label
+
+
+def test_list_cards_follow_the_page_language(fake, cold_details, client):
+    fake.routes["/movie/155"] = FakeResponse({"poster_path": "/en.jpg"})
+    fake.routes["/movie/999001"] = FakeResponse(
+        {"id": 999001, "title": "Only", "original_title": "Seulement", "poster_path": "/o.jpg"}
+    )
+    client.set_cookie("lang", "en")
+
+    response = client.get("/api/movies", query_string={"ids": "155,999001"})
+
+    cards = response.get_json()
+    assert [card["title"] for card in cards] == ["The Dark Knight", "Seulement"]
+    assert cards[0]["poster_url"] == "https://image.tmdb.org/t/p/w342/en.jpg"
+    assert {params["language"] for _, params in fake.calls} == {"en-US"}

@@ -4,6 +4,7 @@ import logging
 import re
 
 from movierec import tmdb
+from movierec.i18n import TMDB_LANGUAGES, translate
 
 logger = logging.getLogger(__name__)
 
@@ -19,27 +20,27 @@ _NOT_A_ROLE = re.compile(
     r"^\s*(self|himself|herself|themselves)\b|archiv(e|al) footage", re.IGNORECASE
 )
 PERSON_TYPE_DEPARTMENTS = {"director": "Directing", "actor": "Acting"}
-# Turkish labels for TMDb's known_for_department; a department missing here gets no label.
-DEPARTMENT_LABELS = {
-    "Directing": "Yönetmen",
-    "Acting": "Oyuncu",
-    "Writing": "Senarist",
-    "Production": "Yapımcı",
-    "Camera": "Görüntü Yönetmeni",
-    "Editing": "Kurgu",
-    "Sound": "Ses",
-    "Art": "Sanat Yönetmeni",
-    "Costume & Make-Up": "Kostüm ve Makyaj",
-    "Visual Effects": "Görsel Efekt",
-    "Crew": "Ekip",
-    "Lighting": "Işık",
+# Catalogue keys of TMDb's known_for_department; a department missing here gets no label.
+DEPARTMENT_KEYS = {
+    "Directing": "department.directing",
+    "Acting": "department.acting",
+    "Writing": "department.writing",
+    "Production": "department.production",
+    "Camera": "department.camera",
+    "Editing": "department.editing",
+    "Sound": "department.sound",
+    "Art": "department.art",
+    "Costume & Make-Up": "department.costume_make_up",
+    "Visual Effects": "department.visual_effects",
+    "Crew": "department.crew",
+    "Lighting": "department.lighting",
 }
-# Page data per (name, person type), filled by find_person.
-_person_cache: dict[tuple[str, str], dict] = {}
+# Page data per (name, person type, language), filled by find_person.
+_person_cache: dict[tuple[str, str, str], dict] = {}
 
 
-def find_person(name: str, person_type: str) -> dict | None:
-    """Return the person page data, or None if TMDb knows nobody by that name.
+def find_person(name: str, person_type: str, lang: str) -> dict | None:
+    """Return the person page data in lang, or None if TMDb knows nobody by that name.
 
     Raises tmdb.TmdbUnavailableError when TMDb is not configured or cannot be reached.
     """
@@ -48,11 +49,11 @@ def find_person(name: str, person_type: str) -> dict | None:
     if not name or len(name) > MAX_NAME_LENGTH:
         return None
 
-    cache_key = (name, person_type)
+    cache_key = (name, person_type, lang)
     cached = _person_cache.get(cache_key)
     if cached is not None:
         return cached
-    person = _lookup_person(name, person_type)
+    person = _lookup_person(name, person_type, lang)
     # Misses and failures are not remembered, so a person TMDb adds later is found.
     if person is None:
         return None
@@ -62,24 +63,26 @@ def find_person(name: str, person_type: str) -> dict | None:
     return person
 
 
-def _lookup_person(name: str, person_type: str) -> dict | None:
+def _lookup_person(name: str, person_type: str, lang: str) -> dict | None:
     """Search TMDb for the person and build their page data; None when not found."""
-    person_id = _search_person(name, person_type)
+    person_id = _search_person(name, person_type, lang)
     if person_id is None:
         return None
-    details = tmdb.get(f"/person/{person_id}", language="tr-TR", append_to_response="movie_credits")
+    details = tmdb.get(
+        f"/person/{person_id}", language=TMDB_LANGUAGES[lang], append_to_response="movie_credits"
+    )
     if details is None:
         return None
 
-    person = _profile(details)
+    person = _profile(details, person_type, lang)
     person["movies"] = _format_credits(tmdb.record(details.get("movie_credits")), person_type)
-    person["person_type_tr"] = "Yönetmen" if person_type == "director" else "Oyuncu"
     return person
 
 
-def _search_person(name: str, person_type: str) -> int | None:
+def _search_person(name: str, person_type: str, lang: str) -> int | None:
     """Return the TMDb id of the person who best matches ``name``, or None."""
-    data = tmdb.get("/search/person", query=name, language="tr-TR", include_adult="false") or {}
+    language = TMDB_LANGUAGES[lang]
+    data = tmdb.get("/search/person", query=name, language=language, include_adult="false") or {}
     results = [
         result for result in tmdb.records(data.get("results")) if tmdb.valid_id(result.get("id"))
     ]
@@ -97,8 +100,11 @@ def _search_person(name: str, person_type: str) -> int | None:
     return results[0]["id"]
 
 
-def _profile(details: dict) -> dict:
-    """Return the profile part of the person page from TMDb's /person/{id} answer."""
+def _profile(details: dict, person_type: str, lang: str) -> dict:
+    """Return the profile part of the person page from TMDb's /person/{id} answer in lang.
+
+    The biography is "" when TMDb has none in lang; the page then says so.
+    """
     homepage = tmdb.text(details.get("homepage"))
     # The page links to it, so only web addresses pass; a javascript: URL would run on click.
     if not homepage.startswith(("http://", "https://")):
@@ -106,7 +112,7 @@ def _profile(details: dict) -> dict:
     profile = {
         "id": tmdb.valid_id(details.get("id")),
         "name": tmdb.text(details.get("name")),
-        "biography": tmdb.text(details.get("biography")) or "Biyografi bilgisi bulunmamaktadır.",
+        "biography": tmdb.text(details.get("biography")),
         "birthday": tmdb.text(details.get("birthday")),
         "deathday": tmdb.text(details.get("deathday")),
         "place_of_birth": tmdb.text(details.get("place_of_birth")),
@@ -114,9 +120,11 @@ def _profile(details: dict) -> dict:
         "profile_image_url": tmdb.image_url(details.get("profile_path"), "h632"),
         "homepage": homepage,
     }
-    label = DEPARTMENT_LABELS.get(profile["known_for_department"])
-    if label:
-        profile["known_for_label"] = label
+    # The page already names its role; what TMDb knows them for is added when it is another.
+    department = profile["known_for_department"]
+    key = DEPARTMENT_KEYS.get(department)
+    if key and department != PERSON_TYPE_DEPARTMENTS.get(person_type):
+        profile["known_for_label"] = translate(lang, key)
     return profile
 
 
@@ -171,7 +179,7 @@ def _filmography_card(credit: dict, person_type: str) -> dict:
     """Return the card for one film of the person; an actor's card also names the role."""
     card = {
         "id": credit["id"],
-        "title": tmdb.text(credit.get("title")) or tmdb.text(credit.get("name")),
+        "title": tmdb.title(credit) or tmdb.text(credit.get("name")),
         "poster_url": tmdb.image_url(credit.get("poster_path"), "w342"),
         "year": tmdb.release_year(credit),
         "vote_average": tmdb.number(credit.get("vote_average")),

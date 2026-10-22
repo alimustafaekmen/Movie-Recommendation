@@ -136,7 +136,8 @@ def test_movie_page(english, details, monkeypatch):
     [poster] = page.find("img", "detail-image")
     assert poster.attrs["alt"] == "Poster of The Dark Knight"
     [meta] = page.find("ul", "movie-detail-meta")
-    assert meta.text.endswith("Rating: 8.3 /10 12,002 votes")
+    assert meta.text == "2008 2 h 32 min Rating: 8.3 /10 12,002 votes"
+    assert texts(page, "a", href="/?tur=Action") == ["Action"]
     assert texts(page, "h2") == [
         "Overview",
         "Genres",
@@ -200,10 +201,19 @@ def test_one_vote_is_counted_in_the_singular(english, details, monkeypatch):
     assert meta.text.endswith("1 vote")
 
 
+def test_person_page_without_a_biography(english, monkeypatch):
+    person = {**PERSON, "biography": ""}
+    monkeypatch.setattr("movierec.web.movies.find_person", lambda name, person_type, lang: person)
+    page = _page(english, "/actor/Christian+Bale")
+
+    assert "Biography" in texts(page, "h2")
+    assert texts(page, "p", "detail-text") == ["No biography is available."]
+
+
 def test_person_page(english, monkeypatch):
     person = {**PERSON, "biography": LONG_BIOGRAPHY, "deathday": "2050-02-01"}
     person["homepage"] = "https://example.com/bale"
-    monkeypatch.setattr("movierec.web.movies.find_person", lambda name, person_type: person)
+    monkeypatch.setattr("movierec.web.movies.find_person", lambda name, person_type, lang: person)
     page = _page(english, "/actor/Christian+Bale")
 
     [photo] = page.find("img", "detail-image")
@@ -227,7 +237,7 @@ def test_person_page(english, monkeypatch):
 )
 def test_person_page_role_and_empty_filmography(english, monkeypatch, path, role, no_films):
     person = {**PERSON, "movies": [], "profile_image_url": None}
-    monkeypatch.setattr("movierec.web.movies.find_person", lambda name, person_type: person)
+    monkeypatch.setattr("movierec.web.movies.find_person", lambda name, person_type, lang: person)
     page = _page(english, path)
 
     assert texts(page, "p", "person-role") == [role]

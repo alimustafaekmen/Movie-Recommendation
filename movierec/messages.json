@@ -19,6 +19,54 @@
     "en": "Unknown",
     "tr": "Bilinmiyor"
   },
+  "department.acting": {
+    "en": "Actor",
+    "tr": "Oyuncu"
+  },
+  "department.art": {
+    "en": "Art director",
+    "tr": "Sanat Yönetmeni"
+  },
+  "department.camera": {
+    "en": "Cinematographer",
+    "tr": "Görüntü Yönetmeni"
+  },
+  "department.costume_make_up": {
+    "en": "Costume and make-up",
+    "tr": "Kostüm ve Makyaj"
+  },
+  "department.crew": {
+    "en": "Crew",
+    "tr": "Ekip"
+  },
+  "department.directing": {
+    "en": "Director",
+    "tr": "Yönetmen"
+  },
+  "department.editing": {
+    "en": "Editor",
+    "tr": "Kurgu"
+  },
+  "department.lighting": {
+    "en": "Lighting",
+    "tr": "Işık"
+  },
+  "department.production": {
+    "en": "Producer",
+    "tr": "Yapımcı"
+  },
+  "department.sound": {
+    "en": "Sound",
+    "tr": "Ses"
+  },
+  "department.visual_effects": {
+    "en": "Visual effects",
+    "tr": "Görsel Efekt"
+  },
+  "department.writing": {
+    "en": "Writer",
+    "tr": "Senarist"
+  },
   "error.bad_request": {
     "en": "The request could not be processed. Please try again.",
     "tr": "İstek işlenemedi. Lütfen tekrar deneyin."
@@ -298,6 +346,10 @@
   "person.known_for": {
     "en": "Known for: {label}",
     "tr": "Tanındığı alan: {label}"
+  },
+  "person.no_biography": {
+    "en": "No biography is available.",
+    "tr": "Biyografi bilgisi bulunmamaktadır."
   },
   "person.no_films_actor": {
     "en": "No filmography was found for this actor.",

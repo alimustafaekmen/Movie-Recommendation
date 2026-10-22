@@ -31,7 +31,7 @@ _SUGGESTIONS_MAX_AGE_SECONDS = 24 * 60 * 60
 # similarity search.
 _SINGLE_VALUE_FIELDS = ("yonetmen", "min_yil", "max_yil", "min_puan")
 _FILTER_FIELDS = ("tur", *_SINGLE_VALUE_FIELDS)
-# "Daha fazla göster" adds one more grid of results; a longer ?n= still works by URL.
+# The "Show more" link adds one more grid of results; a longer ?n= still works by URL.
 _MORE_RESULTS_LIMIT = 2 * DEFAULT_RECOMMENDATION_COUNT
 # Shown instead of results when the engine fails; the error itself only goes to the log.
 _SEARCH_FAILED_WARNING = message("warning.search_failed")
@@ -71,7 +71,7 @@ def _similar_search(engine: RecommendationEngine, args, num: int) -> dict:
         logger.exception("Recommendation request failed")
         suggestions = []
         warnings = [_SEARCH_FAILED_WARNING]
-    get_details().add_posters(suggestions)
+    get_details().add_posters(suggestions, get_lang())
     # Name the film the results are for: a misspelt or lower-case query shows its match.
     if suggestions:
         movie_id = engine.find_movie_id(film)
@@ -104,7 +104,7 @@ def _filter_search(engine: RecommendationEngine, args, num: int) -> dict:
         logger.exception("Recommendation request failed")
         suggestions = []
         warnings = [_SEARCH_FAILED_WARNING]
-    get_details().add_posters(suggestions)
+    get_details().add_posters(suggestions, get_lang())
     # The engine searched a reversed year range in order; the page shows it that way too.
     if YEARS_SWAPPED_WARNING in warnings:
         filters["min_yil"], filters["max_yil"] = filters["max_yil"], filters["min_yil"]
@@ -190,7 +190,7 @@ def home():
     if search["mode"] is None:
         popular = engine.popular_cards()
         # Posters come from TMDb; during its cooldown the grid shows placeholders instead.
-        get_details().add_posters(popular)
+        get_details().add_posters(popular, get_lang())
     # The engine returns catalogue keys; the page shows them in its language.
     search["warnings"] = [t_message(warning) for warning in search["warnings"]]
     return render_template(
@@ -209,7 +209,7 @@ def movie_detail(movie_id: int):
         abort(503)
 
     try:
-        movie_data = get_details().get_movie_details(movie_id)
+        movie_data = get_details().get_movie_details(movie_id, get_lang())
     except TmdbUnavailableError:
         text = t("error.movie_unavailable")
         return render_template("error.html", code=503, message=text), 503
@@ -236,14 +236,33 @@ def _render_person_page(name: str, person_type: str, not_found_key: str):
     """
     # Flashes are written in the request's language; the page that shows them is the next one.
     try:
-        person = find_person(name, person_type)
+        person = find_person(name, person_type, get_lang())
     except TmdbUnavailableError:
         flash(t("flash.person_unavailable"), "warning")
         return redirect(url_for("movies.home"))
     if person is None:
         flash(t(not_found_key, name=name[:_MAX_ECHOED_LENGTH]), "warning")
         return redirect(url_for("movies.home"))
+    # A copy: find_person remembers the person it returns.
+    person = {**person, "movies": _with_dataset_titles(person["movies"])}
     return render_template("person_detail.html", person=person, person_type=person_type)
+
+
+def _with_dataset_titles(movies: list[dict]) -> list[dict]:
+    """Return filmography cards with the dataset title for dataset films.
+
+    A film then reads the same on a person page as on its own page and cards. Without the
+    engine the cards keep TMDb's titles.
+    """
+    engine = get_engine()
+    if engine is None:
+        return movies
+    cards = []
+    for movie in movies:
+        if movie["id"] in engine.row_of:
+            movie = {**movie, "title": engine.title_of(movie["id"])}
+        cards.append(movie)
+    return cards
 
 
 @bp.route("/director/<path:director_name>")

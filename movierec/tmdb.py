@@ -22,9 +22,10 @@ READ_TIMEOUT_SECONDS = 5
 # waiting for its own timeouts.
 COOLDOWN_SECONDS = 30.0
 TRAILER_TYPES = ("Trailer", "Teaser")
-# With language=tr-TR, TMDb only returns Turkish videos unless other languages are asked
-# for, and most films have no Turkish trailer; "null" adds videos without a language.
-VIDEO_LANGUAGES = "tr,en,null"
+# The videos asked for with each page language (include_video_language). With a language TMDb
+# only returns videos in it unless others are asked for, and most films have no Turkish
+# trailer; "null" adds videos without a language.
+VIDEO_LANGUAGES = {"tr": "tr,en,null", "en": "en,null"}
 # Connections kept open to TMDb. The poster workers (8) and gunicorn's request threads (4)
 # share the session; urllib3's default of 10 would open and drop the extra ones each time.
 POOL_SIZE = 16
@@ -140,6 +141,14 @@ def image_url(path, size: str) -> str | None:
     return f"{TMDB_IMAGE_BASE_URL}{size}{path}"
 
 
+def title(data: dict) -> str:
+    """Return a TMDb film's title as the pages show it: its original title, else its title.
+
+    A film has one title in both languages, so it reads the same whatever the page language.
+    """
+    return text(data.get("original_title")) or text(data.get("title"))
+
+
 def release_year(data: dict) -> int:
     """Return the year of a TMDb movie or credit from its 'YYYY-MM-DD' release_date, or 0."""
     release_date = text(data.get("release_date"))
@@ -149,12 +158,12 @@ def release_year(data: dict) -> int:
     return int(release_date[:4])
 
 
-def pick_trailer(videos) -> str | None:
+def pick_trailer(videos, lang: str) -> str | None:
     """Return the YouTube key of the best video, or None.
 
     videos: the "results" list of TMDb's videos answer. Trailers beat teasers and an official
-    video beats the others of its type; among those a Turkish one wins, otherwise TMDb's order
-    is kept.
+    video beats the others of its type; among those one in the page language (lang) wins,
+    otherwise TMDb's order is kept.
     """
     youtube_videos = []
     for video in records(videos):
@@ -168,7 +177,7 @@ def pick_trailer(videos) -> str | None:
         official = [video for video in of_type if video.get("official")]
         candidates = official if official else of_type
         for video in candidates:
-            if video.get("iso_639_1") == "tr":
+            if video.get("iso_639_1") == lang:
                 return video["key"]
         return candidates[0]["key"]
     return None

@@ -11,6 +11,7 @@ from flask import Blueprint, abort, jsonify, render_template, request
 
 from movierec.engine import RecommendationEngine
 from movierec.web import MAX_MOVIE_ID, get_details, get_engine
+from movierec.web.language import get_lang
 
 bp = Blueprint("lists", __name__)
 
@@ -99,16 +100,18 @@ def _list_cards(engine: RecommendationEngine, ids: list[int], deadline: float) -
             outside_count += 1
             kept_ids.append(movie_id)
     details = get_details()
+    # Posters and the titles of films outside the dataset come in the page's language.
+    lang = get_lang()
     # Dataset cards only need a poster, so those are fetched in parallel up front and handed
     # to the cards. Ids outside the dataset are full lookups of ids the visitor chose, and
     # stay one at a time.
-    poster_paths = details.prefetch_posters(dataset_ids)
+    poster_paths = details.prefetch_posters(dataset_ids, lang)
     cards = []
     for movie_id in kept_ids:
         is_outside_dataset = movie_id not in engine.row_of
         if is_outside_dataset and monotonic() > deadline:
             continue
-        card = details.get_list_card(movie_id, poster_paths)
+        card = details.get_list_card(movie_id, lang, poster_paths)
         if card is not None:
             cards.append(card)
     return cards

@@ -53,7 +53,6 @@ PERSON = {
             "character": "Bruce Wayne",
         }
     ],
-    "person_type_tr": "Oyuncu",
 }
 
 # Home page searches, each a shareable GET URL: results, a warning and the empty state.
@@ -114,7 +113,9 @@ def details(app_module):
 
 @pytest.fixture
 def person_client(client, monkeypatch):
-    monkeypatch.setattr("movierec.web.movies.find_person", lambda name, person_type: dict(PERSON))
+    monkeypatch.setattr(
+        "movierec.web.movies.find_person", lambda name, person_type, lang: dict(PERSON)
+    )
     return client
 
 
