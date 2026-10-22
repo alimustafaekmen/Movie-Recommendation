@@ -111,9 +111,9 @@ def _search(engine, args, num):
     return search
 
 
-def _more_url(form, num, shown):
+def _more_url(form, num, has_more):
     """Link to the same search with more results, or None when every result is shown."""
-    if shown < num or num >= _MORE_RESULTS_LIMIT:
+    if not has_more or num >= _MORE_RESULTS_LIMIT:
         return None
     # Rankings are prefix-consistent, so the old results stay put and the link can jump
     # straight to the first new card.
@@ -145,7 +145,10 @@ def home():
         return _legacy_genre_redirect(args)
 
     num = clamp_count(args.get("n"))
-    search = _search(engine, args, num)
+    # One result past num tells whether a "more" link would show anything new.
+    search = _search(engine, args, num + 1)
+    has_more = len(search["suggestions"]) > num
+    search["suggestions"] = search["suggestions"][:num]
     popular = []
     if search["mode"] is None:
         popular = engine.popular_cards()
@@ -154,7 +157,7 @@ def home():
     return render_template(
         "home.html",
         **search,
-        more_url=_more_url(search["form"], num, len(search["suggestions"])),
+        more_url=_more_url(search["form"], num, has_more),
         popular=popular,
         all_genres=engine.all_genres,
     )
@@ -168,6 +171,9 @@ def movie_detail(movie_id):
 
     try:
         movie_data = get_details().get_movie_details(movie_id)
+    except TmdbUnavailableError:
+        message = "Film detayı şu anda alınamıyor."
+        return render_template("error.html", code=503, message=message), 503
     except Exception:
         logger.exception("Movie details failed for id %s", movie_id)
         message = "Film detayı şu anda alınamıyor."

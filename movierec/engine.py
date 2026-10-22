@@ -36,8 +36,10 @@ POPULAR_CARD_COUNT = 12
 DETAIL_SIMILAR_COUNT = 12
 MAX_QUERY_LENGTH = 100
 MIN_QUERY_LENGTH = 2
-# Recommendations from a favourites list use this many of its films, newest first.
+# Recommendations from a favourites list use this many of its films, newest first, and
+# this many similar films of each.
 MAX_FAVOURITES_USED = 20
+FAVOURITE_NEIGHBOURS = MAX_RECOMMENDATION_COUNT
 # Re-ranking looks a little past the longest list we serve. The pool does not depend on the
 # requested count, so every list is a prefix of the MAX_RECOMMENDATION_COUNT list.
 NEIGHBOUR_POOL_SIZE = 3 * MAX_RECOMMENDATION_COUNT + 1
@@ -95,13 +97,23 @@ class RecommendationEngine:
         # a warning for each one a visitor sends.
         if not choices or not utils.full_process(query or ""):
             return None
-        # WRatio's partial scoring lets a one-letter title like "O" win for "Bogs"; the cap
-        # keeps short titles such as "Saw" in play for queries like "Saw 2004".
-        choices = [choice for choice in choices if len(choice) * 2 >= min(len(query), 6)]
-        match = process.extractOne(
-            query, choices, scorer=fuzz.WRatio, score_cutoff=FUZZY_SCORE_CUTOFF
+        # WRatio's partial scoring lets a short title win inside a longer word ("O" for "Bogs",
+        # "Her" for "Godfather 2"), so a title under half the query's length only counts when
+        # all its words are in the query ("Saw" for "Saw 2004").
+        words = set(utils.full_process(query).split())
+        choices = [
+            choice
+            for choice in choices
+            if len(choice) * 2 >= len(query) or set(utils.full_process(choice).split()) <= words
+        ]
+        matches = process.extractBests(
+            query, choices, scorer=fuzz.WRatio, score_cutoff=FUZZY_SCORE_CUTOFF, limit=None
         )
-        return match[0] if match else None
+        if not matches:
+            return None
+        # WRatio often ties (every "... 2" title scores the same); the closest whole title wins.
+        top = [choice for choice, score in matches if score == matches[0][1]]
+        return max(top, key=lambda choice: fuzz.token_sort_ratio(query, choice))
 
     def find_movie_id(self, query: str) -> int | None:
         """Return the TMDb id of the movie a title query refers to, or None."""
@@ -179,7 +191,7 @@ class RecommendationEngine:
         listed = {*favourite_ids, *exclude_ids}
         scores = {}
         for favourite in used[:MAX_FAVOURITES_USED]:
-            similar = self.similar_movie_ids(favourite, MAX_RECOMMENDATION_COUNT)
+            similar = self.similar_movie_ids(favourite, FAVOURITE_NEIGHBOURS)
             for rank, movie_id in enumerate(similar):
                 if movie_id not in listed:
                     scores[movie_id] = scores.get(movie_id, 0) + 1 / (rank + 1)

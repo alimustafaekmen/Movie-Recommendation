@@ -39,6 +39,8 @@ def test_security_headers_are_set(client):
     assert headers["X-Content-Type-Options"] == "nosniff"
     assert headers["X-Frame-Options"] == "DENY"
     assert headers["Referrer-Policy"] == "strict-origin-when-cross-origin"
+    assert headers["Cross-Origin-Opener-Policy"] == "same-origin"
+    assert headers["Cross-Origin-Resource-Policy"] == "same-origin"
 
 
 def test_session_cookie_is_httponly_and_samesite_lax(client):

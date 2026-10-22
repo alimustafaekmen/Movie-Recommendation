@@ -2,8 +2,11 @@
 // the films like the favourites from /api/recommendations.
 import { NOT_SAVED_MESSAGE, openListStore, watchLists } from './list_store.js';
 
-// The most ids /api/movies accepts in one request, and /api/recommendations reads per list.
+// The most ids /api/recommendations reads per list.
 const MAX_IDS_PER_REQUEST = 100;
+// /api/movies looks up at most this many ids outside the dataset (MAX_TMDB_LOOKUPS), so chunks
+// of this size never lose one.
+const MAX_CARD_IDS_PER_REQUEST = 20;
 const LOAD_FAILED_MESSAGE = 'Filmler şu anda yüklenemedi. Lütfen sayfayı yenileyin.';
 const SOME_FAILED_MESSAGE = 'Bazı filmler şu anda yüklenemedi.';
 
@@ -27,15 +30,15 @@ const isCard = (card) =>
     typeof card === 'object' && card !== null && Number.isInteger(card.id) && typeof card.title === 'string';
 
 /**
- * The cards (a Map by id) for the ids from the cards URL, MAX_IDS_PER_REQUEST ids per request.
+ * The cards (a Map by id) for the ids from the cards URL, MAX_CARD_IDS_PER_REQUEST ids per request.
  * A request that fails (network, error status, a body that is not a JSON list) only loses its
  * own cards and sets failed; malformed cards are left out like ids the server could not resolve.
  */
 export async function fetchCards(url, ids) {
     const cards = new Map();
     let failed = false;
-    for (let start = 0; start < ids.length; start += MAX_IDS_PER_REQUEST) {
-        const query = ids.slice(start, start + MAX_IDS_PER_REQUEST).join(',');
+    for (let start = 0; start < ids.length; start += MAX_CARD_IDS_PER_REQUEST) {
+        const query = ids.slice(start, start + MAX_CARD_IDS_PER_REQUEST).join(',');
         try {
             const response = await fetch(`${url}?ids=${query}`, {
                 headers: { Accept: 'application/json' },

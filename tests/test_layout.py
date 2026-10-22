@@ -134,7 +134,6 @@ SHARED_CLASSES = [
     ".btn",
     ".btn-primary",
     ".btn-secondary",
-    ".btn-ghost",
     ".tag-list",
     ".tag",
     ".meta-line",

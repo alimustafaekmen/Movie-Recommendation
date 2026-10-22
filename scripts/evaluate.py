@@ -74,10 +74,12 @@ def series_siblings(movies) -> dict:
 
 def metrics(movies, recommendations: dict) -> dict:
     """The six columns for {seed row: recommended rows} over the ``movies`` DataFrame."""
+    from movierec.movie_details import cast_names
+
     genres = movies["genre_list"].map(set).tolist()
     directors = movies["directors"].map(set).tolist()
     # The cast column keeps billing order.
-    leads = movies["cast"].map(lambda cast: set(cast.split(", ")[:LEAD_ACTORS]) - {""}).tolist()
+    leads = movies["cast"].map(lambda cast: set(cast_names(cast, LEAD_ACTORS))).tolist()
     votes = movies["vote_count"].tolist()
     siblings = series_siblings(movies)
     pairs = [(seed, rec) for seed, recs in recommendations.items() for rec in recs]

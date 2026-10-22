@@ -13,13 +13,14 @@ from movierec.web import MAX_MOVIE_ID, get_details, get_engine
 
 bp = Blueprint("lists", __name__)
 
-# Keeps the query string short; my_lists.js sends longer lists in chunks of this size.
+# Keeps the query string short.
 MAX_IDS_PER_REQUEST = 100
 # Each id outside the dataset costs a TMDb request, so one call looks up at most this many
-# and leaves out the rest. Dataset ids do not count.
+# and leaves out the rest. Dataset ids do not count. my_lists.js asks for cards in chunks of
+# this size, so it loses none.
 MAX_TMDB_LOOKUPS = 20
 # ...and starts none after this many seconds, so a slow TMDb cannot hold the request for
-# minutes. Ids left out stay in the browser's list and are asked for again next time.
+# minutes. Ids left out stay in the browser's list and are asked for again on the next load.
 TMDB_LOOKUP_SECONDS = 8.0
 # At most ten digits, so int() never sees a huge number.
 _ID_TOKEN = re.compile(r"[0-9]{1,10}")

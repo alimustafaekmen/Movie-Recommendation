@@ -27,7 +27,7 @@
     --color-control-border: #8A8A8F;
     --color-tag-bg: #F1F1F1;
     --color-tag-bg-hover: #E6E6E6;
-    /* The hover fill of ghost and close buttons: a tint of the text colour over any background. */
+    /* The hover fill of close buttons: a tint of the text colour over any background. */
     --color-hover-overlay: rgb(14 14 16 / 0.06);
 
     /* Text: muted stays readable (4.5:1) on white, the quiet fill and the tag background.
@@ -414,16 +414,6 @@ a:hover {
 .btn-secondary:hover {
     color: var(--color-ink);
     background-color: var(--color-tag-bg);
-}
-
-.btn-ghost {
-    color: var(--color-ink);
-    background-color: transparent;
-}
-
-.btn-ghost:hover {
-    color: var(--color-ink);
-    background-color: var(--color-hover-overlay);
 }
 
 /* A submitting form marks its button aria-disabled (so focus stays on it); it looks inactive too. */

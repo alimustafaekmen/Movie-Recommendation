@@ -396,6 +396,14 @@ def test_more_link_is_left_out_when_every_result_is_shown(client):
     assert not _more_link(page)
 
 
+def test_more_link_is_left_out_when_exactly_twelve_results_match(client):
+    # Joel Coen has exactly 12 films with 100 or more votes, in the dataset and the fixture.
+    _, page = _get(client, "/?yonetmen=Joel+Coen")
+
+    assert len(_card_ids(page)) == 12
+    assert not _more_link(page)
+
+
 @pytest.mark.parametrize(
     ("n", "count"), [("5", 5), ("abc", 12), ("", 12), ("0", 1), ("30", 30), ("99", 30)]
 )

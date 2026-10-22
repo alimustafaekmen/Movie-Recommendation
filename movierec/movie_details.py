@@ -91,11 +91,16 @@ class MovieDetails:
             path = self._fetch_poster_path(movie_id)
         return tmdb.image_url(path, size)
 
-    def _fetch_movie(self, movie_id: int, **params) -> dict | None:
-        """GET /movie/{id} and remember its poster path; None if unavailable."""
+    def _fetch_movie(self, movie_id: int, *, strict: bool = False, **params) -> dict | None:
+        """GET /movie/{id} and remember its poster path; None if unavailable.
+
+        strict raises TmdbUnavailableError instead when a configured TMDb fails.
+        """
         try:
             data = tmdb.get(f"/movie/{movie_id}", **params)
         except tmdb.TmdbUnavailableError:
+            if strict and tmdb.is_configured():
+                raise
             return None
         # Only an actual answer is cached, so a network blip does not hide a poster
         # until the next restart.
@@ -105,7 +110,11 @@ class MovieDetails:
         return data
 
     def get_movie_details(self, movie_id: int | str) -> dict | None:
-        """Return the detail-page dictionary for a movie, from the dataset or TMDb."""
+        """Return the detail-page dictionary for a movie, from the dataset or TMDb.
+
+        A film outside the dataset has no page without TMDb, so while a configured TMDb fails
+        it raises TmdbUnavailableError instead of returning None like an unknown id.
+        """
         try:
             movie_id = int(movie_id)
         except (ValueError, TypeError):
@@ -118,6 +127,7 @@ class MovieDetails:
         # One request per page: credits are only needed for movies outside the dataset.
         tmdb_movie = self._fetch_movie(
             movie_id,
+            strict=not in_dataset,
             language="tr-TR",
             append_to_response="videos" if in_dataset else "credits,videos",
             include_video_language=tmdb.VIDEO_LANGUAGES,

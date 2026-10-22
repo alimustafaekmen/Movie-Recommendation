@@ -123,18 +123,18 @@ async function withFetch(answer, run) {
   }
 }
 
-test('cards are fetched in chunks of 100 ids', async () => {
+test('cards are fetched in chunks of 20 ids, as many as the server looks up on TMDb', async () => {
   const ids = Array.from({ length: 250 }, (_, index) => index + 1);
   const { result, requests } = await withFetch((asked) => json(asked.map((id) => card(id, `Film ${id}`))), () => fetchCards(CARDS_URL, ids));
 
-  assert.equal(requests.length, 3);
-  assert.equal(requests[0], `${CARDS_URL}?ids=${ids.slice(0, 100).join(',')}`);
+  assert.equal(requests.length, 13);
+  assert.equal(requests[0], `${CARDS_URL}?ids=${ids.slice(0, 20).join(',')}`);
   assert.equal(result.cards.size, 250);
   assert.equal(result.failed, false);
 });
 
 test('a chunk that fails keeps the cards of the others and is reported', async () => {
-  const ids = Array.from({ length: 150 }, (_, index) => index + 1);
+  const ids = Array.from({ length: 30 }, (_, index) => index + 1);
   const answers = [
     (asked) => json(asked.map((id) => card(id, `Film ${id}`))),
     () => {
@@ -143,7 +143,7 @@ test('a chunk that fails keeps the cards of the others and is reported', async (
   ];
   const { result } = await withFetch((asked) => answers.shift()(asked), () => fetchCards(CARDS_URL, ids));
 
-  assert.equal(result.cards.size, 100);
+  assert.equal(result.cards.size, 20);
   assert.equal(result.failed, true);
 });
 

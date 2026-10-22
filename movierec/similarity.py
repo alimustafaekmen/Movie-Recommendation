@@ -71,8 +71,8 @@ def hybrid_score(
     The weights come from movierec.config; the arrays describe one candidate pool and the
     maxima are taken over it.
     """
-    # Raw cosine scores in a pool span roughly 0.2-0.3 for a typical film; unscaled, the similarity weight
-    # would lose to popularity and votes, and blockbusters would outrank close matches.
+    # Raw cosines in a pool span roughly 0.13-0.24 for a typical film; unscaled, the similarity
+    # weight would lose to popularity and votes, and blockbusters would outrank close matches.
     similarity = similarity / max(similarity.max(initial=0.0), 1e-9)
     # Both are heavy-tailed; scaled linearly, one blockbuster in the pool would push every
     # other candidate's term to about 0.

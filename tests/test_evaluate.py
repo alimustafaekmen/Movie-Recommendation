@@ -34,7 +34,7 @@ def test_metrics_on_hand_made_lists():
             "genre_list": [["Action", "Drama"], ["Drama"], []],
             "directors": [["Ann"], ["Ann", "Bob"], ["Cy"]],
             "vote_count": [10, 300, 500],
-            "cast": ["Ann, Bob, Cy, Dee", "Dee, Eve", "Cy"],
+            "cast": ["Louis Gossett, Jr., Ann, Cy, Dee", "Dee, Eve", "Cy"],
             "title": ["Jaws", "Jaws 2", "Jaws: The Revenge"],
         }
     )
@@ -45,7 +45,8 @@ def test_metrics_on_hand_made_lists():
     assert result["Same director"] == pytest.approx(1 / 3)
     assert result["Catalog coverage"] == 1.0
     assert result["Median votes"] == 300
-    # Cy is billed in the top three of films 0 and 2; Dee is only fourth for film 0.
+    # Cy is billed in the top three of films 0 and 2 ("Louis Gossett, Jr." is one name); Dee
+    # is only fourth for film 0.
     assert result["Shared lead actor"] == pytest.approx(2 / 3)
     # Film 0 finds both of its siblings. Film 2's only sibling is film 1, since film 0 has
     # under 100 votes, and its list misses it.

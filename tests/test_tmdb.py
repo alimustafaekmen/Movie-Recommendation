@@ -634,6 +634,18 @@ def test_tmdb_only_movie_renders_from_canned_json(fake, client, cold_details):
     assert fake.paths.count("/movie/999001") == 1
 
 
+def test_tmdb_only_movie_page_is_unavailable_during_an_outage_not_missing(
+    fake, client, cold_details
+):
+    assert client.get("/movie/999009").status_code == 404
+
+    fake.routes["/movie/999001"] = requests.Timeout()
+    response = client.get("/movie/999001")
+
+    assert response.status_code == 503
+    assert "Film detayı şu anda alınamıyor." in response.get_data(as_text=True)
+
+
 def test_dataset_movie_details_list_the_first_12_cast_names(cold_details):
     movie = cold_details.get_movie_details(155)
 

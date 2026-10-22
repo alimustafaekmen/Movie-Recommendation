@@ -64,6 +64,17 @@ def test_short_title_with_extra_words(engine, query, movie_id):
     assert engine.find_movie_id(query) == movie_id
 
 
+@pytest.mark.real_dataset
+@pytest.mark.parametrize(
+    ("query", "movie_id"),
+    [("Godfather 2", 238), ("Godfather II", 240), ("Hangover 2", 45243)],
+)
+def test_sequel_query_does_not_match_a_short_unrelated_title(engine, query, movie_id):
+    # WRatio gave "Her" (inside "godfather") and "2 Fast 2 Furious" (first of the tied "2"
+    # titles) 90 and 86.
+    assert engine.find_movie_id(query) == movie_id
+
+
 @pytest.mark.parametrize("query", ["a", " ", "", None, 5, "qqqqzzzzxx"])
 def test_find_movie_id_rejects_junk(engine, query):
     assert engine.find_movie_id(query) is None
@@ -306,12 +317,13 @@ def test_one_favourite_recommends_its_own_similar_list(engine):
     assert engine.recommend_from_favourites([155], []) == engine.similar_movie_ids(155)
 
 
-def test_a_film_shared_by_two_favourites_ranks_first(engine, monkeypatch):
+def test_a_film_shared_by_three_favourites_ranks_first(engine, monkeypatch):
     a, b, c = engine.movies_df["id"].head(3).tolist()
-    # 3 is second in every list: 3 * 1/2 beats the 1/1 of the tops, which keep their order.
-    _fake_similar(engine, monkeypatch, {a: [1, 3], b: [2, 3], c: [6, 3]})
+    # 3 is second in every list: 3 * 1/2 beats the 1/1 of the tops, which keep the order
+    # they first appear in, not the order of their ids.
+    _fake_similar(engine, monkeypatch, {a: [6, 3], b: [2, 3], c: [9, 3]})
 
-    assert engine.recommend_from_favourites([a, b, c], []) == [3, 1, 2, 6]
+    assert engine.recommend_from_favourites([a, b, c], []) == [3, 6, 2, 9]
 
 
 def test_listed_films_are_not_recommended(engine, monkeypatch):
@@ -328,11 +340,14 @@ def test_unknown_favourites_are_ignored(engine):
 
 def test_only_the_first_20_dataset_favourites_count(engine, monkeypatch):
     favourites = engine.movies_df["id"].head(21).tolist()
-    _fake_similar(engine, monkeypatch, {movie_id: [-movie_id] for movie_id in favourites})
+    rankings = {movie_id: [-movie_id] for movie_id in favourites}
+    # The 21st favourite adds no list of its own but is still left out of the others.
+    rankings[favourites[19]].append(favourites[20])
+    _fake_similar(engine, monkeypatch, rankings)
 
     watchlist = [-movie_id for movie_id in favourites[:19]]
 
-    # The unknown id takes no place among the 20, and the 21st favourite adds nothing.
+    # The unknown id takes no place among the 20.
     assert engine.recommend_from_favourites([424242, *favourites], watchlist) == [-favourites[19]]
 
 

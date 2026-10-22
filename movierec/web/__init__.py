@@ -216,6 +216,9 @@ def _register_security_headers(app):
         # For browsers without CSP frame-ancestors.
         response.headers.setdefault("X-Frame-Options", "DENY")
         response.headers.setdefault("Referrer-Policy", "strict-origin-when-cross-origin")
+        # No Cross-Origin-Embedder-Policy: TMDb posters and the YouTube trailer do not opt in.
+        response.headers.setdefault("Cross-Origin-Opener-Policy", "same-origin")
+        response.headers.setdefault("Cross-Origin-Resource-Policy", "same-origin")
         # SESSION_COOKIE_SECURE=1 says the site is served over HTTPS. No includeSubDomains:
         # other sites on the same domain may still need plain HTTP.
         if app.config["SESSION_COOKIE_SECURE"]:
