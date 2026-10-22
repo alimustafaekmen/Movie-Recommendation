@@ -1,7 +1,8 @@
-// The my lists page: the ids come from this browser's storage, the cards from /api/movies.
+// The my lists page: the ids come from this browser's storage, the cards from /api/movies and
+// the films like the favourites from /api/recommendations.
 import { NOT_SAVED_MESSAGE, openListStore, watchLists } from './list_store.js';
 
-// The most ids /api/movies accepts in one request.
+// The most ids /api/movies accepts in one request, and /api/recommendations reads per list.
 const MAX_IDS_PER_REQUEST = 100;
 const LOAD_FAILED_MESSAGE = 'Filmler şu anda yüklenemedi. Lütfen sayfayı yenileyin.';
 const SOME_FAILED_MESSAGE = 'Bazı filmler şu anda yüklenemedi.';
@@ -52,6 +53,39 @@ export async function fetchCards(url, ids) {
         }
     }
     return { cards, failed };
+}
+
+/**
+ * The cards from the recommendations URL for the favourites and watchlist, of which it sends the
+ * first MAX_IDS_PER_REQUEST ids each. No favourites asks for nothing; a failed request gives no
+ * cards, so the section stays hidden.
+ */
+export async function fetchRecommendations(url, favorites, watchlist) {
+    if (!favorites.length) {
+        return [];
+    }
+    const query = (ids) => ids.slice(0, MAX_IDS_PER_REQUEST).join(',');
+    try {
+        const response = await fetch(`${url}?favorites=${query(favorites)}&watchlist=${query(watchlist)}`, {
+            headers: { Accept: 'application/json' },
+        });
+        if (!response.ok) {
+            throw new Error(`Unexpected response ${response.status}`);
+        }
+        const body = await response.json();
+        return Array.isArray(body) ? body.filter(isCard) : [];
+    } catch {
+        return [];
+    }
+}
+
+/**
+ * The recommended cards to show, in the server's order: none without favourites, and never a
+ * film on a list, as the server only reads the first MAX_IDS_PER_REQUEST ids of each.
+ */
+export function recommendationsToShow(favorites, watchlist, cards) {
+    const listed = new Set([...favorites, ...watchlist]);
+    return favorites.length ? cards.filter((card) => !listed.has(card.id)) : [];
 }
 
 /** A rating such as 8.2 as '8,2', as the format_rating filter shows it; no rating gives ''. */
@@ -157,7 +191,7 @@ function showList(section, count, cards, template, movieUrl) {
 
 function main() {
     const page = document.querySelector('.my-lists-page');
-    const { cardsUrl, movieUrl } = page.dataset;
+    const { cardsUrl, movieUrl, recommendationsUrl } = page.dataset;
     const status = page.querySelector('.list-status');
     const template = document.getElementById('movie-card-template');
     const store = openListStore();
@@ -166,6 +200,21 @@ function main() {
     const known = new Map();
     let renders = 0;
     let drawn = null;
+    const recommendations = page.querySelector('.recommendations');
+    let recommendationRuns = 0;
+
+    // The section keeps its cards until the new ones arrive, so a list change does not make it
+    // blink; it hides when there is nothing to show.
+    async function showRecommendations(favorites, watchlist) {
+        const run = ++recommendationRuns;
+        const cards = await fetchRecommendations(recommendationsUrl, favorites, watchlist);
+        if (run !== recommendationRuns) {
+            return;
+        }
+        const shown = recommendationsToShow(favorites, watchlist, cards);
+        recommendations.querySelector('.movie-grid').replaceChildren(...shown.map((card) => renderCard(template, card, movieUrl)));
+        recommendations.hidden = !shown.length;
+    }
 
     async function render() {
         const run = ++renders;
@@ -174,6 +223,7 @@ function main() {
         if (!missing.length && JSON.stringify(lists) === drawn) {
             return;
         }
+        showRecommendations(store.list('favorites'), store.list('watchlist'));
         let failed = false;
         if (missing.length) {
             lists.forEach((ids, index) => showList(sections[index], ids.length, ids.length ? null : [], template));

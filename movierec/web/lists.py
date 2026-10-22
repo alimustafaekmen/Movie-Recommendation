@@ -1,4 +1,4 @@
-"""The favourites and watchlist page and the card endpoint it uses.
+"""The favourites and watchlist page and the card endpoints it uses.
 
 The lists themselves live in the visitor's browser (static/js/list_store.js); the server keeps
 no state.
@@ -51,6 +51,26 @@ def api_movies():
     ids = _requested_ids(request.args.get("ids", ""))
     if len(ids) > MAX_IDS_PER_REQUEST:
         abort(400)
+    return jsonify(_list_cards(engine, ids, deadline))
+
+
+@bp.route("/api/recommendations")
+def api_recommendations():
+    """Cards of films like ?favorites= that are on neither list; each list counts 100 ids."""
+    engine = get_engine()
+    if engine is None:
+        abort(503)
+    deadline = monotonic() + TMDB_LOOKUP_SECONDS
+    favourites, watchlist = (
+        _requested_ids(request.args.get(name, ""))[:MAX_IDS_PER_REQUEST]
+        for name in ("favorites", "watchlist")
+    )
+    ids = engine.recommend_from_favourites(favourites, watchlist)
+    return jsonify(_list_cards(engine, ids, deadline))
+
+
+def _list_cards(engine, ids, deadline):
+    """List cards for ids in order, with the TMDb lookups of ids outside the dataset limited."""
     outside = [movie_id for movie_id in ids if movie_id not in engine.row_of]
     skipped = set(outside[MAX_TMDB_LOOKUPS:])
     kept = [movie_id for movie_id in ids if movie_id not in skipped]
@@ -66,4 +86,4 @@ def api_movies():
         card = details.get_list_card(movie_id, paths)
         if card is not None:
             cards.append(card)
-    return jsonify(cards)
+    return cards

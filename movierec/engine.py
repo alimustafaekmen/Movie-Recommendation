@@ -36,6 +36,8 @@ POPULAR_CARD_COUNT = 12
 DETAIL_SIMILAR_COUNT = 12
 MAX_QUERY_LENGTH = 100
 MIN_QUERY_LENGTH = 2
+# Recommendations from a favourites list use this many of its films, newest first.
+MAX_FAVOURITES_USED = 20
 # Re-ranking looks a little past the longest list we serve. The pool does not depend on the
 # requested count, so every list is a prefix of the MAX_RECOMMENDATION_COUNT list.
 NEIGHBOUR_POOL_SIZE = 3 * MAX_RECOMMENDATION_COUNT + 1
@@ -164,6 +166,25 @@ class RecommendationEngine:
         if index is None:
             return []
         return self._ids[self.rank_neighbours(index)[: clamp_count(num)]].tolist()
+
+    def recommend_from_favourites(
+        self, favourite_ids: list[int], exclude_ids: list[int]
+    ) -> list[int]:
+        """Ids of films like the favourites, best first, leaving out favourites and exclude_ids.
+
+        Each favourite's similar list gives the film at 0-based rank r a score of 1 / (r + 1);
+        the scores add up over the favourites, and ties keep the order films first appear in.
+        """
+        used = [movie_id for movie_id in favourite_ids if movie_id in self.row_of]
+        listed = {*favourite_ids, *exclude_ids}
+        scores = {}
+        for favourite in used[:MAX_FAVOURITES_USED]:
+            similar = self.similar_movie_ids(favourite, MAX_RECOMMENDATION_COUNT)
+            for rank, movie_id in enumerate(similar):
+                if movie_id not in listed:
+                    scores[movie_id] = scores.get(movie_id, 0) + 1 / (rank + 1)
+        # sorted() is stable with reverse=True too.
+        return sorted(scores, key=scores.get, reverse=True)[:DETAIL_SIMILAR_COUNT]
 
     def rank_neighbours(self, index: int) -> np.ndarray:
         """Row positions of the movies most similar to row ``index``, best hybrid score first."""

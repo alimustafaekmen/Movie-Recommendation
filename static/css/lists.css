@@ -47,6 +47,12 @@
     transform: rotate(-90deg);
 }
 
+.recommendations-hint {
+    margin: -0.25rem 0 1rem;
+    font-size: 0.875rem;
+    color: var(--color-text-muted);
+}
+
 .empty-list {
     max-width: 40rem;
 }

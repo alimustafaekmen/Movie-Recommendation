@@ -2,7 +2,15 @@ import test from 'node:test';
 import assert from 'node:assert/strict';
 
 import { NOT_SAVED_MESSAGE } from '../../static/js/list_store.js';
-import { cardContent, describeLists, fetchCards, formatRating, movieHref } from '../../static/js/my_lists.js';
+import {
+  cardContent,
+  describeLists,
+  fetchCards,
+  fetchRecommendations,
+  formatRating,
+  movieHref,
+  recommendationsToShow,
+} from '../../static/js/my_lists.js';
 
 const SOME_FAILED = 'Bazı filmler şu anda yüklenemedi.';
 const card = (id, title) => ({ id, title, year: 2000, vote_average: 7, poster_url: null });
@@ -163,4 +171,61 @@ test('malformed cards are left out, so the page reports them as not loaded', asy
   assert.deepEqual([...result.cards.keys()], [4]);
   assert.equal(result.failed, false);
   assert.equal(describeLists([[1, 2, 3, 4]], result.cards, true).status, SOME_FAILED);
+});
+
+// --- /api/recommendations ---
+const RECOMMENDATIONS_URL = '/api/recommendations';
+
+async function withAnswer(answer, run) {
+  const previous = globalThis.fetch;
+  const requests = [];
+  globalThis.fetch = async (url) => {
+    requests.push(url);
+    return answer();
+  };
+  try {
+    return { result: await run(), requests };
+  } finally {
+    globalThis.fetch = previous;
+  }
+}
+
+test('without favourites nothing is asked for and the section stays hidden', async () => {
+  const { result, requests } = await withAnswer(() => json([card(1, 'Heat')]), () => fetchRecommendations(RECOMMENDATIONS_URL, [], [5]));
+
+  assert.deepEqual(result, []);
+  assert.deepEqual(requests, []);
+  assert.deepEqual(recommendationsToShow([], [5], [card(1, 'Heat')]), []);
+});
+
+test('recommendations are asked for with the first 100 ids of each list and shown in order', async () => {
+  const favorites = Array.from({ length: 150 }, (_, index) => index + 1000);
+  const answer = [card(7, 'Zodiac'), null, { id: 8 }, card(9, 'Alien')];
+  const { result, requests } = await withAnswer(() => json(answer), () => fetchRecommendations(RECOMMENDATIONS_URL, favorites, [200, 201]));
+
+  assert.deepEqual(requests, [`${RECOMMENDATIONS_URL}?favorites=${favorites.slice(0, 100).join(',')}&watchlist=200,201`]);
+  // Malformed cards are left out; the server's order is kept, not sorted by title.
+  assert.deepEqual(recommendationsToShow(favorites, [200, 201], result).map((c) => c.title), ['Zodiac', 'Alien']);
+});
+
+test('films already on a list are never recommended', () => {
+  // The server reads only the first 100 ids of a list, so the page leaves out the others.
+  const cards = [card(1, 'Heat'), card(2, 'Alien'), card(3, 'Zodiac')];
+
+  assert.deepEqual(recommendationsToShow([2], [3], cards).map((c) => c.id), [1]);
+});
+
+test('a failed recommendations request shows nothing', async () => {
+  const answers = [
+    () => json({ status: 'error', error: 'unavailable' }, 503),
+    () => json({ status: 'error' }),
+    () => {
+      throw new TypeError('Failed to fetch');
+    },
+  ];
+  for (const answer of answers) {
+    const { result } = await withAnswer(answer, () => fetchRecommendations(RECOMMENDATIONS_URL, [1], []));
+
+    assert.deepEqual(result, []);
+  }
 });

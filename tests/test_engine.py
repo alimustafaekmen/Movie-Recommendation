@@ -295,3 +295,46 @@ def test_dark_knight_keeps_the_earlier_batman_films_near_the_top(engine):
     top = engine.similar_movie_ids(155, 6)
 
     assert {364, 414} <= set(top)  # Batman Returns, Batman Forever
+
+
+def _fake_similar(engine, monkeypatch, rankings):
+    """Give each favourite the ranked similar list in `rankings` instead of the real one."""
+    monkeypatch.setattr(engine, "similar_movie_ids", lambda movie_id, num: rankings[movie_id])
+
+
+def test_one_favourite_recommends_its_own_similar_list(engine):
+    assert engine.recommend_from_favourites([155], []) == engine.similar_movie_ids(155)
+
+
+def test_a_film_shared_by_two_favourites_ranks_first(engine, monkeypatch):
+    a, b, c = engine.movies_df["id"].head(3).tolist()
+    # 3 is second in every list: 3 * 1/2 beats the 1/1 of the tops, which keep their order.
+    _fake_similar(engine, monkeypatch, {a: [1, 3], b: [2, 3], c: [6, 3]})
+
+    assert engine.recommend_from_favourites([a, b, c], []) == [3, 1, 2, 6]
+
+
+def test_listed_films_are_not_recommended(engine, monkeypatch):
+    first, second = engine.movies_df["id"].head(2).tolist()
+    _fake_similar(engine, monkeypatch, {first: [second, 1, 2], second: [first, 3]})
+
+    assert engine.recommend_from_favourites([first, second], [2]) == [1, 3]
+
+
+def test_unknown_favourites_are_ignored(engine):
+    assert engine.recommend_from_favourites([424242, 155], []) == engine.similar_movie_ids(155)
+    assert engine.recommend_from_favourites([424242], []) == []
+
+
+def test_only_the_first_20_dataset_favourites_count(engine, monkeypatch):
+    favourites = engine.movies_df["id"].head(21).tolist()
+    _fake_similar(engine, monkeypatch, {movie_id: [-movie_id] for movie_id in favourites})
+
+    watchlist = [-movie_id for movie_id in favourites[:19]]
+
+    # The unknown id takes no place among the 20, and the 21st favourite adds nothing.
+    assert engine.recommend_from_favourites([424242, *favourites], watchlist) == [-favourites[19]]
+
+
+def test_no_favourites_recommend_nothing(engine):
+    assert engine.recommend_from_favourites([], [155]) == []

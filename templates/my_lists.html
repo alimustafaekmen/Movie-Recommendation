@@ -25,9 +25,10 @@
 </section>
 {% endmacro %}
 
-{# The script's URLs come from the server: the cards API, and the movie page for id 0, whose
-   0 my_lists.js replaces with each film's id. #}
+{# The script's URLs come from the server: the cards and recommendations APIs, and the movie
+   page for id 0, whose 0 my_lists.js replaces with each film's id. #}
 <div class="container page my-lists-page" data-cards-url="{{ url_for('lists.api_movies') }}"
+    data-recommendations-url="{{ url_for('lists.api_recommendations') }}"
     data-movie-url="{{ url_for('movies.movie_detail', movie_id=0) }}">
     <h1 class="page-title">Kişisel Film Listelerim</h1>
     {# my_lists.js removes data-load-error once it runs; if it never does, base.js shows the
@@ -39,6 +40,13 @@
     "Henüz beğendiğiniz bir film bulunmuyor.", "Beğen") }}
     {{ list_section("Daha Sonra İzleyeceklerim", "watchlist",
     "İzleme listenizde henüz bir film bulunmuyor.", "İzleme listesine ekle") }}
+    {# Last on the page, so nothing moves when my_lists.js shows it: only once the favourites
+       give it films. #}
+    <section class="list-section recommendations" hidden>
+        <h2 class="section-title">Beğendiklerinize göre</h2>
+        <p class="recommendations-hint">Beğendiğiniz filmlere en çok benzeyen filmler; listelerinizdekiler gösterilmez.</p>
+        <ul class="movie-grid" id="recommendations-grid"></ul>
+    </section>
 
     {# The markup of _movie_card.html. my_lists.js clones it twice: with only the placeholder
        poster while a film loads, then with either the poster or the placeholder. #}

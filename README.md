@@ -2,7 +2,7 @@
 
 MovieRec is a content-based movie recommender built with Flask on the [TMDB 5000 dataset](https://www.kaggle.com/datasets/tmdb/tmdb-movie-metadata). It finds films similar to one you like, or ranks films that match a set of filters (genres, director, release years, minimum rating). Movie and person pages are enriched with live data from the TMDb API: posters, trailers, cast and biographies. The interface is in Turkish.
 
-There are no accounts. Favourites and the watchlist are kept in the visitor's browser, so the app keeps no accounts or lists on the server and needs no database. The site follows the system's light or dark setting, and a header button switches it.
+There are no accounts. Favourites and the watchlist are kept in the visitor's browser, so the app keeps no accounts or lists on the server and needs no database. The lists page also recommends films based on the favourites. The site follows the system's light or dark setting, and a header button switches it.
 
 ![Home page](screenshots/home.jpg)
 ![Similar movies](screenshots/similar-movies.jpg)
@@ -39,6 +39,8 @@ The model is a sparse 4,803 × 29,665 matrix of about 2.5 MB. No film-by-film si
 Raw cosines in a pool sit close together, so similarity is divided by the best match to use the full 0-1 range. Popularity and vote counts are heavy-tailed (popularity has a median of 13 and a maximum of 876), so they are log-scaled; scaled linearly, one blockbuster would push every other film's term close to 0. TMDb ratings are noisy below 100 votes, so such films are dropped whenever the pool has a film with at least 100 votes. Because the pool size is fixed, asking for more results never reorders the top ones.
 
 **How the weights were chosen.** They are round, hand-picked values; there is no user data to tune against. They were checked by reading the lists of well-known films and with the columns of `scripts/evaluate.py`, including two that the model does not use (shared lead actor and series recall). The director weight started at 0.5, but then 438 films got 8 or more of their 12 picks from their own director, and Jaws's top 8 was all Spielberg. At 0.3, with genres at 0.4, that fell to 26, but same-genre lookalikes pushed out films with the same theme (Seven Samurai got boxing films), Inception and Scarface ranked above the earlier Batman films for The Dark Knight, and series recall dropped from 75.4% to 70.9%. With directors at 0.2, genres at 0.3 and keywords at 0.4 it is 1 film, the Batman films are back at #3-5, and series recall is 75.1%, about the earlier model's level. The weights live in [movierec/config.py](movierec/config.py).
+
+**Based on your favourites.** The lists page sends the favourite and watchlist ids from the browser, and the server combines the favourites' similar-movie lists (the first 20 favourites from the dataset, newest first, 30 films each). A film at rank r (counting from 0) in a list scores 1 / (r + 1), and the scores add up over the lists, so a film that several favourites share beats one that only tops a single list. Films already on either list are left out, ties keep the order they first appear in, and the top 12 are shown. Nothing is stored on the server, so no account is needed.
 
 **Filter search.** Films that match every selected genre, the director and the year and rating bounds are ranked by `0.40 * rating + 0.45 * popularity + 0.15 * vote count`. The rating is divided by 10; popularity and vote count are divided by the largest value among the matches. Films under 100 votes are left out unless nothing else matches. Co-directed films match any of their directors.
 
@@ -94,7 +96,7 @@ movierec/
   web/
     __init__.py         app factory: config, security headers, error pages
     movies.py           home, movie, person and search routes, JSON suggestions
-    lists.py            favourites and watchlist page, card endpoint
+    lists.py            favourites and watchlist page, card and recommendation endpoints
     redirects.py        safe redirects back to the referring page
 templates/              Jinja templates
 static/                 CSS, JavaScript and the icon sprite; js/list_store.js keeps the lists in localStorage
@@ -123,7 +125,9 @@ Requirements: Python 3.12 and the two Kaggle CSVs.
    python app.py
    ```
 
-   The app listens on http://127.0.0.1:5001.
+   Open http://localhost:5001. The terminal shows one line per page request. The dev server only
+   listens on this computer (`HOST=127.0.0.1`); port 5001 rather than Flask's 5000 because macOS
+   uses 5000 for AirPlay Receiver. `PORT=8000 python app.py` picks another port.
 
 With Docker, put the CSVs in `dataset/` first; they are copied into the image. Then `docker compose up --build` serves the app with gunicorn on port 5001, as a non-root user with a health check.
 
@@ -132,11 +136,19 @@ With Docker, put the CSVs in `dataset/` first; they are copied into the image. T
 ```bash
 pip install -r requirements-dev.txt
 ruff check . && ruff format --check .
-pytest
+pytest --cov
 node --test "tests/js/*.test.mjs"
 ```
 
-Without the Kaggle CSVs, pytest runs against a 158-film fixture taken from the dataset (`tests/fixtures/`) and only skips the engine output snapshot, which needs all 4,803 films. CI runs the same commands on every push.
+What the suites protect:
+
+- **Engine output**: a snapshot of matches and similar-movie lists on the full dataset. After an intended ranking change, run `python tests/snapshot_engine.py --update` and review the diff.
+- **TMDb failures**: after a timeout, server error or malformed JSON the page degrades after one call, without a key no call is made, and the key never reaches the logs.
+- **Security**: the CSP and other headers on every response, request body and query length limits, and redirects that stay on the site.
+- **Lists**: the browser list store and the lists page, with `node:test`.
+- **Evaluation**: the metric helpers of `scripts/evaluate.py`.
+
+Without the Kaggle CSVs, pytest runs against a 158-film fixture taken from the dataset (`tests/fixtures/`) and skips the tests that need all 4,803 films: the snapshot and a few ranking checks on real titles. CI runs the same commands on every push and fails below 95% branch coverage of `movierec/` and `app.py` (the fixture run measures about 97%).
 
 ## Configuration
 
@@ -171,4 +183,4 @@ The icons in `static/icons.svg` are from [Font Awesome Free 6.5.1](https://fonta
 
 MovieRec, TMDB 5000 veri seti üzerinde çalışan, Flask ile yazılmış içerik tabanlı bir film öneri sistemidir. Beğendiğiniz bir filme benzeyen filmleri ya da seçtiğiniz tür, yönetmen, yıl ve puan filtrelerine uyan filmleri sıralar. Benzerlik için her filmin türleri, yönetmenleri, anahtar kelimeleri ve özet ile slogan metni ayrı TF-IDF bloklarına dönüştürülür ve her blok kendi ağırlığıyla birleştirilir; böylece özette geçen bir karakter adı ya da bir yönetmenin filmografisi sonucu tek başına belirleyemez. En benzer 91 film benzerlik, puan, popülerlik ve oy sayısıyla yeniden sıralanır; popülerlik ve oy sayısı logaritmik ölçeklenir. Ağırlıklar elle seçilmiştir. Kullanıcı verisi olmadığı için `scripts/evaluate.py` listeleri ölçer: tür örtüşmesi, aynı yönetmen, ortak başrol oyuncusu, seri filmlerini bulma oranı, katalog kapsamı ve önerilen filmlerin popülerliği. Bu ölçümler listelerin tutarlı olduğunu gösterir, insanların onları beğeneceğini göstermez.
 
-Üyelik yoktur: beğeniler ve izleme listesi ziyaretçinin tarayıcısında saklanır, bu yüzden veritabanı gerekmez. Proje ticari olmayan kullanım için PolyForm Noncommercial 1.0.0 lisansıyla paylaşılmıştır. Kurulum adımları yukarıdaki bölümlerdedir.
+Üyelik yoktur: beğeniler ve izleme listesi ziyaretçinin tarayıcısında saklanır, bu yüzden veritabanı gerekmez. Listeler sayfasındaki "Beğendiklerinize göre" bölümü, beğendiğiniz filmlerin benzer film listelerini birleştirir: birden çok beğeninizin listesinde üst sıralarda yer alan filmler öne çıkar, listelerinizdeki filmler gösterilmez. Proje ticari olmayan kullanım için PolyForm Noncommercial 1.0.0 lisansıyla paylaşılmıştır. Kurulum adımları yukarıdaki bölümlerdedir.

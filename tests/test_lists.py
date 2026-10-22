@@ -81,9 +81,26 @@ def test_my_lists_headings_are_one_h1_and_an_h2_per_list(client):
         ("h1", "Kişisel Film Listelerim"),
         ("h2", "Beğendiğim Filmler"),
         ("h2", "Daha Sonra İzleyeceklerim"),
+        ("h2", "Beğendiklerinize göre"),
     ]
     # Plain headings; my_lists.js adds only the collapse chevron.
     assert not any(heading.find("svg") for heading in headings)
+
+
+def test_my_lists_recommendations_wait_hidden_after_the_lists(client):
+    page = Page(body_text(client.get("/my_lists")))
+
+    # my_lists.js shows the section once the favourites give it films to show.
+    [section] = page.find("section", "recommendations")
+    assert "hidden" in section.attrs
+    assert "data-list" not in section.attrs
+    [hint] = section.find("p", "recommendations-hint")
+    assert "Beğendiğiniz filmlere" in hint.text
+    [grid] = section.find("ul", id="recommendations-grid")
+    assert "movie-grid" in grid.classes
+    assert not grid.find()
+    sections = page.find("section")
+    assert sections.index(section) == len(sections) - 1
 
 
 def _markup(root, dropped=()):
@@ -143,6 +160,7 @@ def test_my_lists_takes_its_urls_from_the_server(client, app_module):
     [page] = [tag for tag in Page(body).all("div") if "my-lists-page" in tag.get("class", "")]
     with app_module.app.test_request_context():
         assert page["data-cards-url"] == url_for("lists.api_movies")
+        assert page["data-recommendations-url"] == url_for("lists.api_recommendations")
         assert page["data-movie-url"] == url_for("movies.movie_detail", movie_id=0)
 
 
@@ -282,3 +300,51 @@ def test_api_movies_stops_looking_up_ids_on_tmdb_after_its_time_budget(
 
     # Lookups start at 0, 3 and 6 s; the fourth would start at 9 s. Dataset ids still come.
     assert [card["id"] for card in cards] == [*unknown[:3], 155]
+
+
+def _recommended(client, **query):
+    response = client.get("/api/recommendations", query_string=query)
+    assert response.status_code == 200
+    return response.get_json()
+
+
+def test_api_recommendations_are_list_cards_of_the_engine_ranking(client, engine, details):
+    cards = _recommended(client, favorites="155,19995", watchlist="")
+
+    ids = engine.recommend_from_favourites([155, 19995], [])
+    assert len(ids) == 12
+    assert cards == [details.get_list_card(movie_id) for movie_id in ids]
+
+
+def test_api_recommendations_leave_out_the_watchlist(client, engine):
+    top = engine.recommend_from_favourites([155], [])[0]
+
+    cards = _recommended(client, favorites="155", watchlist=f"abc,{top}")
+
+    assert [card["id"] for card in cards] == engine.recommend_from_favourites([155], [top])
+
+
+@pytest.mark.parametrize(
+    "query", [{}, {"favorites": ""}, {"favorites": "abc,0,-5"}, {"favorites": "424242"}]
+)
+def test_api_recommendations_without_dataset_favourites_are_empty(client, query):
+    assert _recommended(client, **query, watchlist="155") == []
+
+
+def test_api_recommendations_read_at_most_100_ids_per_list(client, engine):
+    unknown = ",".join(map(str, range(900001, 900101)))
+    top = engine.recommend_from_favourites([155], [])[0]
+
+    # Ids after the 100th of a list are left out, not refused.
+    assert _recommended(client, favorites=f"{unknown},155") == []
+    cards = _recommended(client, favorites="155", watchlist=f"{unknown},{top}")
+    assert cards[0]["id"] == top
+
+
+def test_api_recommendations_without_engine_return_503_json(client, app_module, monkeypatch):
+    monkeypatch.setitem(app_module.app.extensions, "engine", None)
+
+    response = client.get("/api/recommendations", query_string={"favorites": "155"})
+
+    assert response.status_code == 503
+    assert response.get_json() == {"status": "error", "error": "unavailable"}
