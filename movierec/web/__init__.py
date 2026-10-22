@@ -3,7 +3,6 @@
 import datetime
 import hashlib
 import logging
-from decimal import ROUND_HALF_UP, Decimal
 from pathlib import Path
 from xml.etree import ElementTree
 
@@ -22,6 +21,7 @@ from movierec.config import (
 )
 from movierec.engine import RecommendationEngine
 from movierec.genres import genre_label
+from movierec.i18n import format_date, format_number, format_rating
 from movierec.movie_details import MovieDetails
 from movierec.web.redirects import API_PREFIXES
 
@@ -64,21 +64,6 @@ PERMISSIONS_POLICY = "camera=(), microphone=(), geolocation=(), payment=(), usb=
 MAX_MOVIE_ID = 2147483647
 MOVIE_ID_CONVERTER = f"int(min=1, max={MAX_MOVIE_ID})"
 
-_TURKISH_MONTHS = (
-    "Ocak",
-    "Şubat",
-    "Mart",
-    "Nisan",
-    "Mayıs",
-    "Haziran",
-    "Temmuz",
-    "Ağustos",
-    "Eylül",
-    "Ekim",
-    "Kasım",
-    "Aralık",
-)
-
 
 class _App(Flask):
     """Flask whose static files are cached for long only under a versioned URL."""
@@ -117,41 +102,6 @@ def build_asset_versions(folder: str | Path) -> dict[str, str]:
     return versions
 
 
-def format_date_filter(value: str | None) -> str:
-    """Format an ISO date such as '2023-10-26' as '26 Ekim 2023'."""
-    if not value:
-        return "Bilinmiyor"
-    date_text = str(value)
-    if not date_text.strip():
-        return "Bilinmiyor"
-    try:
-        day = datetime.date.fromisoformat(date_text)
-    except ValueError:
-        return date_text
-    month_name = _TURKISH_MONTHS[day.month - 1]
-    return f"{day.day:02d} {month_name} {day.year}"
-
-
-def format_number_filter(value: int | float | None) -> str:
-    """Format a count such as 12002 as '12.002', with the Turkish thousands separator."""
-    if value is None:
-        return ""
-    # The "," format option groups thousands with commas (12,002); Turkish uses dots.
-    with_commas = f"{int(value):,}"
-    return with_commas.replace(",", ".")
-
-
-def format_rating_filter(value: float | None) -> str:
-    """Format a rating such as 8.2 as '8,2'; no rating (None or 0) gives ''."""
-    if not value:
-        return ""
-    # Round half up from the shortest decimal text ("8.25"), as toLocaleString('tr-TR') does;
-    # round() rounds halves to even: round(8.25, 1) is 8.2.
-    shortest_text = str(float(value))
-    rating = Decimal(shortest_text).quantize(Decimal("0.1"), rounding=ROUND_HALF_UP)
-    return str(rating).replace(".", ",")
-
-
 def create_app() -> Flask:
     """Build the Flask app: the engine is loaded here, once per process.
 
@@ -185,7 +135,7 @@ def create_app() -> Flask:
     # content, so browsers may keep them for a year. Not in debug mode, so edits show on reload.
     if not app.debug:
         app.config["SEND_FILE_MAX_AGE_DEFAULT"] = ONE_YEAR_SECONDS
-    app.jinja_env.globals["genre_label"] = genre_label
+    app.jinja_env.globals["genre_label"] = lambda name: genre_label(name, "tr")
     if SECRET_KEY_IS_EPHEMERAL:
         logger.warning(
             "FLASK_SECRET_KEY is not set; using a random key, sessions will not survive a restart"
@@ -280,6 +230,6 @@ def _register_template_helpers(app: Flask) -> None:
     def inject_current_year():
         return {"current_year": datetime.date.today().year}
 
-    app.add_template_filter(format_date_filter, "format_date")
-    app.add_template_filter(format_number_filter, "format_number")
-    app.add_template_filter(format_rating_filter, "format_rating")
+    app.add_template_filter(lambda value: format_date(value, "tr"), "format_date")
+    app.add_template_filter(lambda value: format_number(value, "tr"), "format_number")
+    app.add_template_filter(lambda value: format_rating(value, "tr"), "format_rating")

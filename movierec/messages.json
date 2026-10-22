@@ -1,0 +1,18 @@
+{
+  "date.unknown": {
+    "en": "Unknown",
+    "tr": "Bilinmiyor"
+  },
+  "runtime.hours": {
+    "en": "{hours} h",
+    "tr": "{hours} sa"
+  },
+  "runtime.hours_minutes": {
+    "en": "{hours} h {minutes} min",
+    "tr": "{hours} sa {minutes} dk"
+  },
+  "runtime.minutes": {
+    "en": "{minutes} min",
+    "tr": "{minutes} dk"
+  }
+}

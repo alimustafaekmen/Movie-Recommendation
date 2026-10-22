@@ -1,5 +1,3 @@
-import math
-
 import numpy as np
 import pandas as pd
 import pytest
@@ -10,28 +8,8 @@ from movierec.config import (
     SIMILARITY_WEIGHT,
     VOTE_COUNT_WEIGHT,
 )
-from movierec.movie_details import cast_names, format_runtime
+from movierec.movie_details import cast_names
 from movierec.similarity import build_tfidf_matrix, feature_score, hybrid_score
-
-
-@pytest.mark.parametrize(
-    ("minutes", "expected"),
-    [
-        (0, None),
-        (45, "45 dk"),
-        (60, "1 sa"),
-        (152, "2 sa 32 dk"),
-        ("152", "2 sa 32 dk"),
-        (152.0, "2 sa 32 dk"),
-        (math.nan, None),
-        (None, None),
-        ("", None),
-        ("abc", None),
-        (-5, None),
-    ],
-)
-def test_format_runtime(minutes, expected):
-    assert format_runtime(minutes) == expected
 
 
 @pytest.mark.parametrize(

@@ -1,13 +1,13 @@
 """Movie detail pages and list cards, enriched with live TMDb data."""
 
 import logging
-import math
 from concurrent.futures import ThreadPoolExecutor, wait
 
 from movierec import tmdb
 from movierec.dataset import CAST_LIMIT
 from movierec.engine import DETAIL_SIMILAR_COUNT, RecommendationEngine
 from movierec.genres import TMDB_GENRE_NAMES, genre_badge, is_excluded
+from movierec.i18n import format_runtime
 
 logger = logging.getLogger(__name__)
 
@@ -166,7 +166,7 @@ class MovieDetails:
             movie["poster_url_large"] = self.get_movie_poster_url(movie_id, size="w500")
             movie["trailer_key"] = None
         _clean_detail_fields(movie)
-        movie["runtime_formatted"] = format_runtime(movie.get("runtime"))
+        movie["runtime_formatted"] = format_runtime(movie.get("runtime"), "tr")
         if in_dataset:
             ranked_rows = self.engine.rank_neighbours(row)
             neighbours = self.engine.movies_df.iloc[ranked_rows]
@@ -288,7 +288,7 @@ class MovieDetails:
 
 def _genre_badges(genre_list: list[str]) -> list[dict]:
     """Return the badge of each genre the page shows, in the film's genre order."""
-    return [genre_badge(genre) for genre in genre_list if not is_excluded(genre)]
+    return [genre_badge(genre, "tr") for genre in genre_list if not is_excluded(genre)]
 
 
 def _apply_turkish_texts(movie: dict, tmdb_movie: dict) -> None:
@@ -326,23 +326,3 @@ def cast_names(cast: str, limit: int = CAST_LIST_LIMIT) -> list[str]:
         elif part:
             names.append(part)
     return names[:limit]
-
-
-def format_runtime(minutes) -> str | None:
-    """Format a runtime in minutes as Turkish hours/minutes, e.g. 152 -> '2 sa 32 dk'."""
-    try:
-        value = float(minutes)
-    except (TypeError, ValueError):
-        return None
-    if not math.isfinite(value):
-        return None
-    total_minutes = int(value)
-    if total_minutes <= 0:
-        return None
-
-    hours, minutes_left = divmod(total_minutes, 60)  # 152 -> 2 h, 32 min
-    if hours and minutes_left:
-        return f"{hours} sa {minutes_left} dk"
-    if hours:
-        return f"{hours} sa"
-    return f"{minutes_left} dk"

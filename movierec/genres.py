@@ -1,4 +1,4 @@
-"""Genre names: English values used in data and URLs, Turkish labels shown in the UI."""
+"""Genre names: English values in data and URLs, shown as they are or with a Turkish label."""
 
 # 'Foreign' and 'TV Movie' describe where a film comes from rather than what it is,
 # and only a handful of dataset films carry them, so they are not offered as filters.
@@ -51,9 +51,12 @@ TMDB_GENRE_NAMES = {
 }
 
 
-def genre_label(name: str) -> str:
-    """Return the Turkish label for an English genre name, or the name itself."""
-    return GENRE_LABELS_TR.get(name, name)
+def genre_label(name: str, lang: str) -> str:
+    """Return the label of an English genre name: the Turkish label in Turkish, else the name."""
+    # TMDb's English genre names are the values themselves.
+    if lang == "tr":
+        return GENRE_LABELS_TR.get(name, name)
+    return name
 
 
 def is_excluded(name: str) -> bool:
@@ -61,6 +64,6 @@ def is_excluded(name: str) -> bool:
     return name.casefold() in EXCLUDED_GENRES
 
 
-def genre_badge(name: str) -> dict:
+def genre_badge(name: str, lang: str) -> dict:
     """Return the detail-page badge for an English genre name."""
-    return {"display_name": genre_label(name), "link_name": name}
+    return {"display_name": genre_label(name, lang), "link_name": name}

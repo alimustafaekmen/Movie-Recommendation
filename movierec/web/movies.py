@@ -40,7 +40,7 @@ def _filter_summary(genres: list[str], filters: dict[str, str]) -> str:
     parts = []
     if genres:
         label = "Tür" if len(genres) == 1 else "Türler"
-        genre_names = ", ".join(genre_label(genre) for genre in genres)
+        genre_names = ", ".join(genre_label(genre, "tr") for genre in genres)
         parts.append(f"{label}: {genre_names}")
     if filters["yonetmen"]:
         parts.append(f"Yönetmen: {filters['yonetmen']}")
