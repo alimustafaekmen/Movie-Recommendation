@@ -107,7 +107,7 @@ An exact title match wins, ignoring case. Otherwise the app takes the closest ti
 There is no user data to test against. So `scripts/evaluate.py` takes every film in turn as the seed (the starting film) and checks its 12 similar movies. Do they agree with the seed on metadata? Do they find its series? How much of the catalogue do they reach? How popular are they?
 
 ```bash
-python scripts/evaluate.py
+python scripts/evaluate.py   # with DATASET_DIR unset, on the Kaggle files
 ```
 
 On the Kaggle files (4,803 films):
@@ -149,7 +149,7 @@ These numbers cannot be reproduced without a TMDb API key, and they change with 
 
 - Genre overlap, same director and shared lead actor stay about the same.
 - Coverage rises from 61.7% to 81.4%, mostly because 8,274 films (92.3%) have 100 votes or more.
-- Median votes are higher because today's vote counts are about 3 times higher. Against the dataset median, the hybrid leans less on popular films: 4.6 times the median, against 5.7 times on the Kaggle files.
+- Median votes are higher because the same films have about 4 times more votes today than in the Kaggle files. Against the dataset median, the hybrid leans less on popular films: 4.6 times the median, against 5.7 times on the Kaggle files.
 - Series recall falls from 75.1% to 62.0%. Many more seeds have series films (1,362 against 464), so the title groups are bigger and noisier. Counting only Kaggle seeds and their Kaggle series films, it is 71.3%, about 4 points below the Kaggle files, because new films take some of their places.
 
 ## Run locally
@@ -178,7 +178,7 @@ The dev server only listens on this computer (`HOST=127.0.0.1`). It uses port 50
 python scripts/fetch_catalogue.py
 ```
 
-The script keeps the Kaggle films and adds, for each release year since 2016, the 400 most-voted films that have at least 100 votes. It still needs the Kaggle files in `dataset/`, because it starts from their film ids. The run on 2026-10-22 wrote 8,966 films up to 2026 (18 MB) with about 9,200 requests in about 8 minutes. `--limit 50` makes a small trial run first. The files go to `dataset/refreshed/`, which git ignores. Set `DATASET_DIR=dataset/refreshed` in `.env` to use them. TMDb's terms allow keeping its data for at most 6 months, so run the script again at least every 6 months.
+The script keeps the Kaggle films and adds, for each release year since 2016, the 400 most-voted films that have at least 100 votes. It still needs the Kaggle files in `dataset/`, because it starts from their film ids. The run on 2026-10-22 wrote 8,966 films up to 2026 (18 MB) with about 9,200 requests in about 8 minutes. `--limit 50 --out /tmp/trial` makes a small trial run first without touching an existing catalogue. The files go to `dataset/refreshed/`, which git ignores. Set `DATASET_DIR=dataset/refreshed` in `.env` to use them. TMDb's terms allow keeping its data for at most 6 months, so run the script again at least every 6 months.
 
 **Docker.** Put the Kaggle CSVs in `dataset/` first, and fetch the refreshed catalogue if you use it, because the image copies them in. An image built with them holds TMDb data, so never push it to a registry. Then `docker compose up --build` serves the app with gunicorn at http://localhost:5001. The container runs as a non-root user with a health check and no Linux capabilities. Its file system is read-only apart from an in-memory `/tmp`, and only this computer can reach it.
 
@@ -243,7 +243,7 @@ tests/                  pytest suite. tests/js/ holds the node:test suite
 ## Limitations
 
 - The catalogue is a snapshot. The Kaggle files end in late 2016. The refreshed catalogue ends on the day it was fetched, so films released after that are missing until the next fetch. Recommendations only come from the films loaded.
-- The films before 2016 are an uneven selection. They come only from the Kaggle set, which has 122 of TMDb's 250 most-voted 2015 films. From 2016 on, each year has its 400 most-voted films, but 2026 has only 248 so far, because no more have reached 100 votes.
+- The films before 2016 are an uneven selection. They come only from the Kaggle set, which has only 134 of TMDb's 400 most-voted 2015 films. From 2016 on, each year has its 400 most-voted films, but 2026 has only 248 so far, because no more have reached 100 votes.
 - Popularity is TMDb's trend score on the fetch day, not lasting fame. Films in cinemas on that day move up, and the lists change with each refresh. In the refreshed catalogue, 2025 and 2026 films are 7.2% of the films but get 11.8% of the places in similar-movie lists.
 - The refreshed catalogue needs your own TMDb API key. TMDb's terms allow keeping it for at most 6 months, so it must be fetched again at least that often.
 - Recommendations use content only and do not learn from users.

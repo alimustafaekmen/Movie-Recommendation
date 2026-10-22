@@ -107,7 +107,7 @@ Büyük küçük harf fark etmeksizin tam eşleşen başlık kazanır. Aksi hald
 Karşılaştırma yapılacak kullanıcı verisi yoktur. Bu yüzden `scripts/evaluate.py` her filmi sırayla başlangıç filmi olarak alır ve ona önerilen 12 filme bakar. Bilgileri başlangıç filmiyle uyuşuyor mu? Serisinin diğer filmlerini buluyor mu? Kataloğun ne kadarına ulaşıyor? Ne kadar popüler?
 
 ```bash
-python scripts/evaluate.py
+python scripts/evaluate.py   # DATASET_DIR ayarlı değilken, Kaggle dosyalarında
 ```
 
 Kaggle dosyalarında (4.803 film):
@@ -149,7 +149,7 @@ Bu sayılar TMDb API anahtarı olmadan yeniden üretilemez ve her yenilemede de�
 
 - Tür örtüşmesi, aynı yönetmen ve ortak başrol oyuncusu hemen hemen aynı kalır.
 - Kapsam %61,7'den %81,4'e çıkar. Bunun başlıca nedeni, 8.966 filmin 8.274'ünün (%92,3) 100 ya da daha fazla oyu olmasıdır.
-- Ortanca oylar daha yüksektir, çünkü bugünkü oy sayıları yaklaşık 3 kat fazladır. Veri setinin ortancasına göre hibrit popüler filmlere daha az yaslanır: Kaggle dosyalarında ortancanın 5,7 katıyken burada 4,6 katıdır.
+- Ortanca oylar daha yüksektir, çünkü aynı filmlerin bugün Kaggle dosyalarındakinden yaklaşık 4 kat fazla oyu vardır. Veri setinin ortancasına göre hibrit popüler filmlere daha az yaslanır: Kaggle dosyalarında ortancanın 5,7 katıyken burada 4,6 katıdır.
 - Seri filmlerini bulma %75,1'den %62,0'a düşer. Seri filmi olan başlangıç filmi çok daha fazladır (464 yerine 1.362), bu yüzden başlık grupları büyür ve daha gürültülü olur. Yalnızca Kaggle başlangıç filmleri ve onların Kaggle'daki seri filmleri sayılırsa oran %71,3'tür. Bu, Kaggle dosyalarındakinden yaklaşık 4 puan düşüktür, çünkü yeni filmler bu seri filmlerinin bazılarının yerini alır.
 
 ## Yerelde çalıştırma
@@ -178,7 +178,7 @@ Geliştirme sunucusu yalnızca bu bilgisayardan erişilebilir (`HOST=127.0.0.1`)
 python scripts/fetch_catalogue.py
 ```
 
-Betik Kaggle filmlerini korur ve 2016'dan bu yana her yayın yılından, en az 100 oyu olan en çok oy almış 400 filmi ekler. Yine de `dataset/` içindeki Kaggle dosyalarına ihtiyaç duyar, çünkü onların film numaralarından başlar. 2026-10-22'deki çalıştırma, 2026'ya kadar 8.966 film (18 MB) yazdı. Bunun için yaklaşık 9.200 istek attı ve yaklaşık 8 dakika sürdü. `--limit 50` önce küçük bir deneme yapar. Dosyalar, git'in yok saydığı `dataset/refreshed/` klasörüne yazılır. Onları kullanmak için `.env` dosyasında `DATASET_DIR=dataset/refreshed` ayarlayın. TMDb'nin koşulları verisinin en fazla 6 ay saklanmasına izin verir, bu yüzden betiği en az 6 ayda bir yeniden çalıştırın.
+Betik Kaggle filmlerini korur ve 2016'dan bu yana her yayın yılından, en az 100 oyu olan en çok oy almış 400 filmi ekler. Yine de `dataset/` içindeki Kaggle dosyalarına ihtiyaç duyar, çünkü onların film numaralarından başlar. 2026-10-22'deki çalıştırma, 2026'ya kadar 8.966 film (18 MB) yazdı. Bunun için yaklaşık 9.200 istek attı ve yaklaşık 8 dakika sürdü. `--limit 50 --out /tmp/trial` mevcut kataloğa dokunmadan önce küçük bir deneme yapar. Dosyalar, git'in yok saydığı `dataset/refreshed/` klasörüne yazılır. Onları kullanmak için `.env` dosyasında `DATASET_DIR=dataset/refreshed` ayarlayın. TMDb'nin koşulları verisinin en fazla 6 ay saklanmasına izin verir, bu yüzden betiği en az 6 ayda bir yeniden çalıştırın.
 
 **Docker.** Önce Kaggle CSV dosyalarını `dataset/` klasörüne koyun, kullanıyorsanız yenilenmiş kataloğu da çekin, çünkü imaj onları içine kopyalar. Bu dosyalarla derlenen imaj TMDb verisi içerir, bu yüzden onu hiçbir registry'ye göndermeyin. Sonra `docker compose up --build` komutu uygulamayı gunicorn ile http://localhost:5001 adresinde açar. Konteyner yetkisiz bir kullanıcıyla, sağlık kontrolüyle ve Linux yetkileri olmadan çalışır. Dosya sistemi, bellekteki `/tmp` dışında salt okunurdur ve yalnızca bu bilgisayardan erişilebilir.
 
@@ -243,7 +243,7 @@ tests/                  pytest testleri. tests/js/ içinde node:test testleri va
 ## Sınırlamalar
 
 - Katalog bir anlık görüntüdür. Kaggle dosyaları 2016 sonunda biter. Yenilenmiş katalog çekildiği günde biter, bu yüzden o günden sonra çıkan filmler bir sonraki çekime kadar yer almaz. Öneriler yalnızca yüklenen filmlerden gelir.
-- 2016 öncesindeki filmler dengesiz bir seçkidir. Yalnızca Kaggle veri setinden gelirler ve bu set, TMDb'de 2015'in en çok oy alan 250 filminin yalnızca 122'sini içerir. 2016'dan itibaren her yılın en çok oy alan 400 filmi vardır, ama 2026'da şimdilik yalnızca 248 film vardır, çünkü 100 oya ulaşan film henüz bu kadardır.
+- 2016 öncesindeki filmler dengesiz bir seçkidir. Yalnızca Kaggle veri setinden gelirler ve bu set, TMDb'de 2015'in en çok oy alan 400 filminin yalnızca 134'ünü içerir. 2016'dan itibaren her yılın en çok oy alan 400 filmi vardır, ama 2026'da şimdilik yalnızca 248 film vardır, çünkü 100 oya ulaşan film henüz bu kadardır.
 - Popülerlik, TMDb'nin çekim günündeki ilgiyi ölçen değeridir, kalıcı ünü göstermez. O gün sinemada olan filmler öne çıkar ve listeler her yenilemede değişir. Yenilenmiş katalogda 2025 ve 2026 filmleri filmlerin %7,2'sidir, ama benzer film listelerindeki yerlerin %11,8'ini alır.
 - Yenilenmiş katalog için kendi TMDb API anahtarınız gerekir. TMDb'nin koşulları onun en fazla 6 ay saklanmasına izin verir, bu yüzden en az bu sıklıkla yeniden çekilmesi gerekir.
 - Öneriler yalnızca içeriğe dayanır, kullanıcılardan öğrenmez.
