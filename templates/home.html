@@ -4,7 +4,7 @@
 {% set brand_heading = true %}
 {% set filtering = mode == 'filter' %}
 
-{% block title %}MovieRec · Benzer filmleri keşfedin{% endblock %}
+{% block title %}{{ t('home.title') }}{% endblock %}
 
 {# Phones get the search panel below, so base.css hides the header search on this page. #}
 {% block body_class %}page-home{% endblock %}
@@ -16,8 +16,8 @@
     {% if not mode %}
     {# The brand in the header is the page's h1, so the headline is a paragraph. #}
     <div class="home-intro">
-        <p class="page-title">Size en uygun filmleri keşfedin</p>
-        <p class="home-intro-text">Benzerlerini bulun veya detaylı filtreleyin.</p>
+        <p class="page-title">{{ t('home.headline') }}</p>
+        <p class="home-intro-text">{{ t('home.intro') }}</p>
     </div>
     {% endif %}
 
@@ -26,34 +26,34 @@
            page leads with its results. Without scripts the panel simply stays open. #}
         {% if suggestions %}
         <button type="button" class="btn btn-secondary search-toggle" aria-expanded="true" hidden>
-            Aramayı düzenle
+            {{ t('search.edit') }}
             {{ icon('chevron-down', class='search-toggle-chevron') }}
         </button>
         {% endif %}
-        <section class="panel search-panel" aria-label="Film arama">
+        <section class="panel search-panel" aria-label="{{ t('search.panel') }}">
             {# base.js reveals the tabs and hides the unselected form; without scripts both
                forms are shown one after the other. #}
-            <div class="search-tabs" role="tablist" aria-label="Arama türü" hidden>
+            <div class="search-tabs" role="tablist" aria-label="{{ t('search.tabs') }}" hidden>
                 <button type="button" role="tab" id="similar-tab" aria-controls="similar-panel"
                     aria-selected="{{ 'false' if filtering else 'true' }}" tabindex="{{ '-1' if filtering else '0' }}">
-                    Benzer film
+                    {{ t('search.tab_similar') }}
                 </button>
                 <button type="button" role="tab" id="filter-tab" aria-controls="filter-panel"
                     aria-selected="{{ 'true' if filtering else 'false' }}" tabindex="{{ '0' if filtering else '-1' }}">
-                    Filtrele
+                    {{ t('search.tab_filter') }}
                 </button>
             </div>
 
             <div role="tabpanel" id="similar-panel" aria-labelledby="similar-tab">
                 <form id="similarity-form" class="search-form" action="{{ url_for('movies.home') }}">
                     <div class="form-group">
-                        <label for="film">Beğendiğiniz bir film</label>
+                        <label for="film">{{ t('search.film_label') }}</label>
                         <input type="search" id="film" name="film" class="form-control" list="movie-titles"
-                            value="{{ form.film }}" placeholder="Örn. Inception" maxlength="100"
+                            value="{{ form.film }}" placeholder="{{ t('search.film_placeholder') }}" maxlength="100"
                             autocomplete="off" required>
                     </div>
-                    <button type="submit" class="btn btn-primary" data-loading-text="Aranıyor...">
-                        Benzerlerini bul
+                    <button type="submit" class="btn btn-primary" data-loading-text="{{ t('search.loading') }}">
+                        {{ t('search.find_similar') }}
                     </button>
                 </form>
             </div>
@@ -61,7 +61,7 @@
             <div role="tabpanel" id="filter-panel" aria-labelledby="filter-tab">
                 <form id="feature-form" class="search-form" action="{{ url_for('movies.home') }}">
                     <fieldset class="form-group">
-                        <legend>Türler</legend>
+                        <legend>{{ t('search.genres') }}</legend>
                         <div class="genre-options">
                             {% set chosen = form.tur or [] %}
                             {% for genre in all_genres %}
@@ -73,46 +73,46 @@
                     </fieldset>
 
                     <div class="form-group">
-                        <label for="yonetmen">Yönetmen</label>
+                        <label for="yonetmen">{{ t('search.director') }}</label>
                         <input type="text" id="yonetmen" name="yonetmen" class="form-control" list="director-names"
-                            value="{{ form.yonetmen }}" placeholder="Örn. Christopher Nolan" maxlength="100"
+                            value="{{ form.yonetmen }}" placeholder="{{ t('search.director_placeholder') }}" maxlength="100"
                             autocomplete="off">
                         <datalist id="director-names" data-src="{{ url_for('movies.api_directors') }}"></datalist>
                     </div>
 
                     <fieldset class="form-group">
-                        <legend>Yayın yılı</legend>
+                        <legend>{{ t('search.years') }}</legend>
                         <div class="year-range">
                             <div>
-                                <label for="min_yil">En erken</label>
+                                <label for="min_yil">{{ t('search.year_from') }}</label>
                                 <input type="number" id="min_yil" name="min_yil" class="form-control" inputmode="numeric"
-                                    min="1900" max="{{ current_year }}" placeholder="örn. 1990" value="{{ form.min_yil }}">
+                                    min="1900" max="{{ current_year }}" placeholder="{{ t('search.year_placeholder', year=1990) }}" value="{{ form.min_yil }}">
                             </div>
                             <div>
-                                <label for="max_yil">En geç</label>
+                                <label for="max_yil">{{ t('search.year_to') }}</label>
                                 <input type="number" id="max_yil" name="max_yil" class="form-control" inputmode="numeric"
-                                    min="1900" max="{{ current_year }}" placeholder="örn. 2010" value="{{ form.max_yil }}">
+                                    min="1900" max="{{ current_year }}" placeholder="{{ t('search.year_placeholder', year=2010) }}" value="{{ form.max_yil }}">
                             </div>
                         </div>
                     </fieldset>
 
                     <div class="form-group">
-                        <label for="min_puan">En düşük puan (TMDB)</label>
+                        <label for="min_puan">{{ t('search.min_rating') }}</label>
                         <select id="min_puan" name="min_puan" class="form-control">
-                            <option value="">Fark etmez</option>
+                            <option value="">{{ t('search.any_rating') }}</option>
                             {% for rating in ('5', '6', '7', '7.5', '8', '8.5') %}
-                            <option value="{{ rating }}" {% if form.min_puan == rating %}selected{% endif %}>{{ rating|replace('.', ',') }}+</option>
+                            <option value="{{ rating }}" {% if form.min_puan == rating %}selected{% endif %}>{{ rating | decimal_text }}+</option>
                             {% endfor %}
                         </select>
                     </div>
 
-                    <button type="submit" class="btn btn-primary" data-loading-text="Aranıyor...">
-                        Filtrele
+                    <button type="submit" class="btn btn-primary" data-loading-text="{{ t('search.loading') }}">
+                        {{ t('search.filter_submit') }}
                     </button>
                 </form>
             </div>
         </section>
-        {# base.js announces "Aranıyor..." here while the button keeps the focus. #}
+        {# base.js announces the loading text here while the button keeps the focus. #}
         <p class="sr-only search-status" role="status" aria-live="polite"></p>
         {# base.js puts this spinner in the search button while the results load. #}
         <template id="spinner-icon-template">{{ icon('spinner', class='icon-spin') }}</template>
@@ -121,7 +121,7 @@
     <div class="home-main">
         {% if not mode %}
         <section class="home-section">
-            <h2 class="section-title">Türlere göz atın</h2>
+            <h2 class="section-title">{{ t('home.genres_heading') }}</h2>
             <ul class="tag-list">
                 {% for genre in all_genres %}
                 <li><a class="tag" href="{{ url_for('movies.home', tur=genre) }}">{{ genre_label(genre) }}</a></li>
@@ -130,7 +130,7 @@
         </section>
 
         <section class="home-section">
-            <h2 class="section-title">Popüler filmler</h2>
+            <h2 class="section-title">{{ t('home.popular_heading') }}</h2>
             <ul class="movie-grid">
                 {% for movie in popular %}
                 <li>{{ movie_card(movie) }}</li>
@@ -148,18 +148,18 @@
         {% endif %}
         <section class="home-section">
             <h2 class="page-title results-title">
-                {% if filtering %}Filtre sonuçları{% else %}“{{ form.film }}” için benzer filmler{% endif %}
-                <span class="results-count">{{ suggestions|length }} film</span>
+                {% if filtering %}{{ t('results.filter_title') }}{% else %}{{ t('results.similar_title', title=form.film) }}{% endif %}
+                <span class="results-count">{{ t_count('results.count', suggestions|length) }}</span>
             </h2>
             {% if summary %}<p class="results-summary">{{ summary }}</p>{% endif %}
             <ul class="movie-grid">
                 {% for movie in suggestions %}
-                <li id="sonuc-{{ loop.index }}">{{ movie_card(movie, note=movie.director, note_label="Yönetmen") }}</li>
+                <li id="sonuc-{{ loop.index }}">{{ movie_card(movie, note=movie.director, note_label=t('card.director')) }}</li>
                 {% endfor %}
             </ul>
             {% if more_url %}
             <a class="btn btn-secondary more-results" href="{{ more_url }}">
-                Daha fazla göster
+                {{ t('results.more') }}
             </a>
             {% endif %}
         </section>
@@ -172,9 +172,9 @@
             <p class="empty-state-message">{{ warning }}</p>
             {% endfor %}
             {% if filtering and summary %}
-            <p class="empty-state-hint">Daha az filtreyle ya da farklı değerlerle yeniden deneyin.</p>
+            <p class="empty-state-hint">{{ t('results.hint_filter') }}</p>
             {% elif not filtering and form.film %}
-            <p class="empty-state-hint">Başka bir film adı deneyin ya da yazarken çıkan önerilerden birini seçin.</p>
+            <p class="empty-state-hint">{{ t('results.hint_similar') }}</p>
             {% endif %}
         </div>
         {% endif %}

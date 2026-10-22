@@ -1,7 +1,6 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
 
-import { NOT_SAVED_MESSAGE } from '../../static/js/list_store.js';
 import {
   cardContent,
   describeLists,
@@ -12,7 +11,10 @@ import {
   recommendationsToShow,
 } from '../../static/js/my_lists.js';
 
+// The status texts the page gives the script (data-not-saved, data-some-failed).
+const NOT_SAVED = 'Bu tarayıcı listeleri kaydedemiyor; seçimleriniz sayfadan ayrılınca kaybolur.';
 const SOME_FAILED = 'Bazı filmler şu anda yüklenemedi.';
+const MESSAGES = { notSaved: NOT_SAVED, someFailed: SOME_FAILED };
 const card = (id, title) => ({ id, title, year: 2000, vote_average: 7, poster_url: null });
 const CARDS = new Map([
   [1, card(1, 'Zodiac')],
@@ -24,35 +26,40 @@ const titles = (sections) => sections.map((cards) => cards.map((c) => c.title));
 const MOVIE_URL = '/movie/0';
 
 test('loaded lists show their cards in title order and no status', () => {
-  const { sections, status } = describeLists([[1, 2], [3]], CARDS, true);
+  const { sections, status } = describeLists([[1, 2], [3]], CARDS, true, MESSAGES);
 
   assert.deepEqual(titles(sections), [['Alien', 'Zodiac'], ['Heat']]);
   assert.equal(status, '');
 });
 
 test('films that did not load are reported, not silently dropped', () => {
-  const { sections, status } = describeLists([[1, 99], [3]], CARDS, true);
+  const { sections, status } = describeLists([[1, 99], [3]], CARDS, true, MESSAGES);
 
   assert.deepEqual(titles(sections), [['Zodiac'], ['Heat']]);
   assert.equal(status, SOME_FAILED);
 });
 
 test('a list whose films all failed to load is reported', () => {
-  const { sections, status } = describeLists([[98, 99], []], CARDS, true);
+  const { sections, status } = describeLists([[98, 99], []], CARDS, true, MESSAGES);
 
   assert.deepEqual(sections, [[], []]);
   assert.equal(status, SOME_FAILED);
 });
 
 test('a store that cannot keep the lists shows the storage note', () => {
-  const { sections, status } = describeLists([[], []], new Map(), false);
+  const { sections, status } = describeLists([[], []], new Map(), false, MESSAGES);
 
   assert.deepEqual(sections, [[], []]);
-  assert.equal(status, NOT_SAVED_MESSAGE);
-  assert.match(NOT_SAVED_MESSAGE, /kaydedemiyor/);
+  assert.equal(status, NOT_SAVED);
 });
 
-test('ratings use the decimal comma and round like the format_rating filter', () => {
+test('both notes are shown together', () => {
+  const { status } = describeLists([[1, 99]], CARDS, false, MESSAGES);
+
+  assert.equal(status, `${NOT_SAVED} ${SOME_FAILED}`);
+});
+
+test('Turkish ratings use the decimal comma and round like the format_rating filter', () => {
   const cases = [
     [8.2, '8,2'],
     [7, '7,0'],
@@ -69,7 +76,14 @@ test('ratings use the decimal comma and round like the format_rating filter', ()
     [undefined, ''],
   ];
   for (const [value, expected] of cases) {
-    assert.equal(formatRating(value), expected, String(value));
+    assert.equal(formatRating(value, 'tr'), expected, String(value));
+  }
+});
+
+test('English ratings use the decimal point', () => {
+  const cases = [[8.2, '8.2'], [7, '7.0'], [10, '10.0'], [8.25, '8.3'], [0, ''], ['8.2', '']];
+  for (const [value, expected] of cases) {
+    assert.equal(formatRating(value, 'en'), expected, String(value));
   }
 });
 
@@ -82,7 +96,8 @@ test('a movie link is the server URL for id 0 with the id in place of the 0', ()
 
 test('a card links to its movie and shows its year, rating and poster', () => {
   const poster = 'https://image.tmdb.org/t/p/w342/dk.jpg';
-  const shown = cardContent({ id: 155, title: 'The Dark Knight', year: 2008, vote_average: 8.2, poster_url: poster }, MOVIE_URL);
+  const card = { id: 155, title: 'The Dark Knight', year: 2008, vote_average: 8.2, poster_url: poster };
+  const shown = cardContent(card, MOVIE_URL, 'tr');
 
   assert.deepEqual(shown, {
     href: '/movie/155',
@@ -91,16 +106,18 @@ test('a card links to its movie and shows its year, rating and poster', () => {
     rating: '8,2',
     poster,
   });
+  // The year stays a plain number in English too; the rating follows the page.
+  assert.deepEqual(cardContent(card, MOVIE_URL, 'en'), { ...shown, rating: '8.2' });
 });
 
 test('a card leaves out an unknown year, a missing rating and a missing poster', () => {
-  const shown = cardContent({ id: 7, title: 'Heat', year: 0, vote_average: 0, poster_url: null }, MOVIE_URL);
+  const shown = cardContent({ id: 7, title: 'Heat', year: 0, vote_average: 0, poster_url: null }, MOVIE_URL, 'tr');
 
   assert.deepEqual(shown, { href: '/movie/7', title: 'Heat', year: '', rating: '', poster: '' });
 });
 
 test('a card with wrongly typed fields shows only what it can', () => {
-  const shown = cardContent({ id: 7, title: 'Heat', year: '1995', vote_average: '8', poster_url: { url: 'x' } }, MOVIE_URL);
+  const shown = cardContent({ id: 7, title: 'Heat', year: '1995', vote_average: '8', poster_url: { url: 'x' } }, MOVIE_URL, 'tr');
 
   assert.deepEqual(shown, { href: '/movie/7', title: 'Heat', year: '', rating: '', poster: '' });
 });
@@ -170,7 +187,7 @@ test('malformed cards are left out, so the page reports them as not loaded', asy
 
   assert.deepEqual([...result.cards.keys()], [4]);
   assert.equal(result.failed, false);
-  assert.equal(describeLists([[1, 2, 3, 4]], result.cards, true).status, SOME_FAILED);
+  assert.equal(describeLists([[1, 2, 3, 4]], result.cards, true, MESSAGES).status, SOME_FAILED);
 });
 
 // --- /api/recommendations ---

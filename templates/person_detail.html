@@ -12,11 +12,11 @@
     <article class="detail-layout">
         <div class="detail-media">
             {% if person.profile_image_url %}
-            <img class="detail-image" src="{{ person.profile_image_url }}" alt="{{ person.name }} profil fotoğrafı">
+            <img class="detail-image" src="{{ person.profile_image_url }}" alt="{{ t('person.photo_alt', name=person.name) }}">
             {% else %}
             <div class="detail-image detail-image-placeholder">
                 {{ icon('user') }}
-                <span>Fotoğraf Yok</span>
+                <span>{{ t('person.no_photo') }}</span>
             </div>
             {% endif %}
         </div>
@@ -25,9 +25,9 @@
             <h1 class="page-title detail-title">{{ person.name }}</h1>
             {# The role of this page (director or actor page), then what TMDb knows them for when that
                differs; known_for_label is missing for departments without a Turkish label. #}
-            <p class="person-role">{{ person.person_type_tr }}</p>
+            <p class="person-role">{% if person_type == 'director' %}{{ t('person.role_director') }}{% else %}{{ t('person.role_actor') }}{% endif %}</p>
             {% if person.known_for_label and person.known_for_label != person.person_type_tr %}
-            <p class="person-known-for">Tanındığı alan: {{ person.known_for_label }}</p>
+            <p class="person-known-for">{{ t('person.known_for', label=person.known_for_label) }}</p>
             {% endif %}
         </header>
 
@@ -35,15 +35,15 @@
             {% if person.birthday or person.deathday or person.homepage %}
             <dl class="person-facts">
                 {% if person.birthday %}
-                <dt>Doğum Tarihi</dt>
+                <dt>{{ t('person.birthday') }}</dt>
                 <dd>{{ person.birthday | format_date }}{% if person.place_of_birth %} ({{ person.place_of_birth }}){% endif %}</dd>
                 {% endif %}
                 {% if person.deathday %}
-                <dt>Ölüm Tarihi</dt>
+                <dt>{{ t('person.deathday') }}</dt>
                 <dd>{{ person.deathday | format_date }}</dd>
                 {% endif %}
                 {% if person.homepage %}
-                <dt>Web Sitesi</dt>
+                <dt>{{ t('person.homepage') }}</dt>
                 <dd><a class="link" href="{{ person.homepage }}" target="_blank" rel="noopener noreferrer">{{ person.homepage }}</a></dd>
                 {% endif %}
             </dl>
@@ -51,15 +51,15 @@
 
             {% if person.biography %}
             {% set biography = person.biography %}
-            {# Cut at a word boundary near 600 characters; the rest sits behind "Devamını Oku". #}
+            {# Cut at a word boundary near 600 characters; the rest sits behind "Read more". #}
             {% set preview = biography | truncate(600, false, '') %}
             {% set is_long = preview | length < biography | length %}
             <section class="detail-section person-biography">
-                <h2 class="section-title">Biyografi</h2>
+                <h2 class="section-title">{{ t('person.biography') }}</h2>
                 <p class="detail-text">{{ preview }}{% if is_long %}...{% endif %}</p>
                 {% if is_long %}
                 <details>
-                    <summary>Devamını Oku</summary>
+                    <summary>{{ t('person.read_more') }}</summary>
                     <p class="detail-text">{{ biography[preview | length:] }}</p>
                 </details>
                 {% endif %}
@@ -69,16 +69,16 @@
     </article>
 
     <section class="detail-cards">
-        <h2 class="section-title">Filmografi</h2>
+        <h2 class="section-title">{{ t('person.filmography') }}</h2>
         {% if person.movies %}
         <ul class="movie-grid">
             {% for movie in person.movies %}
             {# Actors' cards name the character; a director's job would only repeat on every card. #}
-            <li>{{ movie_card(movie, note=movie.character, note_label="Rol") }}</li>
+            <li>{{ movie_card(movie, note=movie.character, note_label=t('card.role')) }}</li>
             {% endfor %}
         </ul>
         {% else %}
-        <p class="detail-note">Bu {{ person.person_type_tr.lower() }} için filmografi bilgisi bulunamadı.</p>
+        <p class="detail-note">{% if person_type == 'director' %}{{ t('person.no_films_director') }}{% else %}{{ t('person.no_films_actor') }}{% endif %}</p>
         {% endif %}
     </section>
 </div>

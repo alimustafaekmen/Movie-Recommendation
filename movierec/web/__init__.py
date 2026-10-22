@@ -21,9 +21,9 @@ from movierec.config import (
 )
 from movierec.engine import RecommendationEngine
 from movierec.genres import genre_label
-from movierec.i18n import format_date, format_number, format_rating
+from movierec.i18n import decimal_text, format_date, format_number, format_rating
 from movierec.movie_details import MovieDetails
-from movierec.web.language import get_lang, lang_url, remember_language, t
+from movierec.web.language import get_lang, lang_url, remember_language, t, t_count
 from movierec.web.redirects import API_PREFIXES
 
 logger = logging.getLogger(__name__)
@@ -234,8 +234,10 @@ def _register_template_helpers(app: Flask) -> None:
     # Globals, not context values: a macro imported with {% from %}, such as the movie card,
     # does not see the context. The labels and formats follow the page language.
     app.add_template_global(t)
+    app.add_template_global(t_count)
     app.add_template_global(lang_url)
     app.add_template_global(lambda name: genre_label(name, get_lang()), "genre_label")
     app.add_template_filter(lambda value: format_date(value, get_lang()), "format_date")
     app.add_template_filter(lambda value: format_number(value, get_lang()), "format_number")
     app.add_template_filter(lambda value: format_rating(value, get_lang()), "format_rating")
+    app.add_template_filter(lambda text: decimal_text(text, get_lang()), "decimal_text")

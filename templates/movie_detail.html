@@ -2,12 +2,12 @@
 {% from "_icon.html" import icon %}
 {% from "_movie_card.html" import movie_card %}
 
-{% block title %}{{ movie.title | default('Film Detayı') }}{% if movie.year %} ({{ movie.year }}){% endif %} · MovieRec{% endblock %}
+{% block title %}{{ movie.title | default(t('movie.default_title')) }}{% if movie.year %} ({{ movie.year }}){% endif %} · MovieRec{% endblock %}
 
 {% block head %}
 <link rel="stylesheet" href="{{ asset_url('css/detail.css') }}">
 {# In the head and render-blocking: the list buttons already show the stored state in the first
-   frame, so a liked film never reads "Beğen" for a moment. #}
+   frame, so a liked film never reads "Like" for a moment. #}
 <script type="module" blocking="render" src="{{ asset_url('js/movie_detail.js') }}"></script>
 {% endblock %}
 
@@ -18,17 +18,17 @@
     <article class="detail-layout">
         <div class="detail-media">
             {% if movie.poster_url_large %}
-            <img class="detail-image" src="{{ movie.poster_url_large }}" alt="{{ movie.title }} posteri">
+            <img class="detail-image" src="{{ movie.poster_url_large }}" alt="{{ t('movie.poster_alt', title=movie.title) }}">
             {% else %}
             <div class="detail-image detail-image-placeholder">
                 {{ icon('film') }}
-                <span>Poster Bulunamadı</span>
+                <span>{{ t('movie.no_poster') }}</span>
             </div>
             {% endif %}
         </div>
 
         <header class="detail-header">
-            <h1 class="page-title detail-title">{{ movie.title | default('Başlık Yok') }}</h1>
+            <h1 class="page-title detail-title">{{ movie.title | default(t('movie.no_title')) }}</h1>
             {% if movie.tagline %}
             <p class="movie-tagline">{{ movie.tagline }}</p>
             {% endif %}
@@ -39,42 +39,44 @@
             <ul class="meta-line movie-detail-meta">
                 {% if movie.year %}<li>{{ movie.year }}</li>{% endif %}
                 {% if movie.runtime_formatted %}<li>{{ movie.runtime_formatted }}</li>{% endif %}
-                {% if rating %}<li class="rating">{{ icon('star', class='rating-star') }}<span class="sr-only">Puan:</span> {{ rating }}<span class="rating-scale">/10</span></li>{% endif %}
-                {% if movie.vote_count %}<li>{{ movie.vote_count | format_number }} oy</li>{% endif %}
+                {% if rating %}<li class="rating">{{ icon('star', class='rating-star') }}<span class="sr-only">{{ t('card.rating') }}</span> {{ rating }}<span class="rating-scale">/10</span></li>{% endif %}
+                {% if movie.vote_count %}<li>{{ t_count('movie.votes', movie.vote_count) }}</li>{% endif %}
             </ul>
             {% endif %}
         </header>
 
         <div class="detail-body">
             {# The lists live in this browser; movie_detail.js reads and toggles them and swaps
-               each label for its state ("Beğenildi", "İzleme listende") and each outline icon
+               each label for its state (data-label, data-active-label) and each outline icon
                for the solid one. #}
             <div class="movie-actions">
-                <button type="button" class="btn btn-secondary action-btn btn-like" title="Beğen"
-                    data-movie-id="{{ movie.id }}">
-                    {{ icon('heart-regular') }} <span>Beğen</span>
+                <button type="button" class="btn btn-secondary action-btn btn-like" title="{{ t('movie.like') }}"
+                    data-movie-id="{{ movie.id }}" data-label="{{ t('movie.like') }}" data-active-label="{{ t('movie.liked') }}">
+                    {{ icon('heart-regular') }} <span>{{ t('movie.like') }}</span>
                 </button>
-                <button type="button" class="btn btn-secondary action-btn btn-watchlist" title="İzleme listesine ekle"
-                    data-movie-id="{{ movie.id }}">
-                    {{ icon('bookmark-regular') }} <span>İzleme listesine ekle</span>
+                <button type="button" class="btn btn-secondary action-btn btn-watchlist" title="{{ t('movie.add_watchlist') }}"
+                    data-movie-id="{{ movie.id }}" data-label="{{ t('movie.add_watchlist') }}"
+                    data-active-label="{{ t('movie.in_watchlist') }}">
+                    {{ icon('bookmark-regular') }} <span>{{ t('movie.add_watchlist') }}</span>
                 </button>
             </div>
             {# movie_detail.js removes data-load-error once it runs; if it never does, base.js
-               shows the text, since the buttons above would do nothing. #}
+               shows the text, since the buttons above would do nothing. data-not-saved is the
+               note for a browser that cannot keep the lists. #}
             <p class="action-status" role="status" aria-live="polite"
-                data-load-error="Listeler şu anda kullanılamıyor. Lütfen sayfayı yenileyin."></p>
-            <noscript><p class="action-status">Listelere film eklemek için JavaScript gerekir.</p></noscript>
+                data-load-error="{{ t('movie.lists_load_error') }}" data-not-saved="{{ t('lists.not_saved') }}"></p>
+            <noscript><p class="action-status">{{ t('movie.lists_need_js') }}</p></noscript>
 
             {% if movie.overview %}
             <section class="detail-section">
-                <h2 class="section-title">Özet</h2>
+                <h2 class="section-title">{{ t('movie.overview') }}</h2>
                 <p class="detail-text">{{ movie.overview }}</p>
             </section>
             {% endif %}
 
             {% if movie.genre_badges %}
             <section class="detail-section">
-                <h2 class="section-title">Türler</h2>
+                <h2 class="section-title">{{ t('movie.genres') }}</h2>
                 <ul class="tag-list">
                     {% for genre in movie.genre_badges %}
                     <li><a class="tag" href="{{ url_for('movies.home', tur=genre.link_name) }}">{{ genre.display_name }}</a></li>
@@ -85,7 +87,7 @@
 
             {% if movie.directors %}
             <section class="detail-section">
-                <h2 class="section-title">Yönetmen</h2>
+                <h2 class="section-title">{{ t_count('movie.directors', movie.directors | length) }}</h2>
                 <ul class="name-list">
                     {% for director in movie.directors %}
                     <li><a class="link" href="{{ url_for('movies.director', director_name=director) }}">{{ director }}</a></li>
@@ -96,7 +98,7 @@
 
             {% if movie.cast_list %}
             <section class="detail-section">
-                <h2 class="section-title">Başlıca Oyuncular</h2>
+                <h2 class="section-title">{{ t('movie.cast') }}</h2>
                 <ul class="name-list">
                     {% for actor in movie.cast_list %}
                     <li><a class="link" href="{{ url_for('movies.actor', actor_name=actor) }}">{{ actor }}</a></li>
@@ -106,22 +108,22 @@
             {% endif %}
 
             <section class="detail-section">
-                <h2 class="section-title">Fragman</h2>
+                <h2 class="section-title">{{ t('movie.trailer') }}</h2>
                 {% if movie.trailer_key %}
                 {# Only the thumbnail loads with the page; movie_detail.js swaps in the YouTube player
                    on click, which saves about 1 MB of player scripts on every visit. #}
-                <button type="button" class="trailer-play" aria-label="Fragmanı oynat"
-                    data-trailer-key="{{ movie.trailer_key }}" data-trailer-title="{{ movie.title }} fragmanı">
+                <button type="button" class="trailer-play" aria-label="{{ t('movie.play_trailer') }}"
+                    data-trailer-key="{{ movie.trailer_key }}" data-trailer-title="{{ t('movie.trailer_title', title=movie.title) }}">
                     <img class="trailer-thumbnail" src="https://i.ytimg.com/vi/{{ movie.trailer_key }}/hqdefault.jpg"
                         alt="" loading="lazy">
                     <span class="trailer-play-icon">{{ icon('play') }}</span>
                 </button>
                 <noscript>
                     <p class="trailer-link"><a class="link" href="https://www.youtube.com/watch?v={{ movie.trailer_key }}"
-                            target="_blank" rel="noopener noreferrer">Fragmanı YouTube'da izle</a></p>
+                            target="_blank" rel="noopener noreferrer">{{ t('movie.watch_trailer') }}</a></p>
                 </noscript>
                 {% else %}
-                <p class="detail-note">Bu film için fragman bulunamadı.</p>
+                <p class="detail-note">{{ t('movie.no_trailer') }}</p>
                 {% endif %}
             </section>
         </div>
@@ -129,7 +131,7 @@
 
     {% if movie.similar_movies %}
     <section class="detail-cards">
-        <h2 class="section-title">Benzer Filmler</h2>
+        <h2 class="section-title">{{ t('movie.similar') }}</h2>
         <ul class="movie-grid">
             {% for similar in movie.similar_movies %}
             <li>{{ movie_card(similar) }}</li>

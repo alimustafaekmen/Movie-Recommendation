@@ -1,7 +1,7 @@
 {% extends "base.html" %}
 {% from "_icon.html" import icon %}
 
-{% block title %}Listelerim · MovieRec{% endblock %}
+{% block title %}{{ t('lists.title') }}{% endblock %}
 
 {% block head %}
 <link rel="stylesheet" href="{{ asset_url('css/lists.css') }}">
@@ -19,32 +19,32 @@
     <ul class="movie-grid" id="{{ list_name }}-grid" hidden></ul>
     <div class="panel empty-list" hidden>
         <p class="empty-list-message">{{ empty_text }}</p>
-        <p class="empty-list-hint">Film sayfalarındaki “{{ button_label }}” düğmesiyle ekleyebilirsiniz. Listeler bu tarayıcıda saklanır.</p>
-        <a class="link empty-list-link" href="{{ url_for('movies.home') }}">Film keşfetmeye başla</a>
+        <p class="empty-list-hint">{{ t('lists.empty_hint', button=button_label) }}</p>
+        <a class="link empty-list-link" href="{{ url_for('movies.home') }}">{{ t('lists.start') }}</a>
     </div>
 </section>
 {% endmacro %}
 
-{# The script's URLs come from the server: the cards and recommendations APIs, and the movie
-   page for id 0, whose 0 my_lists.js replaces with each film's id. #}
+{# The script's URLs and texts come from the server: the cards and recommendations APIs, the
+   movie page for id 0, whose 0 my_lists.js replaces with each film's id, and the status notes. #}
 <div class="container page my-lists-page" data-cards-url="{{ url_for('lists.api_movies') }}"
     data-recommendations-url="{{ url_for('lists.api_recommendations') }}"
-    data-movie-url="{{ url_for('movies.movie_detail', movie_id=0) }}">
-    <h1 class="page-title">Kişisel Film Listelerim</h1>
+    data-movie-url="{{ url_for('movies.movie_detail', movie_id=0) }}"
+    data-not-saved="{{ t('lists.not_saved') }}" data-load-failed="{{ t('lists.load_failed') }}"
+    data-some-failed="{{ t('lists.some_failed') }}">
+    <h1 class="page-title">{{ t('lists.heading') }}</h1>
     {# my_lists.js removes data-load-error once it runs; if it never does, base.js shows the
        text instead of leaving the lists blank. #}
     <p class="list-status" role="status" aria-live="polite"
-        data-load-error="Listeleriniz şu anda gösterilemiyor. Lütfen sayfayı yenileyin."></p>
-    <noscript><p class="list-status">Listeleriniz bu tarayıcıda saklanır; görmek için JavaScript gerekir.</p></noscript>
-    {{ list_section("Beğendiğim Filmler", "favorites",
-    "Henüz beğendiğiniz bir film bulunmuyor.", "Beğen") }}
-    {{ list_section("Daha Sonra İzleyeceklerim", "watchlist",
-    "İzleme listenizde henüz bir film bulunmuyor.", "İzleme listesine ekle") }}
+        data-load-error="{{ t('lists.load_error') }}"></p>
+    <noscript><p class="list-status">{{ t('lists.need_js') }}</p></noscript>
+    {{ list_section(t('lists.favorites'), "favorites", t('lists.favorites_empty'), t('movie.like')) }}
+    {{ list_section(t('lists.watchlist'), "watchlist", t('lists.watchlist_empty'), t('movie.add_watchlist')) }}
     {# Last on the page, so nothing moves when my_lists.js shows it: only once the favourites
        give it films. #}
     <section class="list-section recommendations" hidden>
-        <h2 class="section-title">Beğendiklerinize göre</h2>
-        <p class="recommendations-hint">Beğendiğiniz filmlere en çok benzeyen filmler; listelerinizdekiler gösterilmez.</p>
+        <h2 class="section-title">{{ t('lists.recommendations') }}</h2>
+        <p class="recommendations-hint">{{ t('lists.recommendations_hint') }}</p>
         <ul class="movie-grid" id="recommendations-grid"></ul>
     </section>
 
@@ -59,7 +59,7 @@
                     <h3 class="movie-card-title"></h3>
                     <p class="movie-card-meta meta-line">
                         <span class="movie-card-year"></span>
-                        <span class="movie-card-rating rating">{{ icon('star', class='rating-star') }}<span class="sr-only">Puan:</span></span>
+                        <span class="movie-card-rating rating">{{ icon('star', class='rating-star') }}<span class="sr-only">{{ t('card.rating') }}</span></span>
                     </p>
                 </div>
             </a>

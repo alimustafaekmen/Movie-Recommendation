@@ -1,27 +1,27 @@
 // The my lists page: the ids come from this browser's storage, the cards from /api/movies and
-// the films like the favourites from /api/recommendations.
-import { NOT_SAVED_MESSAGE, openListStore, watchLists } from './list_store.js';
+// the films like the favourites from /api/recommendations. The status texts come from the page
+// (data-not-saved, data-load-failed, data-some-failed), in its language.
+import { openListStore, watchLists } from './list_store.js';
 
 // The most ids /api/recommendations reads per list.
 const MAX_IDS_PER_REQUEST = 100;
 // /api/movies looks up at most this many ids outside the dataset (MAX_TMDB_LOOKUPS), so chunks
 // of this size never lose one.
 const MAX_CARD_IDS_PER_REQUEST = 20;
-const LOAD_FAILED_MESSAGE = 'Filmler şu anda yüklenemedi. Lütfen sayfayı yenileyin.';
-const SOME_FAILED_MESSAGE = 'Bazı filmler şu anda yüklenemedi.';
 
 // Plain code-point order, so the lists sort the same whatever the browser's language.
 const byTitle = (a, b) => (a.title < b.title ? -1 : a.title > b.title ? 1 : 0);
 
 /**
  * What the page shows for the stored lists (arrays of ids) once their cards (a Map by id) have
- * loaded: each list's cards in title order, and the status line.
+ * loaded: each list's cards in title order, and the status line. messages holds the page's texts
+ * notSaved and someFailed.
  */
-export function describeLists(lists, cards, persistent) {
+export function describeLists(lists, cards, persistent, messages) {
     const sections = lists.map((ids) => ids.map((id) => cards.get(id)).filter(Boolean).sort(byTitle));
     // /api/movies leaves out ids it could not resolve, e.g. during a TMDb outage.
     const incomplete = sections.some((shown, index) => shown.length < lists[index].length);
-    const status = [persistent ? '' : NOT_SAVED_MESSAGE, incomplete ? SOME_FAILED_MESSAGE : ''];
+    const status = [persistent ? '' : messages.notSaved, incomplete ? messages.someFailed : ''];
     return { sections, status: status.filter(Boolean).join(' ') };
 }
 
@@ -91,12 +91,13 @@ export function recommendationsToShow(favorites, watchlist, cards) {
     return favorites.length ? cards.filter((card) => !listed.has(card.id)) : [];
 }
 
-/** A rating such as 8.2 as '8,2', as the format_rating filter shows it; no rating gives ''. */
-export function formatRating(value) {
+/** A rating such as 8.2 as '8,2' or '8.2' in the page's language (lang), as the format_rating
+ * filter shows it; no rating gives ''. */
+export function formatRating(value, lang) {
     if (typeof value !== 'number' || !Number.isFinite(value) || !value) {
         return '';
     }
-    return value.toLocaleString('tr-TR', { minimumFractionDigits: 1, maximumFractionDigits: 1 });
+    return value.toLocaleString(lang, { minimumFractionDigits: 1, maximumFractionDigits: 1 });
 }
 
 /**
@@ -107,14 +108,14 @@ export function movieHref(movieUrl, id) {
     return movieUrl.replace(/0(?=\D*$)/, String(id));
 }
 
-/** What the movie card (templates/_movie_card.html) shows for an /api/movies card. */
-export function cardContent(card, movieUrl) {
+/** What the movie card (templates/_movie_card.html) shows for an /api/movies card, in lang. */
+export function cardContent(card, movieUrl, lang) {
     return {
         href: movieHref(movieUrl, card.id),
         title: card.title,
         // A plain year, never '2.008'; 0 means unknown.
         year: Number.isInteger(card.year) && card.year > 0 ? String(card.year) : '',
-        rating: formatRating(card.vote_average),
+        rating: formatRating(card.vote_average, lang),
         poster: typeof card.poster_url === 'string' ? card.poster_url : '',
     };
 }
@@ -137,7 +138,7 @@ function renderPlaceholder(template) {
 }
 
 function renderCard(template, card, movieUrl) {
-    const shown = cardContent(card, movieUrl);
+    const shown = cardContent(card, movieUrl, document.documentElement.lang);
     const item = template.content.firstElementChild.cloneNode(true);
     item.querySelector('.movie-card').href = shown.href;
     const poster = item.querySelector('.movie-card-poster');
@@ -230,7 +231,7 @@ function main() {
         let failed = false;
         if (missing.length) {
             lists.forEach((ids, index) => showList(sections[index], ids.length, ids.length ? null : [], template));
-            status.textContent = store.persistent ? '' : NOT_SAVED_MESSAGE;
+            status.textContent = store.persistent ? '' : page.dataset.notSaved;
             // The placeholders replaced what was drawn, even if this render is overtaken.
             drawn = null;
             const loaded = await fetchCards(cardsUrl, missing);
@@ -241,9 +242,9 @@ function main() {
             }
             failed = loaded.failed;
         }
-        const shown = describeLists(lists, known, store.persistent);
+        const shown = describeLists(lists, known, store.persistent, page.dataset);
         const nothingLoaded = shown.sections.every((cards) => !cards.length);
-        status.textContent = failed && nothingLoaded ? LOAD_FAILED_MESSAGE : shown.status;
+        status.textContent = failed && nothingLoaded ? page.dataset.loadFailed : shown.status;
         sections.forEach((section, index) => showList(section, lists[index].length, shown.sections[index], template, movieUrl));
         drawn = JSON.stringify(lists);
     }

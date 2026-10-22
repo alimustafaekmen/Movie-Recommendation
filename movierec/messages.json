@@ -3,9 +3,17 @@
     "en": "Close",
     "tr": "Kapat"
   },
+  "card.director": {
+    "en": "Director",
+    "tr": "Yönetmen"
+  },
   "card.rating": {
     "en": "Rating:",
     "tr": "Puan:"
+  },
+  "card.role": {
+    "en": "Role",
+    "tr": "Rol"
   },
   "date.unknown": {
     "en": "Unknown",
@@ -87,6 +95,178 @@
     "en": "Skip to content",
     "tr": "İçeriğe geç"
   },
+  "home.genres_heading": {
+    "en": "Browse genres",
+    "tr": "Türlere göz atın"
+  },
+  "home.headline": {
+    "en": "Discover the films that suit you best",
+    "tr": "Size en uygun filmleri keşfedin"
+  },
+  "home.intro": {
+    "en": "Find similar films or filter in detail.",
+    "tr": "Benzerlerini bulun veya detaylı filtreleyin."
+  },
+  "home.popular_heading": {
+    "en": "Popular films",
+    "tr": "Popüler filmler"
+  },
+  "home.title": {
+    "en": "MovieRec · Discover similar films",
+    "tr": "MovieRec · Benzer filmleri keşfedin"
+  },
+  "lists.empty_hint": {
+    "en": "Add films with the “{button}” button on their pages. The lists are kept in this browser.",
+    "tr": "Film sayfalarındaki “{button}” düğmesiyle ekleyebilirsiniz. Listeler bu tarayıcıda saklanır."
+  },
+  "lists.favorites": {
+    "en": "Films I like",
+    "tr": "Beğendiğim Filmler"
+  },
+  "lists.favorites_empty": {
+    "en": "You have not liked any films yet.",
+    "tr": "Henüz beğendiğiniz bir film bulunmuyor."
+  },
+  "lists.heading": {
+    "en": "My film lists",
+    "tr": "Kişisel Film Listelerim"
+  },
+  "lists.load_error": {
+    "en": "Your lists cannot be shown right now. Please reload the page.",
+    "tr": "Listeleriniz şu anda gösterilemiyor. Lütfen sayfayı yenileyin."
+  },
+  "lists.load_failed": {
+    "en": "The films could not be loaded right now. Please reload the page.",
+    "tr": "Filmler şu anda yüklenemedi. Lütfen sayfayı yenileyin."
+  },
+  "lists.need_js": {
+    "en": "Your lists are kept in this browser; showing them needs JavaScript.",
+    "tr": "Listeleriniz bu tarayıcıda saklanır; görmek için JavaScript gerekir."
+  },
+  "lists.not_saved": {
+    "en": "This browser cannot save the lists; your choices are lost when you leave the page.",
+    "tr": "Bu tarayıcı listeleri kaydedemiyor; seçimleriniz sayfadan ayrılınca kaybolur."
+  },
+  "lists.recommendations": {
+    "en": "Based on your likes",
+    "tr": "Beğendiklerinize göre"
+  },
+  "lists.recommendations_hint": {
+    "en": "The films most like the ones you like; films on your lists are left out.",
+    "tr": "Beğendiğiniz filmlere en çok benzeyen filmler; listelerinizdekiler gösterilmez."
+  },
+  "lists.some_failed": {
+    "en": "Some films could not be loaded right now.",
+    "tr": "Bazı filmler şu anda yüklenemedi."
+  },
+  "lists.start": {
+    "en": "Start discovering films",
+    "tr": "Film keşfetmeye başla"
+  },
+  "lists.title": {
+    "en": "My lists · MovieRec",
+    "tr": "Listelerim · MovieRec"
+  },
+  "lists.watchlist": {
+    "en": "To watch later",
+    "tr": "Daha Sonra İzleyeceklerim"
+  },
+  "lists.watchlist_empty": {
+    "en": "Your watchlist has no films yet.",
+    "tr": "İzleme listenizde henüz bir film bulunmuyor."
+  },
+  "movie.add_watchlist": {
+    "en": "Add to watchlist",
+    "tr": "İzleme listesine ekle"
+  },
+  "movie.cast": {
+    "en": "Main cast",
+    "tr": "Başlıca Oyuncular"
+  },
+  "movie.default_title": {
+    "en": "Film details",
+    "tr": "Film Detayı"
+  },
+  "movie.directors.one": {
+    "en": "Director",
+    "tr": "Yönetmen"
+  },
+  "movie.directors.other": {
+    "en": "Directors",
+    "tr": "Yönetmen"
+  },
+  "movie.genres": {
+    "en": "Genres",
+    "tr": "Türler"
+  },
+  "movie.in_watchlist": {
+    "en": "On your watchlist",
+    "tr": "İzleme listende"
+  },
+  "movie.like": {
+    "en": "Like",
+    "tr": "Beğen"
+  },
+  "movie.liked": {
+    "en": "Liked",
+    "tr": "Beğenildi"
+  },
+  "movie.lists_load_error": {
+    "en": "The lists are unavailable right now. Please reload the page.",
+    "tr": "Listeler şu anda kullanılamıyor. Lütfen sayfayı yenileyin."
+  },
+  "movie.lists_need_js": {
+    "en": "Adding films to the lists needs JavaScript.",
+    "tr": "Listelere film eklemek için JavaScript gerekir."
+  },
+  "movie.no_poster": {
+    "en": "No poster",
+    "tr": "Poster Bulunamadı"
+  },
+  "movie.no_title": {
+    "en": "No title",
+    "tr": "Başlık Yok"
+  },
+  "movie.no_trailer": {
+    "en": "No trailer was found for this film.",
+    "tr": "Bu film için fragman bulunamadı."
+  },
+  "movie.overview": {
+    "en": "Overview",
+    "tr": "Özet"
+  },
+  "movie.play_trailer": {
+    "en": "Play trailer",
+    "tr": "Fragmanı oynat"
+  },
+  "movie.poster_alt": {
+    "en": "Poster of {title}",
+    "tr": "{title} posteri"
+  },
+  "movie.similar": {
+    "en": "Similar films",
+    "tr": "Benzer Filmler"
+  },
+  "movie.trailer": {
+    "en": "Trailer",
+    "tr": "Fragman"
+  },
+  "movie.trailer_title": {
+    "en": "{title} trailer",
+    "tr": "{title} fragmanı"
+  },
+  "movie.votes.one": {
+    "en": "{count} vote",
+    "tr": "{count} oy"
+  },
+  "movie.votes.other": {
+    "en": "{count} votes",
+    "tr": "{count} oy"
+  },
+  "movie.watch_trailer": {
+    "en": "Watch the trailer on YouTube",
+    "tr": "Fragmanı YouTube'da izle"
+  },
   "nav.lists": {
     "en": "My lists",
     "tr": "Listelerim"
@@ -95,6 +275,42 @@
     "en": "Main menu",
     "tr": "Ana menü"
   },
+  "person.biography": {
+    "en": "Biography",
+    "tr": "Biyografi"
+  },
+  "person.birthday": {
+    "en": "Born",
+    "tr": "Doğum Tarihi"
+  },
+  "person.deathday": {
+    "en": "Died",
+    "tr": "Ölüm Tarihi"
+  },
+  "person.filmography": {
+    "en": "Filmography",
+    "tr": "Filmografi"
+  },
+  "person.homepage": {
+    "en": "Website",
+    "tr": "Web Sitesi"
+  },
+  "person.known_for": {
+    "en": "Known for: {label}",
+    "tr": "Tanındığı alan: {label}"
+  },
+  "person.no_films_actor": {
+    "en": "No filmography was found for this actor.",
+    "tr": "Bu oyuncu için filmografi bilgisi bulunamadı."
+  },
+  "person.no_films_director": {
+    "en": "No filmography was found for this director.",
+    "tr": "Bu yönetmen için filmografi bilgisi bulunamadı."
+  },
+  "person.no_photo": {
+    "en": "No photo",
+    "tr": "Fotoğraf Yok"
+  },
   "person.not_found_actor": {
     "en": "No actor named '{name}' was found.",
     "tr": "'{name}' adlı oyuncu bulunamadı."
@@ -102,6 +318,50 @@
   "person.not_found_director": {
     "en": "No director named '{name}' was found.",
     "tr": "'{name}' adlı yönetmen bulunamadı."
+  },
+  "person.photo_alt": {
+    "en": "Profile photo of {name}",
+    "tr": "{name} profil fotoğrafı"
+  },
+  "person.read_more": {
+    "en": "Read more",
+    "tr": "Devamını Oku"
+  },
+  "person.role_actor": {
+    "en": "Actor",
+    "tr": "Oyuncu"
+  },
+  "person.role_director": {
+    "en": "Director",
+    "tr": "Yönetmen"
+  },
+  "results.count.one": {
+    "en": "{count} film",
+    "tr": "{count} film"
+  },
+  "results.count.other": {
+    "en": "{count} films",
+    "tr": "{count} film"
+  },
+  "results.filter_title": {
+    "en": "Filter results",
+    "tr": "Filtre sonuçları"
+  },
+  "results.hint_filter": {
+    "en": "Try again with fewer filters or other values.",
+    "tr": "Daha az filtreyle ya da farklı değerlerle yeniden deneyin."
+  },
+  "results.hint_similar": {
+    "en": "Try another film title, or pick one of the suggestions as you type.",
+    "tr": "Başka bir film adı deneyin ya da yazarken çıkan önerilerden birini seçin."
+  },
+  "results.more": {
+    "en": "Show more",
+    "tr": "Daha fazla göster"
+  },
+  "results.similar_title": {
+    "en": "Films similar to “{title}”",
+    "tr": "“{title}” için benzer filmler"
   },
   "runtime.hours": {
     "en": "{hours} h",
@@ -114,6 +374,82 @@
   "runtime.minutes": {
     "en": "{minutes} min",
     "tr": "{minutes} dk"
+  },
+  "search.any_rating": {
+    "en": "Any",
+    "tr": "Fark etmez"
+  },
+  "search.director": {
+    "en": "Director",
+    "tr": "Yönetmen"
+  },
+  "search.director_placeholder": {
+    "en": "E.g. Christopher Nolan",
+    "tr": "Örn. Christopher Nolan"
+  },
+  "search.edit": {
+    "en": "Edit search",
+    "tr": "Aramayı düzenle"
+  },
+  "search.film_label": {
+    "en": "A film you like",
+    "tr": "Beğendiğiniz bir film"
+  },
+  "search.film_placeholder": {
+    "en": "E.g. Inception",
+    "tr": "Örn. Inception"
+  },
+  "search.filter_submit": {
+    "en": "Filter",
+    "tr": "Filtrele"
+  },
+  "search.find_similar": {
+    "en": "Find similar films",
+    "tr": "Benzerlerini bul"
+  },
+  "search.genres": {
+    "en": "Genres",
+    "tr": "Türler"
+  },
+  "search.loading": {
+    "en": "Searching...",
+    "tr": "Aranıyor..."
+  },
+  "search.min_rating": {
+    "en": "Minimum rating (TMDB)",
+    "tr": "En düşük puan (TMDB)"
+  },
+  "search.panel": {
+    "en": "Film search",
+    "tr": "Film arama"
+  },
+  "search.tab_filter": {
+    "en": "Filter",
+    "tr": "Filtrele"
+  },
+  "search.tab_similar": {
+    "en": "Similar film",
+    "tr": "Benzer film"
+  },
+  "search.tabs": {
+    "en": "Search type",
+    "tr": "Arama türü"
+  },
+  "search.year_from": {
+    "en": "Earliest",
+    "tr": "En erken"
+  },
+  "search.year_placeholder": {
+    "en": "e.g. {year}",
+    "tr": "örn. {year}"
+  },
+  "search.year_to": {
+    "en": "Latest",
+    "tr": "En geç"
+  },
+  "search.years": {
+    "en": "Release year",
+    "tr": "Yayın yılı"
   },
   "summary.director": {
     "en": "Director: {name}",

@@ -3,8 +3,6 @@
 const LIST_NAMES = ['favorites', 'watchlist'];
 // Earlier versions of the site used this key prefix; createListStore moves those lists.
 const OLD_KEY_PREFIX = 'film-oneri:';
-// Shown by the pages when the store is not persistent.
-export const NOT_SAVED_MESSAGE = 'Bu tarayıcı listeleri kaydedemiyor; seçimleriniz sayfadan ayrılınca kaybolur.';
 // The server's movie id range (MAX_MOVIE_ID in movierec/web/__init__.py).
 const MAX_MOVIE_ID = 2147483647;
 
@@ -30,7 +28,7 @@ function parse(raw) {
 /**
  * A list store over a Storage such as localStorage. When storage is missing or throws
  * (blocked, full, private mode) the lists live in memory for this page and `persistent`
- * turns false so the page can say so.
+ * turns false so the page can say so (its data-not-saved text).
  */
 export function createListStore(storage) {
     let persistent = Boolean(storage);

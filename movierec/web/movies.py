@@ -243,7 +243,7 @@ def _render_person_page(name: str, person_type: str, not_found_key: str):
     if person is None:
         flash(t(not_found_key, name=name[:_MAX_ECHOED_LENGTH]), "warning")
         return redirect(url_for("movies.home"))
-    return render_template("person_detail.html", person=person)
+    return render_template("person_detail.html", person=person, person_type=person_type)
 
 
 @bp.route("/director/<path:director_name>")
