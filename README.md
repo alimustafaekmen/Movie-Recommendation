@@ -47,10 +47,7 @@ Each film becomes four TF-IDF blocks. TF-IDF turns text into numbers: a term sco
 
 Each block is L2-normalised (every film's row is scaled to length 1) and multiplied by its weight. The joined row is normalised again. Films are then compared with cosine similarity, which measures how much two rows point the same way, from 0 to 1. The result is a weighted mean of the four block similarities, where each block counts with the square of its weight. The last column shows these shares for a film with all four fields.
 
-Separate blocks limit how much the overview can decide. The earlier model put all fields into one text, so a rare character name could link unrelated films. Toy Story's top 5 included *The 40 Year Old Virgin* because both overviews mention "Andy".
-
-- Earlier model: Toy Story 2, Toy Story 3, Monsters, Inc., Small Soldiers, The 40 Year Old Virgin
-- Now: Toy Story 3, Toy Story 2, Monsters, Inc., Big Hero 6, Inside Out
+Separate blocks limit how much the overview can decide, so a rare word such as a character name cannot link two unrelated films on its own. For example, Toy Story's top 5 is Toy Story 3, Toy Story 2, Monsters, Inc., Big Hero 6 and Inside Out.
 
 The model is a sparse 4,803 × 29,665 matrix of about 2.5 MB. Sparse means it stores only the non-zero values. No film-by-film table is stored. A film's similarities are one sparse matrix product, computed on request.
 
@@ -72,11 +69,10 @@ The 91 most similar films form a pool. That is three times the longest list (30)
 
 ### How the weights were chosen
 
-The weights are round numbers picked by hand, because there is no user data to tune them on. They were checked by reading the lists of well-known films and with the columns of `scripts/evaluate.py`.
+The weights are round numbers picked by hand, because there is no user data to tune them on. They were checked by reading the lists of well-known films and with the columns of `scripts/evaluate.py`, including two that the model does not use (shared lead actor and series recall).
 
-- **First try (genres 0.4, directors 0.5, keywords 0.3):** 438 films got 8 or more of their 12 picks from their own director. Jaws's top 8 were all Spielberg films.
-- **Directors down to 0.3:** 26 films. But same-genre films pushed out films with the same theme. Seven Samurai got boxing films at places 1 and 2. Series recall fell to 70.9%, below the earlier model's 75.4%.
-- **Now (genres 0.3, directors 0.2, keywords 0.4):** 1 film. Seven Samurai's boxing films move down to places 4 and 5. Series recall is 75.1%, close to the earlier model.
+- **Directors weigh little.** With a high director weight, a prolific director's films fill the whole list. At 0.5, 458 films got 8 or more of their 12 picks from their own director, and Jaws's top 8 were all Spielberg films. At 0.2 this happens to 1 film.
+- **Keywords weigh more than genres,** so films with the same theme rank above films that only share a genre.
 
 The weights are in [movierec/config.py](movierec/config.py).
 
@@ -117,10 +113,8 @@ On the Kaggle files (4,803 films):
 | Pure cosine | 0.744 | 5.6% | 3.48% | 76.7% | 98.5% | 191 |
 | MovieRec (hybrid) | 0.739 | 5.0% | 3.55% | 75.1% | 61.7% | 1,350 |
 | Most-voted baseline | 0.159 | 0.1% | 0.75% | 1.1% | 0.3% | 10,099 |
-| Earlier model, pure cosine | 0.356 | 4.5% | 3.23% | 76.4% | 98.6% | 284 |
-| Earlier model, hybrid | 0.335 | 4.0% | 3.15% | 75.4% | 64.1% | 1,630 |
 
-*Pure cosine* is the top 12 by content similarity alone. *MovieRec (hybrid)* is what the app shows. The *most-voted baseline* gives every seed the same 12 most-voted films. The *earlier model* (commit dc815a0) used one TF-IDF over all fields and linear popularity. Its rows come from the same metric code run on that commit. The script prints only the first three rows.
+*Pure cosine* is the top 12 by content similarity alone. *MovieRec (hybrid)* is what the app shows. The *most-voted baseline* gives every seed the same 12 most-voted films.
 
 - **Genre overlap:** the mean Jaccard index of the seed's and the recommendation's genres. Jaccard is shared genres divided by all genres of the two films. Seeds without genres are skipped.
 - **Same director:** the share of recommendations that share a director with the seed.
@@ -132,8 +126,8 @@ On the Kaggle files (4,803 films):
 What the numbers show and what they do not:
 
 - They measure coherence, not accuracy. They show whether a list hangs together, not whether people would like it.
-- Genres and directors are model inputs, so the first two columns mostly measure what the model was given. With the genre weight set to 0, the hybrid's genre overlap is 0.312. So the jump from 0.335 to 0.739 mostly shows the model doing what it was told.
-- Shared lead actor does not show that the new model is better. Directors reuse actors, so this column rises with the director weight. Without same-director pairs, every model scores about 2.0% to 2.2%. Series recall is partly built in too, because sequels share character names in their overviews.
+- Genres and directors are model inputs, so the first two columns mostly measure what the model was given. With the genre weight set to 0, the hybrid's genre overlap is 0.312, so most of the 0.739 comes from the model's own input.
+- Shared lead actor rises with the director weight, because directors reuse actors. Without same-director pairs, it is about 2% for both methods. Series recall is partly built in too, because sequels share character names in their overviews.
 - The hybrid trades a little agreement and about 37 percentage points of coverage for better-known films (median 1,350 votes against 191). Log scaling lowers that median on purpose. With linear scaling it is 1,553.
 - Most of the coverage gap comes from the 100-vote floor. Only 3,162 films (65.8%) have 100 votes or more, and the hybrid reaches 94% of them.
 
@@ -147,10 +141,9 @@ On the refreshed catalogue fetched on 2026-10-22 (8,966 films, dataset median 78
 
 These numbers cannot be reproduced without a TMDb API key, and they change with each refresh.
 
-- Genre overlap, same director and shared lead actor stay about the same.
-- Coverage rises from 61.7% to 81.4%, mostly because 8,274 films (92.3%) have 100 votes or more.
-- Median votes are higher because the same films have about 4 times more votes today than in the Kaggle files. Against the dataset median, the hybrid leans less on popular films: 4.6 times the median, against 5.7 times on the Kaggle files.
-- Series recall falls from 75.1% to 62.0%. Many more seeds have series films (1,362 against 464), so the title groups are bigger and noisier. Counting only Kaggle seeds and their Kaggle series films, it is 71.3%, about 4 points below the Kaggle files, because new films take some of their places.
+- Coverage is higher here, because 8,274 films (92.3%) have 100 votes or more.
+- Median votes are higher because TMDb's vote counts today are much higher than in the 2016 Kaggle snapshot.
+- Series recall is lower, because 1,362 seeds have series films, so the title groups are bigger and noisier.
 
 ## Run locally
 

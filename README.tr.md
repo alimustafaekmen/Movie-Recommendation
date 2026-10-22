@@ -47,10 +47,7 @@ Her film dört TF-IDF bloğuna dönüşür. TF-IDF metni sayılara çevirir: bir
 
 Her blok L2 ile normalize edilir (her filmin satırı 1 uzunluğuna ölçeklenir) ve ağırlığıyla çarpılır. Birleşen satır yeniden normalize edilir. Filmler sonra kosinüs benzerliğiyle karşılaştırılır. Bu ölçü, iki satırın ne kadar aynı yönü gösterdiğini 0 ile 1 arasında verir. Sonuç, dört bloğun benzerliklerinin ağırlıklı ortalamasıdır ve her blok ağırlığının karesi kadar sayılır. Tablonun son sütunu, dört alanı da dolu bir film için bu payları gösterir.
 
-Ayrı bloklar, özetin sonuca ne kadar etki edebileceğini sınırlar. Önceki model bütün alanları tek bir metinde birleştiriyordu, bu yüzden nadir bir karakter adı ilgisiz filmleri birbirine bağlayabiliyordu. Toy Story'nin ilk 5 önerisinde *The 40 Year Old Virgin* vardı, çünkü iki filmin özetinde de "Andy" adı geçiyor.
-
-- Önceki model: Toy Story 2, Toy Story 3, Monsters, Inc., Small Soldiers, The 40 Year Old Virgin
-- Şimdi: Toy Story 3, Toy Story 2, Monsters, Inc., Big Hero 6, Inside Out
+Ayrı bloklar, özetin sonuca ne kadar etki edebileceğini sınırlar. Böylece karakter adı gibi nadir bir kelime, ilgisiz iki filmi tek başına birbirine bağlayamaz. Örneğin Toy Story'nin ilk 5 önerisi Toy Story 3, Toy Story 2, Monsters, Inc., Big Hero 6 ve Inside Out'tur.
 
 Model, yaklaşık 2,5 MB'lık seyrek bir 4.803 × 29.665 matristir. Seyrek, yalnızca sıfır olmayan değerlerin saklandığı anlamına gelir. Film film benzerlik tablosu saklanmaz. Bir filmin benzerlikleri, istek geldiğinde tek bir seyrek matris çarpımıyla hesaplanır.
 
@@ -72,11 +69,10 @@ En benzer 91 film bir aday havuzu oluşturur. Bu sayı, en uzun listenin (30) ü
 
 ### Ağırlıklar nasıl seçildi
 
-Ağırlıklar elle seçilmiş yuvarlak sayılardır, çünkü ayarlamak için kullanıcı verisi yoktur. Tanınmış filmlerin listeleri okunarak ve `scripts/evaluate.py` sütunlarıyla kontrol edildiler.
+Ağırlıklar elle seçilmiş yuvarlak sayılardır, çünkü ayarlamak için kullanıcı verisi yoktur. Tanınmış filmlerin listeleri okunarak ve `scripts/evaluate.py` sütunlarıyla kontrol edildiler. Bu sütunlardan ikisi modelin kullanmadığı bilgilere dayanır: ortak başrol oyuncusu ve seri filmlerini bulma.
 
-- **İlk deneme (türler 0.4, yönetmenler 0.5, anahtar kelimeler 0.3):** 438 filmin 12 önerisinden 8'i ya da daha fazlası kendi yönetmeninden geliyordu. Jaws'un ilk 8 önerisinin hepsi Spielberg filmiydi.
-- **Yönetmen 0.3'e indirildi:** 26 film. Ama aynı türden filmler, aynı temayı işleyen filmlerin önüne geçti. Seven Samurai'ye 1. ve 2. sırada boks filmleri geldi. Seri filmlerini bulma oranı %70,9'a düştü, önceki modelin %75,4'ünün altında kaldı.
-- **Şimdi (türler 0.3, yönetmenler 0.2, anahtar kelimeler 0.4):** 1 film. Seven Samurai'nin boks filmleri 4. ve 5. sıraya iniyor. Seri filmlerini bulma oranı %75,1, önceki modele yakın.
+- **Yönetmenin ağırlığı düşüktür.** Yönetmen ağırlığı yüksek olursa çok film çekmiş bir yönetmenin filmleri bütün listeyi doldurur. 0.5 ağırlıkta 458 filmin 12 önerisinden 8'i ya da daha fazlası kendi yönetmeninden gelir ve Jaws'un ilk 8 önerisinin hepsi Spielberg filmidir. 0.2 ağırlıkta bu yalnızca 1 filmde olur.
+- **Anahtar kelimeler türlerden ağır basar.** Böylece aynı temayı işleyen filmler, yalnızca türü aynı olan filmlerin önüne geçer.
 
 Ağırlıklar [movierec/config.py](movierec/config.py) dosyasındadır.
 
@@ -117,10 +113,8 @@ Kaggle dosyalarında (4.803 film):
 | Saf kosinüs | 0.744 | %5,6 | %3,48 | %76,7 | %98,5 | 191 |
 | MovieRec (hibrit) | 0.739 | %5,0 | %3,55 | %75,1 | %61,7 | 1.350 |
 | En çok oy alanlar (taban çizgisi) | 0.159 | %0,1 | %0,75 | %1,1 | %0,3 | 10.099 |
-| Önceki model, saf kosinüs | 0.356 | %4,5 | %3,23 | %76,4 | %98,6 | 284 |
-| Önceki model, hibrit | 0.335 | %4,0 | %3,15 | %75,4 | %64,1 | 1.630 |
 
-*Saf kosinüs*, yalnızca içerik benzerliğine göre ilk 12 filmdir. *MovieRec (hibrit)*, uygulamanın gösterdiği listedir. *En çok oy alanlar* taban çizgisi, her başlangıç filmine aynı 12 filmi verir. *Önceki model* (commit dc815a0) bütün alanlar için tek bir TF-IDF ve doğrusal popülerlik kullanıyordu. Satırları, aynı ölçüm kodunun o commit üzerinde çalıştırılmasıyla elde edildi. Betik yalnızca ilk üç satırı yazdırır.
+*Saf kosinüs*, yalnızca içerik benzerliğine göre ilk 12 filmdir. *MovieRec (hibrit)*, uygulamanın gösterdiği listedir. *En çok oy alanlar* taban çizgisi, her başlangıç filmine aynı 12 filmi verir.
 
 - **Tür örtüşmesi:** başlangıç filminin ve önerilen filmin türleri arasındaki ortalama Jaccard indeksi. Jaccard, ortak türlerin iki filmin bütün türlerine bölümüdür. Türü olmayan başlangıç filmleri atlanır.
 - **Aynı yönetmen:** başlangıç filmiyle yönetmeni ortak olan önerilerin oranı.
@@ -132,8 +126,8 @@ Kaggle dosyalarında (4.803 film):
 Sayıların gösterdikleri ve göstermedikleri:
 
 - Doğruluğu değil, tutarlılığı ölçerler. Bir listenin kendi içinde anlamlı olup olmadığını gösterirler, insanların onu beğenip beğenmeyeceğini göstermezler.
-- Türler ve yönetmenler modelin girdisidir, bu yüzden ilk iki sütun çoğunlukla modele verilen bilgiyi ölçer. Tür ağırlığı 0 yapıldığında hibritin tür örtüşmesi 0.312'dir. Yani 0.335'ten 0.739'a çıkış, büyük ölçüde modelin kendisine söyleneni yaptığını gösterir.
-- Ortak başrol oyuncusu, yeni modelin daha iyi olduğunu göstermez. Yönetmenler oyuncularıyla tekrar çalışır, bu yüzden bu sütun yönetmen ağırlığıyla birlikte artar. Aynı yönetmenli çiftler çıkarıldığında bütün modeller yaklaşık %2,0 ile %2,2 arasında kalır. Seri filmlerini bulma da kısmen yapı gereğidir, çünkü devam filmlerinin özetlerinde aynı karakter adları geçer.
+- Türler ve yönetmenler modelin girdisidir, bu yüzden ilk iki sütun çoğunlukla modele verilen bilgiyi ölçer. Tür ağırlığı 0 yapıldığında hibritin tür örtüşmesi 0.312'dir, yani 0.739'un büyük kısmı modelin kendi girdisinden gelir.
+- Ortak başrol oyuncusu, yönetmen ağırlığıyla birlikte artar, çünkü yönetmenler oyuncularıyla tekrar çalışır. Aynı yönetmenli çiftler çıkarıldığında iki yöntemde de yaklaşık %2'dir. Seri filmlerini bulma da kısmen yapı gereğidir, çünkü devam filmlerinin özetlerinde aynı karakter adları geçer.
 - Hibrit, biraz uyumdan ve yaklaşık 37 puanlık kapsamdan vazgeçip daha tanınmış filmler önerir (191'e karşı ortanca 1.350 oy). Logaritmik ölçekleme bu ortancayı bilerek düşürür. Doğrusal ölçeklemeyle 1.553 olurdu.
 - Kapsam farkının büyük kısmı 100 oy sınırından gelir. Filmlerin yalnızca 3.162'sinin (%65,8) 100 ya da daha fazla oyu vardır ve hibrit bunların %94'üne ulaşır.
 
@@ -147,10 +141,9 @@ Sayıların gösterdikleri ve göstermedikleri:
 
 Bu sayılar TMDb API anahtarı olmadan yeniden üretilemez ve her yenilemede değişir.
 
-- Tür örtüşmesi, aynı yönetmen ve ortak başrol oyuncusu hemen hemen aynı kalır.
-- Kapsam %61,7'den %81,4'e çıkar. Bunun başlıca nedeni, 8.966 filmin 8.274'ünün (%92,3) 100 ya da daha fazla oyu olmasıdır.
-- Ortanca oylar daha yüksektir, çünkü aynı filmlerin bugün Kaggle dosyalarındakinden yaklaşık 4 kat fazla oyu vardır. Veri setinin ortancasına göre hibrit popüler filmlere daha az yaslanır: Kaggle dosyalarında ortancanın 5,7 katıyken burada 4,6 katıdır.
-- Seri filmlerini bulma %75,1'den %62,0'a düşer. Seri filmi olan başlangıç filmi çok daha fazladır (464 yerine 1.362), bu yüzden başlık grupları büyür ve daha gürültülü olur. Yalnızca Kaggle başlangıç filmleri ve onların Kaggle'daki seri filmleri sayılırsa oran %71,3'tür. Bu, Kaggle dosyalarındakinden yaklaşık 4 puan düşüktür, çünkü yeni filmler bu seri filmlerinin bazılarının yerini alır.
+- Kapsam burada daha yüksektir, çünkü 8.966 filmin 8.274'ünün (%92,3) 100 ya da daha fazla oyu vardır.
+- Ortanca oylar daha yüksektir, çünkü TMDb'deki oy sayıları bugün 2016 tarihli Kaggle verisindekinden çok daha fazladır.
+- Seri filmlerini bulma daha düşüktür, çünkü 1.362 başlangıç filminin seri filmi vardır, bu yüzden başlık grupları daha büyük ve daha gürültülüdür.
 
 ## Yerelde çalıştırma
 
