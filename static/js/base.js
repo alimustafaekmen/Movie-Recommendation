@@ -24,7 +24,7 @@
         }
 
         // aria-expanded is the state. aria-controls, when given, names the element to hide;
-        // without it the CSS reads aria-expanded (the home page's "Aramayı düzenle").
+        // without it the CSS reads aria-expanded (the home page's "Edit search").
         const toggle = event.target.closest('button[aria-expanded]');
         if (toggle) {
             const expanded = toggle.getAttribute('aria-expanded') === 'true';
@@ -100,7 +100,7 @@
         tablist.hidden = false;
     });
 
-    // On result pages the search panel folds behind "Aramayı düzenle" so the results come first
+    // On result pages the search panel folds behind "Edit search" so the results come first
     // on phones; home.css ignores the fold from 900px, where the panel has its own column.
     document.querySelectorAll('.search-toggle').forEach((toggle) => {
         toggle.setAttribute('aria-expanded', 'false');
