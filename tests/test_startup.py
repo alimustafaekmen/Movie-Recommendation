@@ -1,11 +1,13 @@
 """Starting the app with a broken setup: clear log lines or a clear exit, never a traceback."""
 
+import logging
 import os
 import subprocess
 import sys
 
 import pytest
 from conftest import FIXTURE_DATASET_DIR, REPO
+from flask import Response
 
 
 def _run(code, **env):
@@ -84,3 +86,15 @@ def test_port_must_be_a_plain_number_in_range(app_module, raw):
 
 def test_port_accepts_the_usual_values(app_module):
     assert [app_module._port(raw) for raw in ("1", "5001", "65535")] == [1, 5001, 65535]
+
+
+@pytest.mark.parametrize(
+    ("path", "logged"),
+    [("/movie/27205", True), ("/static/css/base.css", False), ("/health", False)],
+)
+def test_the_dev_server_logs_page_requests_only(app_module, caplog, path, logged):
+    with app_module.app.test_request_context(path), caplog.at_level(logging.INFO):
+        app_module._start_timer()
+        app_module._log_request(Response(status=200))
+
+    assert (f"GET {path} 200" in caplog.text) is logged

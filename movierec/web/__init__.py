@@ -145,7 +145,8 @@ def create_app() -> Flask:
     level = LOG_LEVEL if LOG_LEVEL in logging.getLevelNamesMapping() else "INFO"
     logging.basicConfig(
         level=level,
-        format="%(asctime)s %(levelname)s %(name)s: %(message)s",
+        format="%(asctime)s %(levelname)-7s %(message)s",
+        datefmt="%H:%M:%S",
     )
     if level != LOG_LEVEL:
         logger.warning("LOG_LEVEL %r is not a logging level; using INFO", LOG_LEVEL)
