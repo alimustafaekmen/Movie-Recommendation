@@ -24,7 +24,9 @@ POSTER_WAIT_SECONDS = 5.0
 CAST_LIST_LIMIT = 12
 # The dataset joins cast names with ", ", which some names also contain ("Sammy Davis, Jr.").
 _NAME_SUFFIXES = {"Jr.", "Jr", "Sr.", "Sr"}
-# Marks a poster cache miss; None is a cached "this film has no poster".
+# Marks a poster cache miss. None is a cached "no poster"; one dict.get(movie_id, _UNCACHED)
+# tells the two apart in a single step, so a concurrent clear() cannot fall between a
+# membership check and a read.
 _UNCACHED = object()
 
 
@@ -37,38 +39,42 @@ class MovieDetails:
         self.poster_cache: dict[int, str | None] = {}
         # Threads start on first use, so an app without a TMDb key never creates any, and none
         # exist before gunicorn forks its worker. At exit Python joins them; each lookup is
-        # bounded by tmdb.TIMEOUT and stops at once during the cooldown.
-        self._poster_pool = ThreadPoolExecutor(POSTER_WORKERS, thread_name_prefix="poster")
+        # bounded by tmdb's connect and read timeouts and stops at once during the cooldown.
+        self._poster_pool = ThreadPoolExecutor(
+            max_workers=POSTER_WORKERS, thread_name_prefix="poster"
+        )
 
     def add_posters(self, cards: list[dict]) -> None:
         """Fill in the poster URL of result cards from the engine, which works offline."""
-        paths = self.prefetch_posters([card["id"] for card in cards])
+        poster_paths = self.prefetch_posters([card["id"] for card in cards])
         for card in cards:
-            card["poster_url"] = tmdb.image_url(paths.get(card["id"]), "w342")
+            card["poster_url"] = tmdb.image_url(poster_paths.get(card["id"]), "w342")
 
     def prefetch_posters(self, movie_ids: list[int]) -> dict[int, str | None]:
         """Return the poster path per movie id; uncached ones are fetched in parallel."""
         if not tmdb.is_configured():
             return {}
-        # The fetched paths are returned directly instead of being read back from the cache,
-        # which a concurrent lookup may empty at any time.
-        paths = {movie_id: self.poster_cache.get(movie_id, _UNCACHED) for movie_id in movie_ids}
-        missing = [movie_id for movie_id, path in paths.items() if path is _UNCACHED]
-        futures = [
-            self._poster_pool.submit(self._fetch_poster_path, movie_id) for movie_id in missing
-        ]
-        done, late = wait(futures, timeout=POSTER_WAIT_SECONDS)
+        # Start from the cache; _UNCACHED marks the ids still to fetch. Fetched paths are
+        # returned directly, not read back from the cache, which a concurrent lookup may
+        # empty at any time.
+        poster_paths = {
+            movie_id: self.poster_cache.get(movie_id, _UNCACHED) for movie_id in movie_ids
+        }
+        futures = {}  # movie id -> its lookup in the poster pool
+        for movie_id, path in poster_paths.items():
+            if path is _UNCACHED:
+                futures[movie_id] = self._poster_pool.submit(self._fetch_poster_path, movie_id)
+        done, late = wait(futures.values(), timeout=POSTER_WAIT_SECONDS)
         for future in late:
             # Only a lookup that has not started is cancelled: no more work for a slow TMDb.
             future.cancel()
-        paths.update(
-            (movie_id, future.result() if future in done else None)
-            for movie_id, future in zip(missing, futures, strict=True)
-        )
-        return paths
+        for movie_id, future in futures.items():
+            # A lookup that did not finish in time leaves the card a placeholder.
+            poster_paths[movie_id] = future.result() if future in done else None
+        return poster_paths
 
     def _fetch_poster_path(self, movie_id: int) -> str | None:
-        # A poster is decoration: no error of its lookup may fail the page that shows it.
+        """Return the film's TMDb poster path, or None; never raises (a poster is decoration)."""
         try:
             data = self._fetch_movie(movie_id, language="tr-TR") or {}
         except Exception:
@@ -104,9 +110,14 @@ class MovieDetails:
             return None
         # Only an actual answer is cached, so a network blip does not hide a poster
         # until the next restart.
-        if movie_id not in self.poster_cache and len(self.poster_cache) >= POSTER_CACHE_LIMIT:
+        is_new_entry = movie_id not in self.poster_cache
+        if is_new_entry and len(self.poster_cache) >= POSTER_CACHE_LIMIT:
             self.poster_cache.clear()
-        self.poster_cache[movie_id] = tmdb.text((data or {}).get("poster_path")) or None
+        # data is None when TMDb does not know the film (404): cached as "no poster".
+        poster_path = None
+        if data is not None:
+            poster_path = tmdb.text(data.get("poster_path")) or None
+        self.poster_cache[movie_id] = poster_path
         return data
 
     def get_movie_details(self, movie_id: int | str) -> dict | None:
@@ -121,9 +132,8 @@ class MovieDetails:
             logger.error("Invalid movie id: %r", movie_id)
             return None
 
-        index = self.engine.row_of.get(movie_id)
-        in_dataset = index is not None
-        movie = self.engine.movies_df.iloc[index].to_dict() if in_dataset else None
+        row = self.engine.row_of.get(movie_id)
+        in_dataset = row is not None
         # One request per page: credits are only needed for movies outside the dataset.
         tmdb_movie = self._fetch_movie(
             movie_id,
@@ -133,50 +143,60 @@ class MovieDetails:
             include_video_language=tmdb.VIDEO_LANGUAGES,
         )
         if in_dataset:
+            movie = self.engine.movies_df.iloc[row].to_dict()
             if tmdb_movie:
                 _apply_turkish_texts(movie, tmdb_movie)
             movie["genre_badges"] = _genre_badges(movie["genre_list"])
             movie["cast_list"] = cast_names(movie["cast"])
         elif tmdb_movie:
             movie = self._movie_from_tmdb(movie_id, tmdb_movie)
-        if movie is None:
+        else:
+            # Outside the dataset and unknown to TMDb, or TMDb is not configured.
+            return None
+        if movie is None:  # TMDb's answer had no title
             return None
 
         if tmdb_movie:
             movie["poster_url_large"] = tmdb.image_url(tmdb_movie.get("poster_path"), "w500")
+            videos = tmdb.record(tmdb_movie.get("videos"))
+            movie["trailer_key"] = tmdb.pick_trailer(videos.get("results"))
         else:
             # TMDb failed or does not know the film; a poster cached earlier may still be there.
             movie["poster_url_large"] = self.get_movie_poster_url(movie_id, size="w500")
-        videos = tmdb.record((tmdb_movie or {}).get("videos"))
-        movie["trailer_key"] = tmdb.pick_trailer(videos.get("results"))
+            movie["trailer_key"] = None
         _clean_detail_fields(movie)
         movie["runtime_formatted"] = format_runtime(movie.get("runtime"))
         if in_dataset:
-            ranked = self.engine.rank_neighbours(index)
-            movie["similar_movies"] = self.engine.format_results(
-                self.engine.movies_df.iloc[ranked], DETAIL_SIMILAR_COUNT
-            )
+            ranked_rows = self.engine.rank_neighbours(row)
+            neighbours = self.engine.movies_df.iloc[ranked_rows]
+            movie["similar_movies"] = self.engine.format_results(neighbours, DETAIL_SIMILAR_COUNT)
             self.add_posters(movie["similar_movies"])
         else:
-            movie["similar_movies"] = self._similar_from_tmdb(movie_id)
+            movie["similar_movies"] = self._fetch_similar_from_tmdb(movie_id)
         return movie
 
     def _movie_from_tmdb(self, movie_id: int, data: dict) -> dict | None:
-        """The detail dictionary of a film outside the dataset; None without a title."""
+        """Return the detail dictionary of a film outside the dataset; None without a title.
+
+        data: TMDb's tr-TR /movie/{id} answer with credits and videos.
+        """
         title = tmdb.text(data.get("title"))
         if not title:
             return None
         # tr-TR responses name genres in Turkish; the id gives the English value.
-        genre_list = [
-            TMDB_GENRE_NAMES.get(genre["id"], genre["name"])
-            for genre in tmdb.records(data.get("genres"))
-            if tmdb.valid_id(genre.get("id")) and tmdb.text(genre.get("name"))
-        ]
+        genre_list = []
+        for genre in tmdb.records(data.get("genres")):
+            if not tmdb.valid_id(genre.get("id")) or not tmdb.text(genre.get("name")):
+                continue
+            genre_list.append(TMDB_GENRE_NAMES.get(genre["id"], genre["name"]))
+        # The genres the page shows, each once, sorted and space-separated.
+        shown_genres = {genre for genre in genre_list if not is_excluded(genre)}
+        genres_text = " ".join(sorted(shown_genres))
         credits = tmdb.record(data.get("credits"))
         directors = [
-            crew["name"]
-            for crew in tmdb.records(credits.get("crew"))
-            if crew.get("job") == "Director" and tmdb.text(crew.get("name"))
+            member["name"]
+            for member in tmdb.records(credits.get("crew"))
+            if member.get("job") == "Director" and tmdb.text(member.get("name"))
         ]
         actors = [
             actor["name"]
@@ -188,7 +208,7 @@ class MovieDetails:
             "title": title,
             "overview": data.get("overview"),
             "tagline": data.get("tagline"),
-            "genres": " ".join(sorted({genre for genre in genre_list if not is_excluded(genre)})),
+            "genres": genres_text,
             "genre_list": genre_list,
             "genre_badges": _genre_badges(genre_list),
             "year": tmdb.release_year(data),
@@ -204,22 +224,27 @@ class MovieDetails:
             "runtime": data.get("runtime"),
         }
 
-    def _similar_from_tmdb(self, movie_id: int) -> list[dict]:
+    def _fetch_similar_from_tmdb(self, movie_id: int) -> list[dict]:
+        """Return up to DETAIL_SIMILAR_COUNT cards from TMDb's similar films; [] if it fails."""
         try:
             data = tmdb.get(f"/movie/{movie_id}/similar", language="tr-TR", page=1) or {}
         except tmdb.TmdbUnavailableError:
             return []
-        similar = [
-            {
-                "id": item["id"],
-                "title": item["title"],
-                "poster_url": tmdb.image_url(item.get("poster_path"), "w342"),
-                "year": tmdb.release_year(item),
-            }
-            for item in tmdb.records(data.get("results"))
-            if tmdb.valid_id(item.get("id")) and tmdb.text(item.get("title"))
-        ]
-        return similar[:DETAIL_SIMILAR_COUNT]
+        similar = []
+        for item in tmdb.records(data.get("results")):
+            if not tmdb.valid_id(item.get("id")) or not tmdb.text(item.get("title")):
+                continue
+            similar.append(
+                {
+                    "id": item["id"],
+                    "title": item["title"],
+                    "poster_url": tmdb.image_url(item.get("poster_path"), "w342"),
+                    "year": tmdb.release_year(item),
+                }
+            )
+            if len(similar) == DETAIL_SIMILAR_COUNT:
+                break
+        return similar
 
     def get_list_card(
         self, movie_id: int | str, poster_paths: dict[int, str | None] | None = None
@@ -232,18 +257,18 @@ class MovieDetails:
             movie_id = int(movie_id)
         except (TypeError, ValueError):
             return None
-        index = self.engine.row_of.get(movie_id)
-        if index is not None:
-            row = self.engine.movies_df.iloc[index]
-            if movie_id in (poster_paths or {}):
+        row = self.engine.row_of.get(movie_id)
+        if row is not None:
+            movie = self.engine.movies_df.iloc[row]
+            if poster_paths is not None and movie_id in poster_paths:
                 poster_url = tmdb.image_url(poster_paths[movie_id], "w342")
             else:
                 poster_url = self.get_movie_poster_url(movie_id, size="w342")
             return {
                 "id": movie_id,
-                "title": row["title"],
-                "year": int(row["year"]),
-                "vote_average": round(float(row["vote_average"]), 1),
+                "title": movie["title"],
+                "year": int(movie["year"]),
+                "vote_average": round(float(movie["vote_average"]), 1),
                 "poster_url": poster_url,
             }
         data = self._fetch_movie(movie_id, language="tr-TR") or {}
@@ -260,12 +285,16 @@ class MovieDetails:
         }
 
 
-def _genre_badges(genre_list) -> list[dict]:
+def _genre_badges(genre_list: list[str]) -> list[dict]:
+    """Return the badge of each genre the page shows, in the film's genre order."""
     return [genre_badge(genre) for genre in genre_list if not is_excluded(genre)]
 
 
-def _apply_turkish_texts(movie, tmdb_movie):
-    # The dataset is English-only and the UI is Turkish, so TMDb's tr-TR texts win.
+def _apply_turkish_texts(movie: dict, tmdb_movie: dict) -> None:
+    """Replace the overview, tagline and runtime with TMDb's tr-TR values where it has them.
+
+    The dataset is English-only and the UI is Turkish, so TMDb's tr-TR texts win.
+    """
     for field in ("overview", "tagline"):
         if tmdb.text(tmdb_movie.get(field)):
             movie[field] = tmdb_movie[field]
@@ -274,7 +303,7 @@ def _apply_turkish_texts(movie, tmdb_movie):
         movie["runtime"] = runtime
 
 
-def _clean_detail_fields(movie):
+def _clean_detail_fields(movie: dict) -> None:
     """Coerce detail fields to the plain types the template expects; odd values count as unknown."""
     movie["year"] = int(tmdb.number(movie.get("year")))
     movie["vote_average"] = round(tmdb.number(movie.get("vote_average")), 1)
@@ -304,12 +333,15 @@ def format_runtime(minutes) -> str | None:
         value = float(minutes)
     except (TypeError, ValueError):
         return None
-    if not math.isfinite(value) or int(value) <= 0:
+    if not math.isfinite(value):
+        return None
+    total_minutes = int(value)
+    if total_minutes <= 0:
         return None
 
-    hours, mins = divmod(int(value), 60)
-    if hours and mins:
-        return f"{hours} sa {mins} dk"
+    hours, minutes_left = divmod(total_minutes, 60)  # 152 -> 2 h, 32 min
+    if hours and minutes_left:
+        return f"{hours} sa {minutes_left} dk"
     if hours:
         return f"{hours} sa"
-    return f"{mins} dk"
+    return f"{minutes_left} dk"

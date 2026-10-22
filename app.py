@@ -24,20 +24,22 @@ def _port(raw: str) -> int:
 
 
 def _start_timer():
-    g.started = perf_counter()
+    """Note when the request started, for the duration _log_request logs."""
+    g.start_time = perf_counter()
 
 
 def _log_request(response):
     """Log one short line per page request; static files and health checks stay quiet."""
-    if not (request.path.startswith("/static/") or request.path == "/health"):
-        ms = (perf_counter() - g.started) * 1000
-        logger.info(
-            "%s %s %s (%.0f ms)",
-            request.method,
-            request.full_path.rstrip("?"),
-            response.status_code,
-            ms,
-        )
+    if request.path.startswith("/static/") or request.path == "/health":
+        return response
+    elapsed_ms = (perf_counter() - g.start_time) * 1000
+    logger.info(
+        "%s %s %s (%.0f ms)",
+        request.method,
+        request.full_path.rstrip("?"),
+        response.status_code,
+        elapsed_ms,
+    )
     return response
 
 
@@ -51,7 +53,7 @@ if __name__ == "__main__":
     flask.cli.show_server_banner = lambda *args: None
     app.before_request(_start_timer)
     app.after_request(_log_request)
-    shown = "localhost" if host == "127.0.0.1" else host
-    logger.info("MovieRec is running at http://%s:%s (press Ctrl+C to stop)", shown, port)
+    shown_host = "localhost" if host == "127.0.0.1" else host
+    logger.info("MovieRec is running at http://%s:%s (press Ctrl+C to stop)", shown_host, port)
     # The engine is built at import time; the reloader would build it twice.
     app.run(host=host, port=port, debug=debug, use_reloader=False)

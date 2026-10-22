@@ -9,6 +9,7 @@ from time import monotonic
 
 from flask import Blueprint, abort, jsonify, render_template, request
 
+from movierec.engine import RecommendationEngine
 from movierec.web import MAX_MOVIE_ID, get_details, get_engine
 
 bp = Blueprint("lists", __name__)
@@ -26,14 +27,25 @@ TMDB_LOOKUP_SECONDS = 8.0
 _ID_TOKEN = re.compile(r"[0-9]{1,10}")
 
 
-def _requested_ids(raw):
-    """Return the distinct valid movie ids of a comma-separated list, in request order."""
-    ids = {}
+def _parse_id_list(raw: str) -> list[int]:
+    """Return the distinct valid movie ids of a comma-separated list, in request order.
+
+    raw: the query parameter as sent, e.g. "155, 19995,abc"; invalid tokens are skipped.
+    """
+    ids = []
+    seen = set()
     for token in raw.split(","):
         token = token.strip()
-        if _ID_TOKEN.fullmatch(token) and 1 <= int(token) <= MAX_MOVIE_ID:
-            ids[int(token)] = None
-    return list(ids)
+        if not _ID_TOKEN.fullmatch(token):
+            continue
+        movie_id = int(token)
+        if not 1 <= movie_id <= MAX_MOVIE_ID:
+            continue
+        if movie_id in seen:
+            continue
+        ids.append(movie_id)
+        seen.add(movie_id)
+    return ids
 
 
 @bp.route("/my_lists")
@@ -49,7 +61,7 @@ def api_movies():
     if engine is None:
         abort(503)
     deadline = monotonic() + TMDB_LOOKUP_SECONDS
-    ids = _requested_ids(request.args.get("ids", ""))
+    ids = _parse_id_list(request.args.get("ids", ""))
     if len(ids) > MAX_IDS_PER_REQUEST:
         abort(400)
     return jsonify(_list_cards(engine, ids, deadline))
@@ -62,29 +74,41 @@ def api_recommendations():
     if engine is None:
         abort(503)
     deadline = monotonic() + TMDB_LOOKUP_SECONDS
-    favourites, watchlist = (
-        _requested_ids(request.args.get(name, ""))[:MAX_IDS_PER_REQUEST]
-        for name in ("favorites", "watchlist")
-    )
+    # Each list counts at most MAX_IDS_PER_REQUEST ids; the rest are left out, not refused.
+    favourites = _parse_id_list(request.args.get("favorites", ""))[:MAX_IDS_PER_REQUEST]
+    watchlist = _parse_id_list(request.args.get("watchlist", ""))[:MAX_IDS_PER_REQUEST]
     ids = engine.recommend_from_favourites(favourites, watchlist)
     return jsonify(_list_cards(engine, ids, deadline))
 
 
-def _list_cards(engine, ids, deadline):
-    """List cards for ids in order, with the TMDb lookups of ids outside the dataset limited."""
-    outside = [movie_id for movie_id in ids if movie_id not in engine.row_of]
-    skipped = set(outside[MAX_TMDB_LOOKUPS:])
-    kept = [movie_id for movie_id in ids if movie_id not in skipped]
+def _list_cards(engine: RecommendationEngine, ids: list[int], deadline: float) -> list[dict]:
+    """Return the list cards for ids in order, with the TMDb lookups outside the dataset limited.
+
+    ids: distinct movie ids (both callers guarantee it); deadline: a monotonic() time after
+    which no lookup outside the dataset starts.
+    """
+    # Every dataset id is kept; of the ids outside the dataset, only the first MAX_TMDB_LOOKUPS.
+    kept_ids = []
+    dataset_ids = []
+    outside_count = 0
+    for movie_id in ids:
+        if movie_id in engine.row_of:
+            dataset_ids.append(movie_id)
+            kept_ids.append(movie_id)
+        elif outside_count < MAX_TMDB_LOOKUPS:
+            outside_count += 1
+            kept_ids.append(movie_id)
     details = get_details()
     # Dataset cards only need a poster, so those are fetched in parallel up front and handed
     # to the cards. Ids outside the dataset are full lookups of ids the visitor chose, and
     # stay one at a time.
-    paths = details.prefetch_posters([movie_id for movie_id in kept if movie_id in engine.row_of])
+    poster_paths = details.prefetch_posters(dataset_ids)
     cards = []
-    for movie_id in kept:
-        if movie_id not in engine.row_of and monotonic() > deadline:
+    for movie_id in kept_ids:
+        is_outside_dataset = movie_id not in engine.row_of
+        if is_outside_dataset and monotonic() > deadline:
             continue
-        card = details.get_list_card(movie_id, paths)
+        card = details.get_list_card(movie_id, poster_paths)
         if card is not None:
             cards.append(card)
     return cards

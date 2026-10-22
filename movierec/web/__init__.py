@@ -27,6 +27,7 @@ from movierec.web.redirects import API_PREFIXES
 
 logger = logging.getLogger(__name__)
 
+# HTTP status -> (error name for JSON answers, Turkish message for the error page).
 _ERRORS = {
     400: ("bad_request", "İstek işlenemedi. Lütfen tekrar deneyin."),
     404: ("not_found", "Aradığınız sayfa bulunamadı."),
@@ -37,7 +38,9 @@ _ERRORS = {
 }
 # The only request body is the header search form. Werkzeug reads a urlencoded body whole,
 # so without a limit one request could fill the memory.
-MAX_REQUEST_BODY = 16 * 1024
+MAX_REQUEST_BODY_BYTES = 16 * 1024
+# How long browsers may cache versioned static files and remember HSTS.
+ONE_YEAR_SECONDS = 365 * 24 * 60 * 60
 # Pages load scripts and styles only from this site (no inline code), the fonts from Google,
 # images from this site, TMDb and YouTube, and the trailer player from youtube-nocookie.com.
 CONTENT_SECURITY_POLICY = "; ".join(
@@ -89,49 +92,63 @@ class _App(Flask):
 
 
 def get_engine() -> RecommendationEngine | None:
-    """The recommendation engine, or None when it failed to start."""
+    """Return the recommendation engine, or None when it failed to start."""
     return current_app.extensions["engine"]
 
 
 def get_details() -> MovieDetails | None:
-    """The MovieDetails helper for the engine, or None when the engine failed to start."""
+    """Return the MovieDetails helper for the engine, or None when the engine failed to start."""
     return current_app.extensions["details"]
 
 
 def build_asset_versions(folder: str | Path) -> dict[str, str]:
-    """Map each file under folder (as a POSIX relative path) to a short hash of its content."""
+    """Map each file under folder to a short hash of its content.
+
+    Keys are POSIX paths relative to folder, e.g. "js/base.js".
+    """
     root = Path(folder)
-    return {
-        path.relative_to(root).as_posix(): hashlib.sha256(path.read_bytes()).hexdigest()[:12]
-        for path in sorted(root.rglob("*"))
-        if path.is_file()
-    }
+    versions = {}
+    for path in sorted(root.rglob("*")):
+        if not path.is_file():
+            continue
+        relative_path = path.relative_to(root).as_posix()
+        content_hash = hashlib.sha256(path.read_bytes()).hexdigest()
+        versions[relative_path] = content_hash[:12]
+    return versions
 
 
-def format_date_filter(value) -> str:
+def format_date_filter(value: str | None) -> str:
     """Format an ISO date such as '2023-10-26' as '26 Ekim 2023'."""
-    if not value or not str(value).strip():
+    if not value:
+        return "Bilinmiyor"
+    date_text = str(value)
+    if not date_text.strip():
         return "Bilinmiyor"
     try:
-        day = datetime.date.fromisoformat(str(value))
+        day = datetime.date.fromisoformat(date_text)
     except ValueError:
-        return str(value)
-    return f"{day.day:02d} {_TURKISH_MONTHS[day.month - 1]} {day.year}"
+        return date_text
+    month_name = _TURKISH_MONTHS[day.month - 1]
+    return f"{day.day:02d} {month_name} {day.year}"
 
 
-def format_number_filter(value) -> str:
+def format_number_filter(value: int | float | None) -> str:
     """Format a count such as 12002 as '12.002', with the Turkish thousands separator."""
     if value is None:
         return ""
-    return f"{int(value):,}".replace(",", ".")
+    # The "," format option groups thousands with commas (12,002); Turkish uses dots.
+    with_commas = f"{int(value):,}"
+    return with_commas.replace(",", ".")
 
 
-def format_rating_filter(value) -> str:
+def format_rating_filter(value: float | None) -> str:
     """Format a rating such as 8.2 as '8,2'; no rating (None or 0) gives ''."""
     if not value:
         return ""
-    # Round the shortest decimal half up, as toLocaleString('tr-TR') does in the browser.
-    rating = Decimal(str(float(value))).quantize(Decimal("0.1"), rounding=ROUND_HALF_UP)
+    # Round half up from the shortest decimal text ("8.25"), as toLocaleString('tr-TR') does;
+    # round() rounds halves to even: round(8.25, 1) is 8.2.
+    shortest_text = str(float(value))
+    rating = Decimal(shortest_text).quantize(Decimal("0.1"), rounding=ROUND_HALF_UP)
     return str(rating).replace(".", ",")
 
 
@@ -142,13 +159,14 @@ def create_app() -> Flask:
     the app still starts and answers 503 where it needs what is missing.
     """
     # logging.basicConfig raises on an unknown level name, which would stop every worker.
-    level = LOG_LEVEL if LOG_LEVEL in logging.getLevelNamesMapping() else "INFO"
+    is_known_level = LOG_LEVEL in logging.getLevelNamesMapping()
+    level = LOG_LEVEL if is_known_level else "INFO"
     logging.basicConfig(
         level=level,
         format="%(asctime)s %(levelname)-7s %(message)s",
         datefmt="%H:%M:%S",
     )
-    if level != LOG_LEVEL:
+    if not is_known_level:
         logger.warning("LOG_LEVEL %r is not a logging level; using INFO", LOG_LEVEL)
     # templates/ and static/ stay at the repo root, outside the package.
     app = _App(
@@ -161,12 +179,12 @@ def create_app() -> Flask:
     app.config.update(
         SESSION_COOKIE_SAMESITE="Lax",
         SESSION_COOKIE_SECURE=SESSION_COOKIE_SECURE,
-        MAX_CONTENT_LENGTH=MAX_REQUEST_BODY,
+        MAX_CONTENT_LENGTH=MAX_REQUEST_BODY_BYTES,
     )
     # Templates link static files through asset_url(), whose ?v= changes with the file
     # content, so browsers may keep them for a year. Not in debug mode, so edits show on reload.
     if not app.debug:
-        app.config["SEND_FILE_MAX_AGE_DEFAULT"] = 31536000
+        app.config["SEND_FILE_MAX_AGE_DEFAULT"] = ONE_YEAR_SECONDS
     app.jinja_env.globals["genre_label"] = genre_label
     if SECRET_KEY_IS_EPHEMERAL:
         logger.warning(
@@ -178,8 +196,9 @@ def create_app() -> Flask:
             "and person pages are unavailable"
         )
 
-    _register_security_headers(app)
-    _register_error_handlers(app)
+    app.after_request(_set_security_headers)
+    for code in _ERRORS:
+        app.register_error_handler(code, _handle_http_error)
     _register_template_helpers(app)
 
     try:
@@ -207,46 +226,41 @@ def create_app() -> Flask:
     return app
 
 
-def _register_security_headers(app):
-    @app.after_request
-    def set_security_headers(response):
-        response.headers.setdefault("Content-Security-Policy", CONTENT_SECURITY_POLICY)
-        response.headers.setdefault("Permissions-Policy", PERMISSIONS_POLICY)
-        response.headers.setdefault("X-Content-Type-Options", "nosniff")
-        # For browsers without CSP frame-ancestors.
-        response.headers.setdefault("X-Frame-Options", "DENY")
-        response.headers.setdefault("Referrer-Policy", "strict-origin-when-cross-origin")
-        # No Cross-Origin-Embedder-Policy: TMDb posters and the YouTube trailer do not opt in.
-        response.headers.setdefault("Cross-Origin-Opener-Policy", "same-origin")
-        response.headers.setdefault("Cross-Origin-Resource-Policy", "same-origin")
-        # SESSION_COOKIE_SECURE=1 says the site is served over HTTPS. No includeSubDomains:
-        # other sites on the same domain may still need plain HTTP.
-        if app.config["SESSION_COOKIE_SECURE"]:
-            response.headers.setdefault("Strict-Transport-Security", "max-age=31536000")
-        return response
+def _set_security_headers(response):
+    """Add the security headers to every response that does not set them itself."""
+    response.headers.setdefault("Content-Security-Policy", CONTENT_SECURITY_POLICY)
+    response.headers.setdefault("Permissions-Policy", PERMISSIONS_POLICY)
+    response.headers.setdefault("X-Content-Type-Options", "nosniff")
+    # For browsers without CSP frame-ancestors.
+    response.headers.setdefault("X-Frame-Options", "DENY")
+    response.headers.setdefault("Referrer-Policy", "strict-origin-when-cross-origin")
+    # No Cross-Origin-Embedder-Policy: TMDb posters and the YouTube trailer do not opt in.
+    response.headers.setdefault("Cross-Origin-Opener-Policy", "same-origin")
+    response.headers.setdefault("Cross-Origin-Resource-Policy", "same-origin")
+    # SESSION_COOKIE_SECURE=1 says the site is served over HTTPS. No includeSubDomains:
+    # other sites on the same domain may still need plain HTTP.
+    if current_app.config["SESSION_COOKIE_SECURE"]:
+        response.headers.setdefault("Strict-Transport-Security", f"max-age={ONE_YEAR_SECONDS}")
+    return response
 
 
-def _register_error_handlers(app):
-    @app.errorhandler(400)
-    @app.errorhandler(404)
-    @app.errorhandler(405)
-    @app.errorhandler(413)
-    @app.errorhandler(500)
-    @app.errorhandler(503)
-    def handle_http_error(error):
-        code = error.code
-        name, message = _ERRORS[code]
-        if request.path.startswith(API_PREFIXES):
-            return jsonify(status="error", error=name), code
-        return render_template("error.html", code=code, message=message), code
+def _handle_http_error(error):
+    """Answer an HTTP error with JSON under /api/ and with the Turkish error page elsewhere."""
+    code = error.code
+    name, message = _ERRORS[code]
+    if request.path.startswith(API_PREFIXES):
+        return jsonify(status="error", error=name), code
+    return render_template("error.html", code=code, message=message), code
 
 
-def _register_template_helpers(app):
+def _register_template_helpers(app: Flask) -> None:
+    """Give templates asset_url(), icon_view_box(), current_year and the format filters."""
     # Hashed once at startup: static files only change with a deploy, which restarts the app.
     asset_versions = build_asset_versions(app.static_folder)
     # Read once for the same reason. templates/_icon.html puts the symbol's viewBox on each
     # icon, so the icon keeps its Font Awesome width at a height of 1em.
     sprite = ElementTree.parse(Path(app.static_folder) / "icons.svg").getroot()
+    # ElementTree spells a namespaced tag as {namespace}name: every SVG <symbol>.
     icon_view_boxes = {
         symbol.get("id"): symbol.get("viewBox")
         for symbol in sprite.iter("{http://www.w3.org/2000/svg}symbol")

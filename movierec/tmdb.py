@@ -14,8 +14,10 @@ logger = logging.getLogger(__name__)
 # urllib3 logs request URLs, query string and api_key included, at DEBUG level.
 logging.getLogger("urllib3").setLevel(logging.WARNING)
 
-# (connect, read) seconds. A page makes several calls, so a stalled TMDb must fail fast.
-TIMEOUT = (3.05, 5)
+# A page makes several calls, so a stalled TMDb must fail fast. 3.05 is just over TCP's 3 s
+# retransmission window, as the requests docs advise for connect timeouts.
+CONNECT_TIMEOUT_SECONDS = 3.05
+READ_TIMEOUT_SECONDS = 5
 # After a failure, further calls fail immediately for a while instead of each page
 # waiting for its own timeouts.
 COOLDOWN_SECONDS = 30.0
@@ -26,7 +28,7 @@ VIDEO_LANGUAGES = "tr,en,null"
 # Connections kept open to TMDb. The poster workers (8) and gunicorn's request threads (4)
 # share the session; urllib3's default of 10 would open and drop the extra ones each time.
 POOL_SIZE = 16
-# A YouTube video id; the trailer key goes into i.ytimg.com and youtube-nocookie.com URLs.
+# A YouTube video id: letters, digits, "_" and "-".
 _YOUTUBE_KEY = re.compile(r"[A-Za-z0-9_-]{1,64}")
 _YEAR = re.compile(r"[0-9]{4}")
 
@@ -45,18 +47,23 @@ def is_configured() -> bool:
 
 
 def get(path: str, **params) -> dict | None:
-    """GET a TMDb v3 path; None on 404, TmdbUnavailableError on any other failure."""
+    """GET a TMDb v3 path; None on 404, TmdbUnavailableError on any other failure.
+
+    params: TMDb query parameters, e.g. language="tr-TR"; the API key is added here.
+    """
     global _cooldown_until
     if not is_configured():
         raise TmdbUnavailableError("TMDb API key is not configured")
     if time.monotonic() < _cooldown_until:
         raise TmdbUnavailableError(path)
 
+    query_params = {"api_key": TMDB_API_KEY}
+    query_params.update(params)
     try:
         response = _session.get(
             TMDB_API_BASE_URL + path,
-            params={"api_key": TMDB_API_KEY, **params},
-            timeout=TIMEOUT,
+            params=query_params,
+            timeout=(CONNECT_TIMEOUT_SECONDS, READ_TIMEOUT_SECONDS),
         )
     except requests.RequestException as exc:
         logger.warning("TMDb %s failed: %s", path, type(exc).__name__)
@@ -87,59 +94,81 @@ def get(path: str, **params) -> dict | None:
 
 
 def record(value) -> dict:
-    """A TMDb object field, or {} when it is missing or not an object."""
+    """Return a TMDb object field, or {} when it is missing or not an object."""
     return value if isinstance(value, dict) else {}
 
 
 def records(value) -> list[dict]:
-    """The objects of a TMDb list field; a field of another shape counts as empty."""
-    return [item for item in value if isinstance(item, dict)] if isinstance(value, list) else []
+    """Return the objects of a TMDb list field; a field of another shape counts as empty."""
+    if not isinstance(value, list):
+        return []
+    return [item for item in value if isinstance(item, dict)]
 
 
 def text(value) -> str:
-    """A TMDb text field, or "" when it is missing or not text."""
+    """Return a TMDb text field, or "" when it is missing or not text."""
     return value if isinstance(value, str) else ""
 
 
 def number(value) -> float:
-    """A TMDb numeric field as a finite float; a missing or odd value counts as 0."""
+    """Return a TMDb numeric field as a finite float; a missing or odd value counts as 0."""
     try:
         result = float(value)
     except (TypeError, ValueError):
         return 0.0
-    return result if math.isfinite(result) else 0.0
+    # float() also accepts "nan" and "inf"; those count as missing too.
+    if not math.isfinite(result):
+        return 0.0
+    return result
 
 
 def valid_id(value) -> int | None:
-    """A TMDb id (a positive integer), or None; links and caches need a real id."""
-    return value if type(value) is int and value > 0 else None
+    """Return a TMDb id (a positive integer), or None; links and caches need a real id."""
+    # type(), not isinstance(): JSON true/false are bools, which isinstance counts as int.
+    if type(value) is not int or value <= 0:
+        return None
+    return value
 
 
 def image_url(path, size: str) -> str | None:
-    """Build a TMDb image URL such as .../t/p/w342/abc.jpg, or None without a path."""
-    return f"{TMDB_IMAGE_BASE_URL}{size}{path}" if text(path).startswith("/") else None
+    """Return a TMDb image URL such as .../t/p/w342/abc.jpg, or None without a path.
+
+    path: a poster_path or profile_path field, e.g. "/abc.jpg".
+    """
+    if not text(path).startswith("/"):
+        return None
+    return f"{TMDB_IMAGE_BASE_URL}{size}{path}"
 
 
 def release_year(data: dict) -> int:
-    """Year of a TMDb movie or credit from its 'YYYY-MM-DD' release_date, 0 when unknown."""
+    """Return the year of a TMDb movie or credit from its 'YYYY-MM-DD' release_date, or 0."""
     release_date = text(data.get("release_date"))
-    return int(release_date[:4]) if _YEAR.match(release_date) else 0
+    # "2008-07-16" -> 2008; an empty or odd date counts as unknown.
+    if not _YEAR.match(release_date):
+        return 0
+    return int(release_date[:4])
 
 
 def pick_trailer(videos) -> str | None:
-    """Return the YouTube key of the best video: official trailer, any trailer, then teasers.
+    """Return the YouTube key of the best video, or None.
 
-    Within each of those tiers a Turkish video wins; otherwise TMDb's order is kept.
+    videos: the "results" list of TMDb's videos answer. Trailers beat teasers and an official
+    video beats the others of its type; among those a Turkish one wins, otherwise TMDb's order
+    is kept.
     """
-    youtube = [
-        video
-        for video in records(videos)
-        if video.get("site") == "YouTube" and _YOUTUBE_KEY.fullmatch(text(video.get("key")))
-    ]
+    youtube_videos = []
+    for video in records(videos):
+        # The key goes into i.ytimg.com and youtube-nocookie.com URLs, so it must be a plain id.
+        if video.get("site") == "YouTube" and _YOUTUBE_KEY.fullmatch(text(video.get("key"))):
+            youtube_videos.append(video)
     for video_type in TRAILER_TYPES:
-        of_type = [video for video in youtube if video.get("type") == video_type]
-        for tier in ([video for video in of_type if video.get("official")], of_type):
-            if tier:
-                turkish = [video for video in tier if video.get("iso_639_1") == "tr"]
-                return (turkish or tier)[0]["key"]
+        of_type = [video for video in youtube_videos if video.get("type") == video_type]
+        if not of_type:
+            continue
+        official = [video for video in of_type if video.get("official")]
+        candidates = official if official else of_type
+        for video in candidates:
+            if video.get("iso_639_1") == "tr":
+                return video["key"]
+        return candidates[0]["key"]
     return None
