@@ -6,9 +6,12 @@
 !templates/
 !static/
 !requirements.txt
-# The Kaggle CSVs, when present; CI builds without them and mounts the fixture dataset.
+# The Kaggle CSVs and the refreshed catalogue, when present; CI builds without them and
+# mounts the fixture dataset. An image built with them holds TMDb data: never push it.
 !dataset/tmdb_5000_movies.csv
 !dataset/tmdb_5000_credits.csv
+!dataset/refreshed/tmdb_5000_movies.csv
+!dataset/refreshed/tmdb_5000_credits.csv
 
 # Leftovers inside the allowed folders
 **/__pycache__

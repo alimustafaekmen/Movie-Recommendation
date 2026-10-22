@@ -12,8 +12,9 @@ from movierec.genres import TMDB_GENRE_NAMES, genre_badge, is_excluded
 logger = logging.getLogger(__name__)
 
 # Any visitor can make the app look up arbitrary ids, so the poster cache is emptied once it
-# holds this many films; that is simpler than LRU, and the whole dataset still fits.
-POSTER_CACHE_LIMIT = 5000
+# holds this many films; that is simpler than LRU, and the whole catalogue still fits (Kaggle's
+# 4,803 films or the about 9,000 of a refreshed one).
+POSTER_CACHE_LIMIT = 10000
 # Uncached posters are fetched this many at a time. The pool is shared by all requests, so
 # this caps the lookups in flight however many pages load at once: at 16 in parallel, TMDb
 # answered several times slower.

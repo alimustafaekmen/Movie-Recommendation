@@ -268,9 +268,18 @@ def test_missing_poster_is_cached_after_not_found(fake, cold_details):
     assert fake.paths == ["/movie/424242"]
 
 
-def test_poster_cache_is_emptied_once_it_holds_5000_entries(fake, cold_details):
+def test_poster_cache_holds_the_whole_refreshed_catalogue(fake, cold_details):
+    # The refreshed catalogue has about 9,000 films.
+    _poster_routes(fake, [1])
+    cold_details.poster_cache.update((f"filler-{n}", None) for n in range(9999))
+
+    assert cold_details.get_movie_poster_url(1) == _poster(1)
+    assert len(cold_details.poster_cache) == 10000
+
+
+def test_poster_cache_is_emptied_once_it_holds_10000_entries(fake, cold_details):
     fake.routes["/movie/155"] = FakeResponse(DARK_KNIGHT_TR)
-    cold_details.poster_cache.update((f"filler-{n}", None) for n in range(5000))
+    cold_details.poster_cache.update((f"filler-{n}", None) for n in range(10000))
 
     assert cold_details.get_movie_poster_url(155) == "https://image.tmdb.org/t/p/w342/dk.jpg"
     assert len(cold_details.poster_cache) == 1
