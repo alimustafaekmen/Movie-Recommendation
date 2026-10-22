@@ -7,7 +7,7 @@
 
 **Bölümler:** [Ekran görüntüleri](#ekran-görüntüleri) · [Özellikler](#özellikler) · [Nasıl çalışır](#nasıl-çalışır) · [Değerlendirme](#değerlendirme) · [Yerelde çalıştırma](#yerelde-çalıştırma) · [Testler](#testler) · [Yapılandırma](#yapılandırma) · [Proje yapısı](#proje-yapısı) · [Sınırlamalar](#sınırlamalar) · [Lisans ve kaynaklar](#lisans-ve-kaynaklar)
 
-MovieRec, Flask ile yazılmış içerik tabanlı bir film öneri sistemidir. Beğendiğiniz bir filmi verin, ona benzeyen filmleri bulsun. Tür, yönetmen, yıl ve puana göre de arama yapabilirsiniz. Arayüz Türkçedir.
+MovieRec, Flask ile yazılmış içerik tabanlı bir film öneri sistemidir. Beğendiğiniz bir filmi verin, ona benzeyen filmleri bulsun. Tür, yönetmen, yıl ve puana göre de arama yapabilirsiniz. Arayüz Türkçe ve İngilizcedir.
 
 Varsayılan olarak Kaggle'daki [TMDB 5000 veri setinin](https://www.kaggle.com/datasets/tmdb/tmdb-movie-metadata) 4.803 filmini kullanır. Bu veri seti 2016 sonunda biter. Uygulama, 2026'ya kadar yaklaşık 9.000 filmlik yeni bir katalogla da çalışabilir. Bu kataloğu `scripts/fetch_catalogue.py` betiği kendi TMDb API anahtarınızla çeker (bkz. [Yerelde çalıştırma](#yerelde-çalıştırma)). Aksi belirtilmedikçe bu README'deki sayılar Kaggle dosyalarında ölçülmüştür.
 
@@ -28,9 +28,10 @@ Demo, sonuçları önceden hesaplanmış statik bir kopyadır. Kişi sayfaların
 
 - **Benzer filmler:** Bir film adı girin, 12 benzer film gelsin. "Daha fazla göster" ile 30 filme kadar çıkar.
 - **Filtreli arama:** Türlere, yönetmene, yayın yıllarına ve en düşük puana göre.
-- **Film ve kişi sayfaları:** TMDb API'sinden posterler, Türkçe özetler, fragmanlar, oyuncular ve biyografiler.
+- **Film ve kişi sayfaları:** TMDb API'sinden sayfanın dilinde posterler, özetler, fragmanlar, oyuncular ve biyografiler.
 - **Beğeniler ve izleme listesi:** Tarayıcınızda saklanır, bu yüzden üyelik ve veritabanı yoktur. Listeler sayfası ayrıca beğendiğiniz filmlere göre öneri yapar ("Beğendiklerinize göre").
 - **Açık ve koyu tema:** Sistem ayarınızı izler. Üst menüdeki düğmeyle değiştirilebilir.
+- **Türkçe ve İngilizce:** Üst menüdeki TR/EN seçimi bütün siteyi değiştirir: mesajlar, tür adları, tarih ve sayı biçimleri, TMDb'nin metinleri ve posterleri. Film adları iki dilde de aynı kalır.
 
 ## Nasıl çalışır
 
@@ -97,6 +98,14 @@ Puan 10'a bölünür. Popülerlik, benzer filmlerdeki gibi log(1 + x) olarak al�
 ### Başlık araması
 
 Büyük küçük harf fark etmeksizin tam eşleşen başlık kazanır. Aksi halde uygulama, yazım hatalarına izin veren bulanık eşleştirmeyle en yakın başlığı seçer. Bunun için thefuzz `WRatio` kullanılır ve 100 üzerinden en az 75 puan gerekir. Aranan ifadenin yarısından kısa bir başlık, yalnızca ifade o başlığın bütün kelimelerini içeriyorsa sayılır. Bu yüzden "Godfather 2" araması *Her* değil *The Godfather* filmini bulur. Aynı adı taşıyan birden çok film varsa en çok oy alan seçilir.
+
+### Diller
+
+İlk ziyarette tarayıcının dili esas alınır: dil listesinde Türkçe İngilizceden önce geliyorsa Türkçe, değilse İngilizce. Üst menüdeki TR/EN seçimi aynı sayfaya `?lang=tr` ya da `?lang=en` ile bağlanır. Sunucu bu seçimi bir yıllığına `lang` çerezine yazar, ardından `static/js/base.js` `?lang=` kısmını adres çubuğundan siler. Seçim yapılmamışsa hiçbir şey saklanmaz ve her ziyarette tarayıcının dili yeniden belirleyici olur. Her sayfa dilini `<html lang>` ile bildirir; dile göre değişen yanıtlar `Vary: Accept-Language, Cookie` başlığını taşır.
+
+- **Metinler:** Sayfalarda görünen her metin, iki dili birlikte tutan `movierec/messages.json` dosyasında bir anahtardır. Şablonlar `t()` çağırır. Motor mesaj kodları döndürür, web katmanı bunları metne çevirir. Betikler metinlerini sayfanın data özniteliklerinden alır.
+- **TMDb:** Posterler, özetler, sloganlar, fragmanlar ve biyografiler `tr-TR` ya da `en-US` olarak istenir ve her dil için ayrı önbelleğe alınır. TMDb'de sayfanın dilinde özet yoksa veri setinin İngilizce özeti gösterilir.
+- **Başlıklar:** Bir filmin iki dilde de tek bir adı vardır: veri setindeki adı ya da veri setinde olmayan bir film için TMDb'deki özgün adı.
 
 ## Değerlendirme
 
@@ -190,6 +199,7 @@ Testlerin koruduğu şeyler:
 - **TMDb hataları:** zaman aşımı, sunucu hatası ya da bozuk JSON durumunda sayfa yine veri setindeki bilgilerle açılır. Uygulama tek bir istek atar ve tekrar denemez. API anahtarı yoksa hiç istek atılmaz. Anahtar loglara asla yazılmaz.
 - **Güvenlik:** her yanıtta İçerik Güvenliği Politikası (CSP) ve diğer başlıklar, istek boyutu sınırları ve site dışına çıkmayan yönlendirmeler.
 - **Listeler ve değerlendirme:** tarayıcıdaki liste deposu ve listeler sayfası (`node:test` ile) ve `scripts/evaluate.py` içindeki ölçüm yardımcıları.
+- **Diller:** Katalogdaki her anahtarın iki dili ve aynı yer tutucuları vardır, her anahtar kullanılır. Bir şablonda ya da betikte kataloğu atlayan bir metin testi bozar. Sayfalar, uyarılar, hata sayfaları ve bilgi mesajları iki dilde de denetlenir; dilin adresten, çerezden ve tarayıcıdan seçilmesi de öyle.
 
 Kaggle CSV dosyaları yoksa pytest, `tests/fixtures/` içindeki 158 filmlik örneği kullanır ve tam veri seti gerektiren testleri atlar. Bu örnekteki özetler, sloganlar ve anahtar kelimeler TMDB'nin değil, elle yazılmış kısa metinlerdir. pytest, `.env` dosyası `DATASET_DIR` ayarlasa bile yenilenmiş kataloğu hiç okumaz. CI her push ve pull request'te aynı komutları çalıştırır. `movierec/` ve `app.py` için satır ve dal kapsamı %95'in altına düşerse başarısız olur. Örnek veriyle kapsam yaklaşık %96'dır. CI ayrıca Docker imajını derler ve uygulamanın yetkisiz kullanıcıyla çalıştığını kontrol eder.
 
@@ -202,7 +212,7 @@ Bu değerleri `.env` dosyasında (`.env.example` hepsini listeler) ya da ortam d
 | `TMDB_API_KEY` | TMDb API anahtarı (v3) | boş (yalnızca veri seti) |
 | `FLASK_SECRET_KEY` | bilgi mesajı çerezini imzalar | her açılışta rastgele |
 | `DATASET_DIR` | iki CSV dosyasının bulunduğu klasör, örneğin `dataset/refreshed` | `dataset/` |
-| `SESSION_COOKIE_SECURE` | HTTPS arkasında `1` yapılır: güvenli çerez ve HSTS | kapalı |
+| `SESSION_COOKIE_SECURE` | HTTPS arkasında `1` yapılır: güvenli çerezler ve HSTS | kapalı |
 | `HOST`, `PORT`, `FLASK_DEBUG` | geliştirme sunucusu ayarları | `127.0.0.1`, `5001`, kapalı |
 | `LOG_LEVEL` | log düzeyi, gunicorn altında da geçerli | `INFO` |
 
@@ -218,12 +228,15 @@ movierec/
   search_filters.py     girdi ayrıştırma, tür ve yönetmen filtreleri
   movie_details.py      TMDb verisiyle film sayfaları ve liste kartları
   genres.py             tür adları ve Türkçe karşılıkları
+  i18n.py               Türkçe ve İngilizce: mesajlar, tarih, sayı ve süre biçimleri
+  messages.json         arayüzdeki her metin, iki dilde
   tmdb.py               küçük bir TMDb API istemcisi
   people.py             TMDb'den yönetmen ve oyuncu sayfaları
   web/
     __init__.py         uygulama fabrikası: ayarlar, güvenlik başlıkları, hata sayfaları
     movies.py           ana sayfa, film, kişi ve arama rotaları, JSON önerileri
     lists.py            beğeniler ve izleme listesi sayfası, kart ve öneri uç noktaları
+    language.py         sayfanın dili: ?lang=, çerez ya da tarayıcı
     redirects.py        önceki sayfaya güvenli yönlendirme
 templates/              Jinja şablonları
 static/                 CSS, JavaScript ve ikonlar. js/list_store.js listeleri localStorage içinde tutar
@@ -245,6 +258,7 @@ tests/                  pytest testleri. tests/js/ içinde node:test testleri va
 - Tanınmış filmler bilerek öne çıkarılır, bu yüzden listeler Kaggle kataloğunun yalnızca yaklaşık %62'sine (yenilenmiş kataloğun %81'ine) ulaşır.
 - İngilizce olmayan filmlere nadiren kendi dillerinde öneri gelir. İngilizce olmayan 298 filmde önerilerin %2,9'u filmin özgün diliyle aynı dildedir.
 - Filtreli arama, benzer filmlerden farklı olarak oy sayısını hâlâ doğrusal ölçekler.
+- Biyografiler TMDb'den yalnızca sayfanın dilinde gelir. Türkçe biyografisi olmayan bir kişinin Türkçe sayfasında biyografi yerine bunu belirten bir not görünür.
 - Listeler JavaScript gerektirir. Tek bir cihazdaki tek bir tarayıcıya aittir ve site verileri silinince kaybolur.
 
 ## Lisans ve kaynaklar

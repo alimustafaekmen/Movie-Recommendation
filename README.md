@@ -7,7 +7,7 @@
 
 **Contents:** [Screenshots](#screenshots) · [Features](#features) · [How it works](#how-it-works) · [Evaluation](#evaluation) · [Run locally](#run-locally) · [Tests](#tests) · [Configuration](#configuration) · [Project layout](#project-layout) · [Limitations](#limitations) · [License and credits](#license-and-credits)
 
-MovieRec is a content-based movie recommender built with Flask. Give it a film you like and it finds similar films. You can also search by genre, director, year and rating. The interface is in Turkish.
+MovieRec is a content-based movie recommender built with Flask. Give it a film you like and it finds similar films. You can also search by genre, director, year and rating. The interface is in Turkish and English.
 
 By default it uses the 4,803 films of the [TMDB 5000 dataset](https://www.kaggle.com/datasets/tmdb/tmdb-movie-metadata) on Kaggle, which ends in late 2016. It can also use a fresh catalogue of about 9,000 films up to 2026, which `scripts/fetch_catalogue.py` fetches with your own TMDb API key (see [Run locally](#run-locally)). Unless a section says otherwise, the numbers in this README were measured on the Kaggle files.
 
@@ -26,11 +26,12 @@ The demo is a static copy with results computed in advance. Its person pages hav
 
 ## Features
 
-- **Similar movies:** enter a title and get 12 similar films, or up to 30 with "Daha fazla göster".
+- **Similar movies:** enter a title and get 12 similar films, or up to 30 with "Show more".
 - **Filter search:** by genres, director, release years and minimum rating.
-- **Movie and person pages:** posters, Turkish overviews, trailers, cast and biographies from the TMDb API.
-- **Favourites and watchlist:** kept in your browser, so there are no accounts and no database. The lists page also suggests films based on your favourites ("Beğendiklerinize göre").
+- **Movie and person pages:** posters, overviews, trailers, cast and biographies from the TMDb API, in the page's language.
+- **Favourites and watchlist:** kept in your browser, so there are no accounts and no database. The lists page also suggests films based on your favourites ("Based on your likes").
 - **Light and dark theme:** follows your system setting. A header button switches it.
+- **Turkish and English:** the TR/EN switch in the header changes the whole site, including messages, genre names, date and number formats, and TMDb's texts and posters. Film titles stay the same in both languages.
 
 ## How it works
 
@@ -97,6 +98,14 @@ Rating is divided by 10. Popularity is taken as log(1 + x), as in similar movies
 ### Title search
 
 An exact title match wins, ignoring case. Otherwise the app takes the closest title by fuzzy matching, which allows for typos. It uses thefuzz `WRatio` and needs a score of at least 75 out of 100. A title shorter than half the query only counts if the query contains all its words. So "Godfather 2" finds *The Godfather*, not *Her*. When several films share a title, the most-voted one wins.
+
+### Languages
+
+The first visit follows the browser: Turkish if Turkish comes before English in its language list, English otherwise. The TR/EN switch in the header links to the same page with `?lang=tr` or `?lang=en`. The server stores that choice in a `lang` cookie for a year, and `static/js/base.js` then removes `?lang=` from the address bar. Without a choice nothing is stored, and the browser's language decides again on each visit. Each page names its language in `<html lang>`, and the answers that depend on the language carry `Vary: Accept-Language, Cookie`.
+
+- **Texts:** every text the pages show is a key in `movierec/messages.json`, which holds it in both languages. Templates call `t()`. The engine returns message codes, and the web layer turns them into text. The scripts take their texts from data attributes of the page.
+- **TMDb:** posters, overviews, taglines, trailers and biographies are asked for in `tr-TR` or `en-US` and cached per language. Where TMDb has no overview in the page's language, the dataset's English one is shown.
+- **Titles:** a film has one title in both languages: its dataset title, or TMDb's original title for a film outside the dataset.
 
 ## Evaluation
 
@@ -190,6 +199,7 @@ What the tests protect:
 - **TMDb failures:** after a timeout, server error or broken JSON, the page still loads with dataset data. The app makes one call and does not retry. Without an API key no call is made. The key never reaches the logs.
 - **Security:** the Content Security Policy and other headers on every response, request size limits, and redirects that stay on the site.
 - **Lists and evaluation:** the browser list store and the lists page (with `node:test`), and the metric helpers in `scripts/evaluate.py`.
+- **Languages:** every catalogue key has both languages with the same placeholders, and every key is used. A text in a template or a script that bypasses the catalogue fails a test. Pages, warnings, error pages and flash messages are checked in both languages, and so is the choice of language from the URL, the cookie and the browser.
 
 Without the Kaggle CSVs, pytest uses a 158-film sample in `tests/fixtures/` and skips the tests that need the full dataset. Its overviews, taglines and keywords are short hand-written texts, not TMDB's. pytest never reads the refreshed catalogue, even when `.env` sets `DATASET_DIR`. CI runs the same commands on every push and pull request. It fails below 95% line and branch coverage of `movierec/` and `app.py`. The sample run measures about 96%. CI also builds the Docker image and checks that the app runs as the non-root user.
 
@@ -202,7 +212,7 @@ Set these in `.env` (`.env.example` lists them) or in the environment, which win
 | `TMDB_API_KEY` | TMDb API key (v3) | unset (dataset only) |
 | `FLASK_SECRET_KEY` | signs the flash-message cookie | random on each start |
 | `DATASET_DIR` | folder with the two CSVs, such as `dataset/refreshed` | `dataset/` |
-| `SESSION_COOKIE_SECURE` | set to `1` behind HTTPS for a Secure cookie and HSTS | off |
+| `SESSION_COOKIE_SECURE` | set to `1` behind HTTPS for Secure cookies and HSTS | off |
 | `HOST`, `PORT`, `FLASK_DEBUG` | dev server options | `127.0.0.1`, `5001`, off |
 | `LOG_LEVEL` | log level, also under gunicorn | `INFO` |
 
@@ -218,12 +228,15 @@ movierec/
   search_filters.py     input parsing, genre and director filters
   movie_details.py      movie pages and list cards with TMDb data
   genres.py             genre names and Turkish labels
+  i18n.py               Turkish and English: message lookups, date, number and runtime formats
+  messages.json         every text of the interface, in both languages
   tmdb.py               small TMDb API client
   people.py             director and actor pages from TMDb
   web/
     __init__.py         app factory: config, security headers, error pages
     movies.py           home, movie, person and search routes, JSON suggestions
     lists.py            favourites and watchlist page, card and recommendation endpoints
+    language.py         the page language: ?lang=, the cookie or the browser
     redirects.py        safe redirects back to the previous page
 templates/              Jinja templates
 static/                 CSS, JavaScript and icons. js/list_store.js keeps the lists in localStorage
@@ -245,6 +258,7 @@ tests/                  pytest suite. tests/js/ holds the node:test suite
 - Well-known films are favoured on purpose, so the lists reach only about 62% of the Kaggle catalogue (81% of the refreshed one).
 - Non-English films rarely get picks in their own language. For the 298 non-English films, 2.9% of the picks share the film's original language.
 - Filter search still scales vote count linearly, unlike similar movies.
+- Biographies come from TMDb in the page's language only. A person without a Turkish biography gets a "no biography" note on the Turkish page.
 - The lists need JavaScript. They belong to one browser on one device and disappear when its site data is cleared.
 
 ## License and credits
