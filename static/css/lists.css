@@ -1,0 +1,75 @@
+/* The my lists page (my_lists.html). The title is .page-title, the headings .section-title,
+   the empty messages .panel (base.css); the cards come from css/cards.css. */
+
+.list-status:not(:empty) {
+    margin-top: 0.75rem;
+    color: var(--color-text-muted);
+}
+
+.list-section {
+    margin-top: 2.5rem;
+}
+
+/* After the first list, a hairline separates the lists. */
+.list-section + .list-section {
+    padding-top: 2rem;
+    border-top: 1px solid var(--color-hairline);
+}
+
+/* my_lists.js wraps the heading text in this button, with the chevron after it, once the list
+   has movies. */
+.list-toggle {
+    display: inline-flex;
+    align-items: center;
+    gap: 0.5rem;
+    padding: 0;
+    font: inherit;
+    color: inherit;
+    text-align: left;
+    background: none;
+    border: 0;
+    border-radius: var(--radius-sm);
+    cursor: pointer;
+}
+
+.list-toggle-chevron {
+    display: inline-flex;
+    font-size: 0.75em;
+    color: var(--color-text-muted);
+    transition: transform var(--duration) ease, color var(--duration-fast) ease;
+}
+
+.list-toggle:hover .list-toggle-chevron {
+    color: var(--color-ink);
+}
+
+.list-toggle[aria-expanded="false"] .list-toggle-chevron {
+    transform: rotate(-90deg);
+}
+
+.empty-list {
+    max-width: 40rem;
+}
+
+.empty-list-message {
+    font-weight: 500;
+}
+
+.empty-list-hint {
+    margin-top: 0.25rem;
+    font-size: 0.875rem;
+    color: var(--color-text-muted);
+}
+
+.empty-list-link {
+    display: inline-block;
+    margin-top: 0.75rem;
+    font-size: 0.9375rem;
+    font-weight: 500;
+}
+
+@media (min-width: 900px) {
+    .list-section {
+        margin-top: 3rem;
+    }
+}

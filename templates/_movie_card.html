@@ -1,0 +1,30 @@
+{# The one movie card, styled by css/cards.css: the poster with the title and a meta line below,
+   on the page background. movie needs id, title, year (0 or missing when unknown), vote_average
+   and poster_url. note is an optional extra line, e.g. a director or a character; note_label
+   names it for screen readers ("Yönetmen", "Rol").
+   The poster has an empty alt because the title is already the link text.
+   The <template> in my_lists.html repeats this markup for my_lists.js; keep the two in step. #}
+{% from "_icon.html" import icon %}
+{% macro movie_card(movie, note=None, note_label=None) %}
+<a class="movie-card" href="{{ url_for('movies.movie_detail', movie_id=movie.id) }}">
+    {% if movie.poster_url %}
+    <img class="movie-card-poster" src="{{ movie.poster_url }}" alt="" loading="lazy">
+    {% else %}
+    <div class="movie-card-placeholder">{{ icon('film') }}</div>
+    {% endif %}
+    <div class="movie-card-body">
+        <h3 class="movie-card-title">{{ movie.title }}</h3>
+        {% set rating = movie.vote_average | format_rating %}
+        <p class="movie-card-meta meta-line">
+            {% if movie.year %}<span class="movie-card-year">{{ movie.year }}</span>{% endif %}
+            {% if rating %}<span class="movie-card-rating rating">{{ icon('star', class='rating-star') }}<span class="sr-only">Puan:</span> {{ rating }}</span>{% endif %}
+        </p>
+        {% if note %}
+        <p class="movie-card-note">
+            {%- if note_label %}<span class="sr-only">{{ note_label }}:</span> {% endif -%}
+            {{ note }}
+        </p>
+        {% endif %}
+    </div>
+</a>
+{% endmacro %}

@@ -1,0 +1,980 @@
+/* Shared by every page: the light and dark tokens, reset, typography, focus styles, layout,
+   shared components (page and section titles, buttons, tags, meta lines, panels, links), the
+   logo, header with the theme button, footer, form controls, alerts and flash messages, and the
+   error page.
+   Mobile first: base rules are for phones, wider screens add min-width 600/900/1200px.
+   The look is a film-festival poster in the Swiss tradition: a white page, ink type, one vivid
+   red used sparingly, a condensed grotesque for display lines, 1px hairlines instead of
+   shadows, no gradients, no pills. The dark theme keeps that restraint on near-black. */
+
+/* --- Tokens --- */
+/* Every colour of every stylesheet is one of these tokens (tests/test_layout.py checks that no
+   colour is written anywhere else). The light theme is :root; the dark theme overrides the
+   tokens that change below it. */
+:root {
+    /* Native controls and scrollbars follow the theme. */
+    color-scheme: light;
+
+    /* Page and surfaces: white, separated by hairlines rather than tints. */
+    --color-bg: #FFFFFF;
+    --color-surface: #FFFFFF;
+    /* Quiet fills: the poster placeholders. */
+    --color-subtle: #F4F4F4;
+    --color-hairline: #E4E4E4;
+    /* Secondary button borders: a darker hairline. */
+    --color-hairline-strong: #CFCFCF;
+    /* Fields and checkboxes need a 3:1 border against white. */
+    --color-control-border: #8A8A8F;
+    --color-tag-bg: #F1F1F1;
+    --color-tag-bg-hover: #E6E6E6;
+    /* The hover fill of ghost and close buttons: a tint of the text colour over any background. */
+    --color-hover-overlay: rgb(14 14 16 / 0.06);
+
+    /* Text: muted stays readable (4.5:1) on white, the quiet fill and the tag background.
+       The greys are neutral; where they lean at all, they lean cool like the ink. */
+    --color-ink: #0E0E10;
+    --color-ink-hover: #2A2A2E;
+    --color-text-muted: #5E5E66;
+    /* Text on ink (primary buttons, checked filter tags); it flips with the ink. */
+    --color-on-ink: #FFFFFF;
+
+    /* The one accent, the logo's red: link hovers, the active tab, the liked state, focus,
+       small marks. */
+    --color-accent: #D7261E;
+    --color-accent-hover: #B51E17;
+    --color-accent-soft: #FBEAE9;
+    /* The rating star only; 3:1 as a graphic on white. */
+    --color-rating: #B07A06;
+
+    /* The ink header and its search field. The header is dark in both themes, so only its
+       background changes with the theme. */
+    --color-header: #0E0E10;
+    --color-header-text: #F4F4F5;
+    --color-header-text-hover: #FFFFFF;
+    --color-header-muted: #A0A0A8;
+    --color-header-hover-overlay: rgb(255 255 255 / 0.06);
+    --color-header-field: #1C1C1F;
+    --color-header-field-border: #38383E;
+    --color-header-field-border-hover: #56565D;
+    --color-header-hairline: rgb(255 255 255 / 0.08);
+
+    /* The trailer's round play button sits on a video frame, not on the page, so it stays a dark
+       disc with a white triangle in both themes. */
+    --color-play-bg: rgb(14 14 16 / 0.82);
+    --color-play-bg-hover: #0E0E10;
+    --color-play-icon: #FFFFFF;
+
+    /* Alerts; the danger text also marks an invalid field. */
+    --color-warning-border: rgb(245 158 11 / 0.45);
+    --color-warning-bg: #FFFBEB;
+    --color-warning-text: #B45309;
+    --color-danger-border: rgb(220 38 38 / 0.3);
+    --color-danger-bg: #FEF2F2;
+    --color-danger-text: #991B1B;
+
+    /* The arrow of selects in the muted text colour (%23 is "#"; a data URL cannot read a var). */
+    --select-arrow: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 12 8'%3E%3Cpath d='M1 1l5 5 5-5' fill='none' stroke='%235E5E66' stroke-width='1.6'/%3E%3C/svg%3E");
+
+    /* Type: IBM Plex Sans for running text and controls, IBM Plex Sans Condensed for the logo
+       and the display lines (page titles, empty-state messages). */
+    --font-sans: "IBM Plex Sans", system-ui, -apple-system, "Segoe UI", Roboto, Arial, sans-serif;
+    --font-display: "IBM Plex Sans Condensed", "IBM Plex Sans", "Arial Narrow", sans-serif;
+
+    --radius-sm: 6px;
+    --radius-md: 8px;
+
+    --duration-fast: 0.15s;
+    --duration: 0.2s;
+}
+
+/* The dark theme: near-black surfaces a step apart, light ink, a brighter red that keeps 4.5:1.
+   It applies when the system asks for dark and the visitor has not picked light, or when the
+   visitor picked dark (static/js/theme.js sets data-theme on <html>). CSS cannot share one block
+   between a media query and a selector, so the two blocks below are copies: keep them identical
+   (tests/test_layout.py checks). */
+@media (prefers-color-scheme: dark) {
+    :root:not([data-theme="light"]) {
+        color-scheme: dark;
+        --color-bg: #0F0F11;
+        --color-surface: #17171A;
+        --color-subtle: #1E1E22;
+        --color-hairline: #2A2A2F;
+        --color-hairline-strong: #3A3A40;
+        --color-control-border: #6E6E76;
+        --color-tag-bg: #232328;
+        --color-tag-bg-hover: #2D2D33;
+        --color-hover-overlay: rgb(255 255 255 / 0.08);
+        --color-ink: #EDEDEF;
+        --color-ink-hover: #D4D4D8;
+        --color-text-muted: #A3A3AB;
+        --color-on-ink: #0F0F11;
+        --color-accent: #F2483D;
+        --color-accent-hover: #FF6A5F;
+        --color-accent-soft: #3A1A18;
+        --color-rating: #E3A82B;
+        --color-header: #0A0A0B;
+        --color-warning-border: rgb(242 184 75 / 0.3);
+        --color-warning-bg: #241B0B;
+        --color-warning-text: #F2B84B;
+        --color-danger-border: rgb(255 143 133 / 0.3);
+        --color-danger-bg: #2A1213;
+        --color-danger-text: #FF8F85;
+        --select-arrow: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 12 8'%3E%3Cpath d='M1 1l5 5 5-5' fill='none' stroke='%23A3A3AB' stroke-width='1.6'/%3E%3C/svg%3E");
+    }
+}
+
+:root[data-theme="dark"] {
+    color-scheme: dark;
+    --color-bg: #0F0F11;
+    --color-surface: #17171A;
+    --color-subtle: #1E1E22;
+    --color-hairline: #2A2A2F;
+    --color-hairline-strong: #3A3A40;
+    --color-control-border: #6E6E76;
+    --color-tag-bg: #232328;
+    --color-tag-bg-hover: #2D2D33;
+    --color-hover-overlay: rgb(255 255 255 / 0.08);
+    --color-ink: #EDEDEF;
+    --color-ink-hover: #D4D4D8;
+    --color-text-muted: #A3A3AB;
+    --color-on-ink: #0F0F11;
+    --color-accent: #F2483D;
+    --color-accent-hover: #FF6A5F;
+    --color-accent-soft: #3A1A18;
+    --color-rating: #E3A82B;
+    --color-header: #0A0A0B;
+    --color-warning-border: rgb(242 184 75 / 0.3);
+    --color-warning-bg: #241B0B;
+    --color-warning-text: #F2B84B;
+    --color-danger-border: rgb(255 143 133 / 0.3);
+    --color-danger-bg: #2A1213;
+    --color-danger-text: #FF8F85;
+    --select-arrow: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 12 8'%3E%3Cpath d='M1 1l5 5 5-5' fill='none' stroke='%23A3A3AB' stroke-width='1.6'/%3E%3C/svg%3E");
+}
+
+/* --- Reset --- */
+*,
+*::before,
+*::after {
+    box-sizing: border-box;
+    margin: 0;
+    padding: 0;
+}
+
+html {
+    -webkit-text-size-adjust: 100%;
+    text-size-adjust: 100%;
+}
+
+fieldset {
+    border: 0;
+    min-width: 0;
+}
+
+img {
+    display: block;
+    max-width: 100%;
+    height: auto;
+}
+
+/* A class that sets display (flex, grid) would otherwise show an element marked hidden. */
+[hidden] {
+    display: none !important;
+}
+
+/* Controls use the page font instead of the browser's system font. */
+button,
+input,
+select,
+textarea {
+    font: inherit;
+}
+
+/* --- Typography --- */
+/* The column layout keeps the footer at the bottom of short pages. */
+body {
+    display: flex;
+    flex-direction: column;
+    /* dvh follows the phone's address bar; vh is the fallback for older browsers. */
+    min-height: 100vh;
+    min-height: 100dvh;
+    font-family: var(--font-sans);
+    font-size: 1rem;
+    line-height: 1.6;
+    color: var(--color-ink);
+    background-color: var(--color-bg);
+    -webkit-font-smoothing: antialiased;
+    -moz-osx-font-smoothing: grayscale;
+}
+
+/* The text face loads 400/500/600: headings and bold text use 600 so the browser never fakes
+   a 700 (tests/test_layout.py checks it). The display lines set their own weight. */
+h1,
+h2,
+h3 {
+    font-weight: 600;
+    line-height: 1.25;
+}
+
+strong,
+b {
+    font-weight: 600;
+}
+
+a {
+    color: var(--color-accent);
+    text-decoration: none;
+    transition: color var(--duration-fast) ease;
+}
+
+a:hover {
+    color: var(--color-accent-hover);
+}
+
+/* --- Focus --- */
+/* Keyboard users always see where they are; mouse clicks do not draw the ring. */
+:focus-visible {
+    outline: 2px solid var(--color-accent);
+    outline-offset: 2px;
+}
+
+/* The accent is too dark to see on the black header. */
+.header :focus-visible {
+    outline-color: var(--color-header-text-hover);
+}
+
+/* Hidden until a keyboard user tabs to it, then it jumps over the header. */
+.skip-link {
+    position: absolute;
+    top: 0;
+    left: 1rem;
+    z-index: 100;
+    padding: 0.5rem 1rem;
+    font-weight: 500;
+    color: var(--color-ink);
+    background-color: var(--color-surface);
+    border: 1px solid var(--color-hairline);
+    border-top: 0;
+    border-radius: 0 0 var(--radius-sm) var(--radius-sm);
+    transform: translateY(-120%);
+}
+
+.skip-link:focus {
+    transform: none;
+}
+
+/* --- Animations --- */
+@keyframes fade-in {
+    from {
+        opacity: 0;
+    }
+
+    to {
+        opacity: 1;
+    }
+}
+
+/* --- Icons --- */
+/* Font Awesome icons from static/icons.svg, drawn by templates/_icon.html. Like the icon font's
+   glyphs they are 1em high, as wide as their shape (the viewBox sets the width) and sit 0.125em
+   below the baseline. */
+.icon {
+    height: 1em;
+    vertical-align: -0.125em;
+    fill: currentColor;
+}
+
+/* The loading icon of the search buttons; reduced motion stops it (end of this file). */
+.icon-spin {
+    animation: icon-spin 2s linear infinite;
+}
+
+@keyframes icon-spin {
+    to {
+        transform: rotate(1turn);
+    }
+}
+
+/* --- Layout --- */
+.container {
+    width: 100%;
+    max-width: 1240px;
+    margin-inline: auto;
+    padding-inline: 1rem;
+}
+
+@media (min-width: 600px) {
+    .container {
+        padding-inline: 1.5rem;
+    }
+}
+
+@media (min-width: 900px) {
+    .container {
+        padding-inline: 2rem;
+    }
+}
+
+/* --- Shared components --- */
+/* The main column of a page (used together with .container). */
+.page {
+    padding-block: 1.5rem 3rem;
+}
+
+@media (min-width: 900px) {
+    .page {
+        padding-block: 2.5rem 4rem;
+    }
+}
+
+/* The one display line of a page, in the condensed face: movie title, person name, results
+   heading, list page, error heading. Sentence case. Pages may set a larger size (the movie
+   title). */
+.page-title {
+    font-family: var(--font-display);
+    font-size: 2rem;
+    font-weight: 700;
+    line-height: 1.1;
+    letter-spacing: -0.01em;
+    color: var(--color-ink);
+    overflow-wrap: break-word;
+    text-wrap: balance;
+}
+
+@media (min-width: 900px) {
+    .page-title {
+        font-size: 2.5rem;
+    }
+}
+
+/* Section headings: plain sans, no icon. */
+.section-title {
+    margin-bottom: 0.75rem;
+    font-family: var(--font-sans);
+    font-size: 1.0625rem;
+    font-weight: 600;
+    line-height: 1.3;
+    color: var(--color-ink);
+    overflow-wrap: anywhere;
+}
+
+@media (min-width: 600px) {
+    .section-title {
+        font-size: 1.125rem;
+    }
+}
+
+/* Buttons: 40px high. Primary actions are ink, not accent. */
+.btn {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    gap: 0.5rem;
+    min-height: 2.5rem;
+    padding: 0.375rem 1rem;
+    font-family: var(--font-sans);
+    font-size: 0.9375rem;
+    font-weight: 500;
+    line-height: 1.25;
+    text-align: center;
+    text-decoration: none;
+    color: var(--color-ink);
+    background-color: transparent;
+    border: 1px solid transparent;
+    border-radius: var(--radius-sm);
+    cursor: pointer;
+    transition: background-color var(--duration-fast) ease,
+        border-color var(--duration-fast) ease,
+        color var(--duration-fast) ease;
+}
+
+.btn .icon {
+    flex: none;
+    font-size: 0.95em;
+}
+
+.btn-primary {
+    color: var(--color-on-ink);
+    background-color: var(--color-ink);
+    border-color: var(--color-ink);
+}
+
+.btn-primary:hover {
+    color: var(--color-on-ink);
+    background-color: var(--color-ink-hover);
+    border-color: var(--color-ink-hover);
+}
+
+.btn-secondary {
+    color: var(--color-ink);
+    background-color: var(--color-surface);
+    border-color: var(--color-hairline-strong);
+}
+
+.btn-secondary:hover {
+    color: var(--color-ink);
+    background-color: var(--color-tag-bg);
+}
+
+.btn-ghost {
+    color: var(--color-ink);
+    background-color: transparent;
+}
+
+.btn-ghost:hover {
+    color: var(--color-ink);
+    background-color: var(--color-hover-overlay);
+}
+
+/* A submitting form marks its button aria-disabled (so focus stays on it); it looks inactive too. */
+.btn[aria-disabled="true"] {
+    opacity: 0.6;
+    pointer-events: none;
+}
+
+/* Genre links (home shortcuts, movie page): flat tags that darken on hover. */
+.tag-list {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 0.5rem;
+    list-style: none;
+}
+
+.tag {
+    display: inline-block;
+    padding: 0.25rem 0.625rem;
+    font-size: 0.875rem;
+    font-weight: 400;
+    line-height: 1.5;
+    color: var(--color-ink);
+    text-decoration: none;
+    background-color: var(--color-tag-bg);
+    border-radius: var(--radius-sm);
+    transition: background-color var(--duration-fast) ease;
+}
+
+.tag:hover {
+    color: var(--color-ink);
+    background-color: var(--color-tag-bg-hover);
+}
+
+/* Facts in a row (year · runtime · ★ 8,2), separated by middle dots. Each child is an item;
+   the dot is drawn before every item after the first, and screen readers skip it. Markup that
+   writes its own aria-hidden separators gets no extra dots. */
+.meta-line {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: baseline;
+    font-size: 0.9375rem;
+    color: var(--color-text-muted);
+    font-variant-numeric: tabular-nums;
+    list-style: none;
+}
+
+.meta-line > :not([aria-hidden="true"]) + :not([aria-hidden="true"])::before {
+    content: "\00B7";
+    content: "\00B7" / "";
+    margin-inline: 0.5em;
+    color: var(--color-text-muted);
+}
+
+.meta-line > [aria-hidden="true"] {
+    margin-inline: 0.5em;
+}
+
+/* "★ 8,2": the star in the rating colour, the number in ink. */
+.rating {
+    color: var(--color-ink);
+    font-variant-numeric: tabular-nums;
+}
+
+.rating-star {
+    color: var(--color-rating);
+}
+
+/* A plain white box with a hairline border: search panel, empty states, the error box. */
+.panel {
+    padding: 1.25rem;
+    background-color: var(--color-surface);
+    border: 1px solid var(--color-hairline);
+    border-radius: var(--radius-md);
+}
+
+@media (min-width: 600px) {
+    .panel {
+        padding: 1.5rem;
+    }
+}
+
+/* Names (cast, director): ink text on a faint underline that turns accent on hover. The
+   resting underline keeps them recognisable as links inside running text. */
+.link {
+    color: var(--color-ink);
+    text-decoration: underline;
+    text-decoration-color: var(--color-hairline-strong);
+    text-decoration-thickness: 1px;
+    text-underline-offset: 0.2em;
+    transition: text-decoration-color var(--duration-fast) ease, color var(--duration-fast) ease;
+}
+
+.link:hover {
+    color: var(--color-ink);
+    text-decoration-color: var(--color-accent);
+}
+
+/* Read by screen readers, not drawn. The header's nav label is only hidden on phones. */
+.sr-only,
+.nav-label {
+    position: absolute;
+    width: 1px;
+    height: 1px;
+    margin: -1px;
+    overflow: hidden;
+    clip-path: inset(50%);
+    white-space: nowrap;
+}
+
+/* --- Logo --- */
+/* The wordmark of templates/_logo.html: text in the size and colour around it. Every length is
+   in em, so it scales with that size and keeps its shape in a fallback face. */
+.logo {
+    font-family: var(--font-display);
+    font-weight: 500;
+    letter-spacing: -0.01em;
+    white-space: nowrap;
+}
+
+/* The recording dot, always the accent. vertical-align: middle centres it on the x-height of
+   the face that draws the word, whichever face that is. */
+.logo-dot {
+    display: inline-block;
+    width: 0.55em;
+    height: 0.55em;
+    margin-right: 0.3em;
+    vertical-align: middle;
+    background-color: var(--color-accent);
+    border-radius: 50%;
+}
+
+/* The weight change, not a space, separates "Movie" from "Rec". */
+.logo-rec {
+    font-family: var(--font-display);
+    font-weight: 700;
+}
+
+/* --- Header --- */
+/* Phones: the brand, an icon-only "Listelerim" and the theme button share the first row, the
+   search takes the second (the home page hides it, its own search panel is right below). From
+   600px the nav shows its label; from 900px everything fits on one row. The header is dark in
+   both themes, so its native parts (the search field's clear button, the title suggestions)
+   are drawn dark too. */
+.header {
+    color-scheme: dark;
+    padding-block: 0.75rem;
+    color: var(--color-header-text);
+    background-color: var(--color-header);
+    border-bottom: 1px solid var(--color-header-hairline);
+}
+
+.header-bar {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: center;
+    gap: 0.625rem 1rem;
+}
+
+/* The auto margin pushes the nav and search to the right without stretching the link. */
+.header-brand {
+    min-width: 0;
+    margin-right: auto;
+    color: inherit;
+}
+
+.header-brand:hover {
+    color: var(--color-header-text-hover);
+}
+
+/* The logo sets the size. A flex box, so the home page's h1 and the span of other pages are
+   both exactly one line of the logo high. */
+.site-title {
+    display: flex;
+    font-size: 1.375rem;
+    line-height: 1;
+}
+
+.header-nav {
+    flex: none;
+}
+
+/* "Listelerim" is a ghost text link and the theme button an icon-only ghost button. Phones
+   draw both as icons with a 44px touch target; from 600px they match the 40px search field.
+   The current page gets brighter text and a short accent rule below, which also shows on
+   phones where only the icon is drawn. */
+.nav-link,
+.theme-toggle {
+    position: relative;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    gap: 0.5rem;
+    min-width: 2.75rem;
+    height: 2.75rem;
+    padding-inline: 0.625rem;
+    font-size: 0.9375rem;
+    font-weight: 500;
+    color: var(--color-header-muted);
+    border-radius: var(--radius-sm);
+    transition: color var(--duration-fast) ease, background-color var(--duration-fast) ease;
+}
+
+.nav-link:hover,
+.theme-toggle:hover {
+    color: var(--color-header-text-hover);
+    background-color: var(--color-header-hover-overlay);
+}
+
+.theme-toggle {
+    flex: none;
+    background: none;
+    border: 0;
+    cursor: pointer;
+}
+
+/* static/js/theme.js always sets data-theme, so without it the script has not run and the button
+   could not work. The icon shows the theme a click switches to. */
+:root:not([data-theme]) .theme-toggle,
+[data-theme="light"] .theme-sun,
+[data-theme="dark"] .theme-moon {
+    display: none;
+}
+
+.nav-link[aria-current="page"] {
+    color: var(--color-header-text-hover);
+}
+
+.nav-link[aria-current="page"]::after {
+    content: "";
+    position: absolute;
+    right: 0.625rem;
+    bottom: 0.25rem;
+    left: 0.625rem;
+    height: 2px;
+    background-color: var(--color-accent);
+}
+
+/* A dark field with the search button inside its right end. */
+.header-search-form {
+    position: relative;
+    display: flex;
+    flex: 1 1 100%;
+}
+
+.page-home .header-search-form {
+    display: none;
+}
+
+/* 16px text keeps iOS from zooming in when the field is focused. */
+.header-search-form input[type="search"] {
+    flex: 1 1 auto;
+    min-width: 0;
+    height: 2.5rem;
+    padding: 0 2.75rem 0 0.875rem;
+    font-size: 1rem;
+    line-height: 1.5;
+    color: var(--color-header-text);
+    background-color: var(--color-header-field);
+    border: 1px solid var(--color-header-field-border);
+    border-radius: var(--radius-sm);
+    transition: border-color var(--duration-fast) ease;
+}
+
+.header-search-form input[type="search"]:hover,
+.header-search-form input[type="search"]:focus {
+    border-color: var(--color-header-field-border-hover);
+}
+
+.header-search-form input[type="search"]::placeholder {
+    color: var(--color-header-muted);
+    opacity: 1;
+}
+
+.header-search-form input[type="search"]::-webkit-search-cancel-button {
+    cursor: pointer;
+}
+
+.header-search-form button[type="submit"] {
+    position: absolute;
+    top: 0;
+    right: 0;
+    display: grid;
+    place-items: center;
+    width: 2.5rem;
+    height: 2.5rem;
+    color: var(--color-header-muted);
+    background: none;
+    border: 0;
+    border-radius: 0 var(--radius-sm) var(--radius-sm) 0;
+    cursor: pointer;
+    transition: color var(--duration-fast) ease;
+}
+
+.header-search-form button[type="submit"]:hover {
+    color: var(--color-header-text-hover);
+}
+
+@media (min-width: 600px) {
+    .site-title {
+        font-size: 1.5rem;
+    }
+
+    .nav-link,
+    .theme-toggle {
+        min-width: 2.5rem;
+        height: 2.5rem;
+    }
+
+    .nav-label {
+        position: static;
+        width: auto;
+        height: auto;
+        margin: 0;
+        overflow: visible;
+        clip-path: none;
+    }
+}
+
+@media (min-width: 900px) {
+    .header {
+        padding-block: 0.875rem;
+    }
+
+    .header-bar {
+        flex-wrap: nowrap;
+        gap: 1rem;
+    }
+
+    .header-search-form,
+    .page-home .header-search-form {
+        display: flex;
+        flex: 0 1 20rem;
+    }
+
+    .header-search-form input[type="search"] {
+        font-size: 0.9375rem;
+    }
+}
+
+/* --- Form controls --- */
+.form-group {
+    margin-bottom: 1.25rem;
+}
+
+/* Only direct children: labels nested deeper (genre toggles) style themselves. */
+.form-group > label,
+.form-group > legend {
+    display: block;
+    margin-bottom: 0.375rem;
+    font-size: 0.875rem;
+    font-weight: 500;
+    color: var(--color-ink);
+}
+
+/* 16px on phones so iOS does not zoom into the field. */
+.form-control {
+    display: block;
+    width: 100%;
+    min-height: 2.5rem;
+    padding: 0.5rem 0.75rem;
+    font-size: 1rem;
+    line-height: 1.5;
+    color: var(--color-ink);
+    background-color: var(--color-surface);
+    border: 1px solid var(--color-control-border);
+    border-radius: var(--radius-sm);
+    appearance: none;
+    transition: border-color var(--duration-fast) ease;
+}
+
+.form-control::placeholder {
+    color: var(--color-text-muted);
+    opacity: 1;
+}
+
+.form-control:hover {
+    border-color: var(--color-ink-hover);
+}
+
+/* Mouse users see the darker border; keyboard users also get the focus ring. */
+.form-control:focus {
+    border-color: var(--color-ink);
+}
+
+/* Native required/min/max errors, shown only after the user has edited the field. */
+.form-control:user-invalid {
+    border-color: var(--color-danger-text);
+}
+
+/* appearance: none drops the native arrow, so selects draw their own. */
+select.form-control {
+    padding-right: 2.5rem;
+    background-image: var(--select-arrow);
+    background-repeat: no-repeat;
+    background-position: right 0.875rem center;
+    background-size: 0.75rem;
+    cursor: pointer;
+}
+
+@media (min-width: 600px) {
+    .form-control {
+        font-size: 0.9375rem;
+    }
+}
+
+/* --- Alerts and flash messages --- */
+.alert {
+    position: relative;
+    padding: 0.75rem 1rem;
+    margin-bottom: 1.5rem;
+    font-size: 0.9375rem;
+    overflow-wrap: anywhere;
+    border: 1px solid transparent;
+    border-radius: var(--radius-md);
+    animation: fade-in var(--duration) ease both;
+}
+
+.alert-warning {
+    color: var(--color-warning-text);
+    background-color: var(--color-warning-bg);
+    border-color: var(--color-warning-border);
+}
+
+.alert-danger {
+    color: var(--color-danger-text);
+    background-color: var(--color-danger-bg);
+    border-color: var(--color-danger-border);
+}
+
+/* Flash messages sit in the page flow above the content, so they never cover the header. */
+.flash-messages > .alert {
+    margin: 1rem 0 0;
+}
+
+.alert-icon {
+    margin-right: 0.5rem;
+}
+
+/* Room on the right for the close button. */
+.alert-dismissible {
+    padding-right: 3rem;
+}
+
+.close-button {
+    position: absolute;
+    top: 0.25rem;
+    right: 0.25rem;
+    display: grid;
+    place-items: center;
+    width: 2.25rem;
+    height: 2.25rem;
+    font-size: 1.4rem;
+    line-height: 1;
+    color: inherit;
+    background: none;
+    border: 0;
+    border-radius: var(--radius-sm);
+    cursor: pointer;
+    transition: background-color var(--duration-fast) ease;
+}
+
+/* Full colour keeps the cross at 3:1; hover tints the background instead of fading it. */
+.close-button:hover {
+    background-color: var(--color-hover-overlay);
+}
+
+/* --- Footer --- */
+/* Quiet: the page background under a hairline, small muted text. */
+.footer {
+    margin-top: auto;
+    padding-block: 1.5rem 2rem;
+    font-size: 0.8125rem;
+    line-height: 1.55;
+    color: var(--color-text-muted);
+    background-color: var(--color-bg);
+    border-top: 1px solid var(--color-hairline);
+}
+
+.footer-content {
+    display: grid;
+    gap: 0.5rem;
+}
+
+/* The logo in ink, a little larger than the notice. */
+.footer-brand {
+    font-size: 1.125rem;
+    line-height: 1;
+    color: var(--color-ink);
+}
+
+/* The TMDB logo in its own colours, sized to the text. */
+.footer img {
+    display: inline-block;
+    height: 10px;
+    width: auto;
+    margin-right: 0.5rem;
+    vertical-align: 0;
+}
+
+/* Wide screens: the name on the left, the notice on the right of one line. */
+@media (min-width: 900px) {
+    .footer-content {
+        display: flex;
+        justify-content: space-between;
+        align-items: baseline;
+        gap: 2rem;
+    }
+
+    .footer-brand {
+        flex: none;
+    }
+}
+
+/* --- Error page --- */
+.error-panel {
+    max-width: 34rem;
+    margin: 1rem auto;
+    padding: 1.75rem 1.25rem;
+}
+
+.error-code {
+    margin-bottom: 0.5rem;
+    font-size: 0.8125rem;
+    font-weight: 600;
+    letter-spacing: 0.08em;
+    color: var(--color-text-muted);
+    font-variant-numeric: tabular-nums;
+}
+
+.error-page-message {
+    margin: 0.75rem 0 1.5rem;
+    color: var(--color-text-muted);
+}
+
+@media (min-width: 600px) {
+    .error-panel {
+        margin-block: 3rem;
+        padding: 2.5rem;
+    }
+}
+
+/* --- Reduced motion --- */
+/* For every page: animations finish at once (so fade-ins still end visible), spinners stop
+   and transitions jump, so the page stylesheets need no reduced-motion rules of their own. */
+@media (prefers-reduced-motion: reduce) {
+    *,
+    *::before,
+    *::after {
+        animation-duration: 0.01ms !important;
+        animation-iteration-count: 1 !important;
+        transition-duration: 0.01ms !important;
+    }
+}

@@ -1,4 +1,8 @@
-<form method="POST" action="{{ url_for('movies.search') }}" class="header-search-form">
-    <input type="search" name="search_query" placeholder="Film Ara..." aria-label="Film Ara" required>
-    <button type="submit" aria-label="Ara"><i class="fas fa-search"></i></button>
+{% from "_icon.html" import icon -%}
+<form method="POST" action="{{ url_for('movies.header_search') }}" class="header-search-form">
+    <input type="search" name="search_query" placeholder="Film Ara..." aria-label="Film Ara" list="movie-titles"
+        autocomplete="off" required>
+    {# Shared with the home page's film field; base.js fills it on first focus. #}
+    <datalist id="movie-titles" data-src="{{ url_for('movies.api_titles') }}"></datalist>
+    <button type="submit" aria-label="Ara">{{ icon('magnifying-glass') }}</button>
 </form>

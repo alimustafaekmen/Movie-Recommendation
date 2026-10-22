@@ -1,0 +1,118 @@
+/* The one movie card (templates/_movie_card.html) and the grid that lays cards out. The card
+   has no box: the poster with the title and a muted meta line below, on the page background. */
+
+.movie-grid {
+    display: grid;
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    gap: 1.75rem 1rem;
+    list-style: none;
+}
+
+/* A card wrapped in an <li> still fills its grid cell. */
+.movie-grid > li {
+    display: grid;
+}
+
+@media (min-width: 600px) {
+    .movie-grid {
+        grid-template-columns: repeat(auto-fill, minmax(160px, 1fr));
+        gap: 2rem 1.5rem;
+    }
+}
+
+.movie-card {
+    display: flex;
+    flex-direction: column;
+    gap: 0.625rem;
+    color: var(--color-ink);
+    border-radius: var(--radius-md);
+}
+
+.movie-card:hover {
+    color: var(--color-ink);
+}
+
+/* Both keep the poster's 2:3 shape, so cards with and without a poster line up. The hairline
+   keeps light posters from melting into the page. */
+.movie-card-poster,
+.movie-card-placeholder {
+    width: 100%;
+    aspect-ratio: 2 / 3;
+    border: 1px solid var(--color-hairline);
+    border-radius: var(--radius-md);
+    transition: filter var(--duration-fast) ease, background-color var(--duration-fast) ease;
+}
+
+.movie-card-poster {
+    object-fit: cover;
+    background-color: var(--color-subtle);
+}
+
+.movie-card-placeholder {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 1.75rem;
+    color: var(--color-text-muted);
+    background-color: var(--color-subtle);
+}
+
+/* Only real links react; the lists page's loading cards have no href yet. */
+.movie-card[href]:hover .movie-card-poster {
+    filter: brightness(0.9);
+}
+
+.movie-card[href]:hover .movie-card-placeholder {
+    background-color: var(--color-tag-bg-hover);
+}
+
+.movie-card-body {
+    display: flex;
+    flex-direction: column;
+    gap: 0.125rem;
+    min-width: 0;
+}
+
+/* Two lines at most. The one-line minimum keeps a loading card (no title yet) as tall as a
+   filled card with a short title. */
+.movie-card-title {
+    display: -webkit-box;
+    -webkit-line-clamp: 2;
+    -webkit-box-orient: vertical;
+    overflow: hidden;
+    min-height: 1lh;
+    font-family: var(--font-sans);
+    font-size: 0.95rem;
+    font-weight: 600;
+    line-height: 1.3;
+    color: var(--color-ink);
+    text-decoration-line: underline;
+    text-decoration-color: transparent;
+    text-decoration-thickness: 1px;
+    text-underline-offset: 0.2em;
+    transition: text-decoration-color var(--duration-fast) ease;
+}
+
+.movie-card[href]:hover .movie-card-title {
+    text-decoration-color: var(--color-accent);
+}
+
+/* The meta line is .meta-line (base.css): "2010 · ★ 8,3", muted with the number in ink. It
+   keeps one line even when empty, so a loading card is as tall as a filled one. */
+.movie-card-meta {
+    min-height: 1lh;
+    font-size: 0.8125rem;
+    line-height: 1.4;
+}
+
+/* Two lines at most: some characters list several roles. */
+.movie-card-note {
+    display: -webkit-box;
+    -webkit-line-clamp: 2;
+    -webkit-box-orient: vertical;
+    overflow: hidden;
+    font-size: 0.8125rem;
+    line-height: 1.4;
+    color: var(--color-text-muted);
+    overflow-wrap: anywhere;
+}

@@ -1,0 +1,10 @@
+{# An icon from static/icons.svg (Font Awesome Free paths), 1em high in the text colour. The
+   symbol's viewBox on the outer svg keeps the icon's own width, as in the icon font.
+   Decorative by default, so screen readers skip it; with a label it is announced as an image.
+   class adds classes for page rules, e.g. the spinning loading icon. #}
+{% macro icon(name, label=None, class=None) -%}
+<svg class="icon{% if class %} {{ class }}{% endif %}" viewBox="{{ icon_view_box(name) }}"
+    {%- if label %} role="img"{% else %} aria-hidden="true"{% endif %} focusable="false">
+    {%- if label %}<title>{{ label }}</title>{% endif -%}
+    <use href="{{ asset_url('icons.svg') }}#{{ name }}"></use></svg>
+{%- endmacro %}

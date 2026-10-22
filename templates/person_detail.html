@@ -1,109 +1,85 @@
 {% extends "base.html" %}
+{% from "_icon.html" import icon %}
+{% from "_movie_card.html" import movie_card %}
 
-{% block title %}{{ person.name | default(person.person_type_tr + ' Detayı') }} | {{ person.person_type_tr }}
-Detayları{% endblock %}
+{% block title %}{{ person.name }} · MovieRec{% endblock %}
 
-{% block page_wrapper_class %}person-detail-page-wrapper{% endblock %}
+{% block head %}<link rel="stylesheet" href="{{ asset_url('css/detail.css') }}">{% endblock %}
 
 {% block content %}
-<div class="container">
-    <div class="person-detail-container">
-        <div class="person-main-info">
-            <div class="person-profile-image-section">
-                {% if person.profile_image_url %}
-                <img src="{{ person.profile_image_url }}" alt="{{ person.name }} Profil Fotoğrafı"
-                    class="person-profile-image">
-                {% else %}
-                <div class="person-profile-placeholder">
-                    <i class="fas fa-user"></i>
-                    <span>Fotoğraf Yok</span>
-                </div>
-                {% endif %}
+<div class="container page detail-page">
+    {# The movie page's layout (css/detail.css): photo, name block beside it, body below. #}
+    <article class="detail-layout">
+        <div class="detail-media">
+            {% if person.profile_image_url %}
+            <img class="detail-image" src="{{ person.profile_image_url }}" alt="{{ person.name }} profil fotoğrafı">
+            {% else %}
+            <div class="detail-image detail-image-placeholder">
+                {{ icon('user') }}
+                <span>Fotoğraf Yok</span>
             </div>
-
-            <div class="person-text-info">
-                <h1>{{ person.name }}</h1>
-                {% if person.known_for_department %}
-                <span class="person-known-for">{{ person.known_for_department }}</span>
-                {% endif %}
-
-                <div class="person-meta-details">
-                    {% if person.birthday and person.birthday != "Bilinmiyor" %}
-                    <p><strong>Doğum Tarihi:</strong> {{ person.birthday | format_date }}
-                        {% if person.place_of_birth %}
-                        ({{ person.place_of_birth }})
-                        {% endif %}
-                    </p>
-                    {% endif %}
-                    {% if person.deathday and person.deathday != "Bilinmiyor" %}
-                    <p><strong>Ölüm Tarihi:</strong> {{ person.deathday | format_date }}</p>
-                    {% endif %}
-                    {% if person.homepage %}
-                    <p><strong>Web Sitesi:</strong> <a href="{{ person.homepage }}" target="_blank"
-                            rel="noopener noreferrer">{{ person.homepage }}</a></p>
-                    {% endif %}
-                </div>
-
-                {% if person.biography %}
-                {% set biography = person.biography %}
-                {# Cut at a word boundary near 600 characters; the rest sits behind "Devamını Oku". #}
-                {% set preview = biography | truncate(600, false, '') %}
-                {% set is_long = preview | length < biography | length %}
-                <div class="person-biography">
-                    <h3><i class="fas fa-book-open"></i> Biyografi</h3>
-                    <p>{{ preview }}{% if is_long %}...{% endif %}</p>
-                    {% if is_long %}
-                    <details>
-                        <summary class="biography-read-more">Devamını Oku</summary>
-                        <p>{{ biography[preview | length:] }}</p>
-                    </details>
-                    {% endif %}
-                </div>
-                {% endif %}
-            </div>
+            {% endif %}
         </div>
 
+        <header class="detail-header">
+            <h1 class="page-title detail-title">{{ person.name }}</h1>
+            {# The role of this page (director or actor page), then what TMDb knows them for when that
+               differs; known_for_label is missing for departments without a Turkish label. #}
+            <p class="person-role">{{ person.person_type_tr }}</p>
+            {% if person.known_for_label and person.known_for_label != person.person_type_tr %}
+            <p class="person-known-for">Tanındığı alan: {{ person.known_for_label }}</p>
+            {% endif %}
+        </header>
+
+        <div class="detail-body">
+            {% if person.birthday or person.deathday or person.homepage %}
+            <dl class="person-facts">
+                {% if person.birthday %}
+                <dt>Doğum Tarihi</dt>
+                <dd>{{ person.birthday | format_date }}{% if person.place_of_birth %} ({{ person.place_of_birth }}){% endif %}</dd>
+                {% endif %}
+                {% if person.deathday %}
+                <dt>Ölüm Tarihi</dt>
+                <dd>{{ person.deathday | format_date }}</dd>
+                {% endif %}
+                {% if person.homepage %}
+                <dt>Web Sitesi</dt>
+                <dd><a class="link" href="{{ person.homepage }}" target="_blank" rel="noopener noreferrer">{{ person.homepage }}</a></dd>
+                {% endif %}
+            </dl>
+            {% endif %}
+
+            {% if person.biography %}
+            {% set biography = person.biography %}
+            {# Cut at a word boundary near 600 characters; the rest sits behind "Devamını Oku". #}
+            {% set preview = biography | truncate(600, false, '') %}
+            {% set is_long = preview | length < biography | length %}
+            <section class="detail-section person-biography">
+                <h2 class="section-title">Biyografi</h2>
+                <p class="detail-text">{{ preview }}{% if is_long %}...{% endif %}</p>
+                {% if is_long %}
+                <details>
+                    <summary>Devamını Oku</summary>
+                    <p class="detail-text">{{ biography[preview | length:] }}</p>
+                </details>
+                {% endif %}
+            </section>
+            {% endif %}
+        </div>
+    </article>
+
+    <section class="detail-cards">
+        <h2 class="section-title">Filmografi</h2>
         {% if person.movies %}
-        <div class="person-filmography">
-            <h3><i class="fas fa-video"></i> Filmografi (Popüler)</h3>
-            <div class="filmography-grid">
-                {% for movie in person.movies %}
-                <a href="{{ url_for('movies.movie_detail', movie_id=movie.id) }}" class="filmography-item"
-                    title="{{ movie.title }}">
-                    {% if movie.poster_url %}
-                    <img src="{{ movie.poster_url }}" alt="{{ movie.title }} Posteri" loading="lazy">
-                    {% else %}
-                    <div class="filmography-item-placeholder"><i class="fas fa-film"></i></div>
-                    {% endif %}
-                    <div class="filmography-info">
-                        <span class="filmography-title">{{ movie.title }}</span>
-                        <div>
-                            {% if movie.character %}
-                            <span class="filmography-character">({{ movie.character }})</span>
-                            {% elif movie.job %}
-                            <span class="filmography-job">({{ movie.job }})</span>
-                            {% endif %}
-                            {% if movie.release_date %}
-                            <span class="filmography-date">{{ movie.release_date[:4] }}</span>
-                            {% endif %}
-                        </div>
-                    </div>
-                </a>
-                {% endfor %}
-            </div>
-        </div>
+        <ul class="movie-grid">
+            {% for movie in person.movies %}
+            {# Actors' cards name the character; a director's job would only repeat on every card. #}
+            <li>{{ movie_card(movie, note=movie.character, note_label="Rol") }}</li>
+            {% endfor %}
+        </ul>
         {% else %}
-        <div class="person-filmography">
-            <h3><i class="fas fa-video"></i> Filmografi</h3>
-            <p class="no-content-message">Bu {{ person.person_type_tr.lower() }} için filmografi bilgisi bulunamadı.</p>
-        </div>
+        <p class="detail-note">Bu {{ person.person_type_tr.lower() }} için filmografi bilgisi bulunamadı.</p>
         {% endif %}
-
-        <div class="back-button-container">
-            <a class="btn btn-secondary" href="{{ url_for('movies.home') }}" data-back>
-                <i class="fas fa-arrow-left"></i> Önceki Sayfaya Dön
-            </a>
-        </div>
-    </div>
+    </section>
 </div>
 {% endblock %}

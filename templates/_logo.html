@@ -1,0 +1,9 @@
+{# The MovieRec wordmark: a red recording dot, then "Movie" in IBM Plex Sans Condensed Medium and
+   "Rec" in Bold, so the camel-cased name reads as two words. Plain text sized in em by .logo in
+   css/base.css, so it keeps its shape in whatever face draws it (the web font or a fallback).
+   The text takes the colour around it (white in the header, ink in the footer); the dot is
+   always the accent. Decorative: the link or text around it carries the name "MovieRec".
+   One line on purpose: a space between the dot and the word would widen the gap. #}
+{% macro logo() -%}
+<span class="logo" aria-hidden="true"><span class="logo-dot"></span>Movie<b class="logo-rec">Rec</b></span>
+{%- endmacro %}

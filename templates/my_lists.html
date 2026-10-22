@@ -1,0 +1,63 @@
+{% extends "base.html" %}
+{% from "_icon.html" import icon %}
+
+{% block title %}Listelerim · MovieRec{% endblock %}
+
+{% block head %}
+<link rel="stylesheet" href="{{ asset_url('css/lists.css') }}">
+{# In the head and render-blocking: the first frame already has the placeholder cards or the
+   empty messages, so nothing below them jumps when the script runs. #}
+<script type="module" blocking="render" src="{{ asset_url('js/my_lists.js') }}"></script>
+{% endblock %}
+
+{% block content %}
+{# The lists live in this browser; my_lists.js shows a placeholder card per stored film at once,
+   then fills the cards from /api/movies, so the page does not jump when they arrive. #}
+{% macro list_section(title, list_name, empty_text, button_label) %}
+<section class="list-section" data-list="{{ list_name }}">
+    <h2 class="section-title">{{ title }}</h2>
+    <ul class="movie-grid" id="{{ list_name }}-grid" hidden></ul>
+    <div class="panel empty-list" hidden>
+        <p class="empty-list-message">{{ empty_text }}</p>
+        <p class="empty-list-hint">Film sayfalarındaki “{{ button_label }}” düğmesiyle ekleyebilirsiniz. Listeler bu tarayıcıda saklanır.</p>
+        <a class="link empty-list-link" href="{{ url_for('movies.home') }}">Film keşfetmeye başla</a>
+    </div>
+</section>
+{% endmacro %}
+
+{# The script's URLs come from the server: the cards API, and the movie page for id 0, whose
+   0 my_lists.js replaces with each film's id. #}
+<div class="container page my-lists-page" data-cards-url="{{ url_for('lists.api_movies') }}"
+    data-movie-url="{{ url_for('movies.movie_detail', movie_id=0) }}">
+    <h1 class="page-title">Kişisel Film Listelerim</h1>
+    {# my_lists.js removes data-load-error once it runs; if it never does, base.js shows the
+       text instead of leaving the lists blank. #}
+    <p class="list-status" role="status" aria-live="polite"
+        data-load-error="Listeleriniz şu anda gösterilemiyor. Lütfen sayfayı yenileyin."></p>
+    <noscript><p class="list-status">Listeleriniz bu tarayıcıda saklanır; görmek için JavaScript gerekir.</p></noscript>
+    {{ list_section("Beğendiğim Filmler", "favorites",
+    "Henüz beğendiğiniz bir film bulunmuyor.", "Beğen") }}
+    {{ list_section("Daha Sonra İzleyeceklerim", "watchlist",
+    "İzleme listenizde henüz bir film bulunmuyor.", "İzleme listesine ekle") }}
+
+    {# The markup of _movie_card.html. my_lists.js clones it twice: with only the placeholder
+       poster while a film loads, then with either the poster or the placeholder. #}
+    <template id="movie-card-template">
+        <li>
+            <a class="movie-card">
+                <img class="movie-card-poster" alt="" loading="lazy">
+                <div class="movie-card-placeholder">{{ icon('film') }}</div>
+                <div class="movie-card-body">
+                    <h3 class="movie-card-title"></h3>
+                    <p class="movie-card-meta meta-line">
+                        <span class="movie-card-year"></span>
+                        <span class="movie-card-rating rating">{{ icon('star', class='rating-star') }}<span class="sr-only">Puan:</span></span>
+                    </p>
+                </div>
+            </a>
+        </li>
+    </template>
+    {# my_lists.js adds this chevron to the collapse button of each list with movies. #}
+    <template id="list-toggle-chevron-template"><span class="list-toggle-chevron">{{ icon('chevron-down') }}</span></template>
+</div>
+{% endblock %}

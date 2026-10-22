@@ -1,6 +1,14 @@
-{% for category, message in get_flashed_messages(with_categories=true) %}
-<div class="alert alert-{{ category }} alert-dismissible fade-in" role="alert">
-    {{ message }}
-    <button type="button" class="close-button" data-dismiss="alert" aria-label="Kapat">&times;</button>
+{% from "_icon.html" import icon -%}
+{# Rendered only when there are messages, so pages without one get no empty gap. #}
+{% with messages = get_flashed_messages(with_categories=true) %}
+{% if messages %}
+<div class="container flash-messages">
+    {% for category, message in messages %}
+    <div class="alert alert-{{ category }} alert-dismissible" role="alert">
+        {{ icon('triangle-exclamation', class='alert-icon') }}{{ message }}
+        <button type="button" class="close-button" data-dismiss="alert" aria-label="Kapat"><span aria-hidden="true">&times;</span></button>
+    </div>
+    {% endfor %}
 </div>
-{% endfor %}
+{% endif %}
+{% endwith %}

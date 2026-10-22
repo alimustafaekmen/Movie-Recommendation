@@ -1,6 +1,8 @@
-// Favourites and watchlist kept in the visitor's browser, so the site needs no accounts.
-// Each list is stored as a JSON array of movie ids under its own key.
+// Favourites and watchlist, kept in this browser's localStorage; the server stores no lists.
+// Each list is stored as a JSON array of movie ids, newest first, under its own key.
 const LIST_NAMES = ['favorites', 'watchlist'];
+// Earlier versions of the site used this key prefix; createListStore moves those lists.
+const OLD_KEY_PREFIX = 'film-oneri:';
 // Shown by the pages when the store is not persistent.
 export const NOT_SAVED_MESSAGE = 'Bu tarayıcı listeleri kaydedemiyor; seçimleriniz sayfadan ayrılınca kaybolur.';
 // The server's movie id range (MAX_MOVIE_ID in movierec/web/__init__.py).
@@ -12,7 +14,7 @@ function keyFor(name) {
     if (!LIST_NAMES.includes(name)) {
         throw new TypeError(`Unknown list: ${name}`);
     }
-    return `film-oneri:${name}`;
+    return `movierec:${name}`;
 }
 
 function parse(raw) {
@@ -59,8 +61,35 @@ export function createListStore(storage) {
         }
     }
 
+    // An old key's ids join the list after its own, without duplicates. The old key goes only
+    // once the merged list is saved, so a failing storage loses nothing and the next visit tries
+    // again.
+    function migrate(name) {
+        const ids = read(name);
+        const oldKey = OLD_KEY_PREFIX + name;
+        let old = null;
+        if (persistent) {
+            try {
+                old = storage.getItem(oldKey);
+            } catch {
+                persistent = false;
+            }
+        }
+        if (old === null) {
+            return;
+        }
+        write(name, [...new Set([...ids, ...parse(old)])]);
+        if (persistent) {
+            try {
+                storage.removeItem(oldKey);
+            } catch {
+                // The merge repeats without duplicates on the next visit.
+            }
+        }
+    }
+
     // Both lists are read once, so memory holds them if storage fails later.
-    LIST_NAMES.forEach(read);
+    LIST_NAMES.forEach(migrate);
 
     return {
         get persistent() {
@@ -89,4 +118,24 @@ export function openListStore() {
         // createListStore falls back to memory.
     }
     return createListStore(storage);
+}
+
+/**
+ * Calls back when the lists may have changed outside this page: in another tab (the storage
+ * event) or while the page waited in the back/forward cache (pageshow). The store reads
+ * through, so the page only has to read it again.
+ */
+export function watchLists(callback, target = window) {
+    const keys = LIST_NAMES.map(keyFor);
+    target.addEventListener('storage', (event) => {
+        // A null key means another tab cleared the storage.
+        if (event.key === null || keys.includes(event.key)) {
+            callback();
+        }
+    });
+    target.addEventListener('pageshow', (event) => {
+        if (event.persisted) {
+            callback();
+        }
+    });
 }

@@ -1,0 +1,371 @@
+/* The movie and person pages (movie_detail.html, person_detail.html), straight on the page
+   background. Phones: the poster or photo small on the left with the title block beside it,
+   the body under both. From 600px: the image column on the left, the title block and the body
+   stacked on the right. */
+
+.detail-layout {
+    display: grid;
+    grid-template-columns: clamp(5.5rem, 28vw, 7.5rem) minmax(0, 1fr);
+    grid-template-areas:
+        "media header"
+        "body body";
+    gap: 1.5rem 1rem;
+    align-items: start;
+}
+
+.detail-media {
+    grid-area: media;
+}
+
+.detail-header {
+    grid-area: header;
+    min-width: 0;
+}
+
+.detail-body {
+    grid-area: body;
+    min-width: 0;
+}
+
+/* The poster or profile photo, and the placeholder that keeps its 2:3 shape. */
+.detail-image {
+    width: 100%;
+    aspect-ratio: 2 / 3;
+    object-fit: cover;
+    background-color: var(--color-subtle);
+    border: 1px solid var(--color-hairline);
+    border-radius: var(--radius-md);
+}
+
+.detail-image-placeholder {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    gap: 0.5rem;
+    padding: 0.5rem;
+    font-size: 0.8125rem;
+    line-height: 1.3;
+    text-align: center;
+    color: var(--color-text-muted);
+}
+
+.detail-image-placeholder .icon {
+    font-size: 1.75rem;
+}
+
+/* .page-title (base.css), larger: the movie title and the person's name. */
+.detail-title {
+    font-size: clamp(1.625rem, 7.2vw, 2.125rem);
+}
+
+/* --- Title block --- */
+.movie-tagline {
+    margin-top: 0.5rem;
+    font-family: var(--font-sans);
+    font-size: 1.0625rem;
+    font-weight: 400;
+    line-height: 1.4;
+    color: var(--color-text-muted);
+}
+
+/* .meta-line (base.css): "2008 · 2 sa 32 dk · ★ 8,2/10 · 12.002 oy". The phone column beside
+   the poster is too narrow for one line, and a wrapped line would start with a dot, so phones
+   stack the facts without dots; from 600px they share one dotted line. */
+.movie-detail-meta {
+    flex-direction: column;
+    margin-top: 0.75rem;
+    font-size: 0.875rem;
+    line-height: 1.5;
+}
+
+.movie-detail-meta > li::before {
+    display: none;
+}
+
+.rating-scale {
+    color: var(--color-text-muted);
+}
+
+/* --- Like and watchlist toggles --- */
+/* .btn .btn-secondary (base.css). Phones: a full-width pair that stacks when the labels do
+   not fit side by side. Each width comes from a basis that fits the longer of the button's
+   two labels, not from the label shown, so toggling one button never moves the other. */
+.movie-actions {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 0.5rem;
+}
+
+.action-btn {
+    flex: 1 0 auto;
+    min-width: max-content;
+}
+
+.btn-like {
+    flex-basis: 8rem;
+}
+
+.btn-watchlist {
+    flex-basis: 12.75rem;
+}
+
+/* Off: the outline icon in the label's ink. On: movie_detail.js swaps in the solid icon, the
+   heart in the accent and the bookmark in ink; the label names the state. */
+.action-btn .icon {
+    transition: color var(--duration-fast) ease;
+}
+
+.btn-like.liked .icon {
+    color: var(--color-accent);
+}
+
+.btn-watchlist.added .icon {
+    color: var(--color-ink);
+}
+
+.action-status {
+    margin-top: 0.5rem;
+    font-size: 0.875rem;
+    color: var(--color-danger-text);
+}
+
+.action-status:empty {
+    display: none;
+}
+
+/* --- Sections --- */
+/* The headings are .section-title (base.css). */
+.detail-section {
+    margin-top: 2rem;
+}
+
+/* Running text keeps a readable measure however wide the column is. */
+.detail-text {
+    max-width: 65ch;
+    line-height: 1.65;
+}
+
+.detail-note {
+    color: var(--color-text-muted);
+}
+
+/* Director and cast: names in a row, separated by commas (screen readers hear the list). The
+   names are .link (base.css). */
+.name-list {
+    display: flex;
+    flex-wrap: wrap;
+    row-gap: 0.25rem;
+    max-width: 65ch;
+    list-style: none;
+}
+
+.name-list li:not(:last-child)::after {
+    content: ",";
+    content: "," / "";
+    margin-right: 0.4em;
+}
+
+/* The trailer thumbnail is a play button; movie_detail.js puts the player in its 16:9 box. */
+.trailer-play,
+.movie-trailer {
+    display: block;
+    width: 100%;
+    max-width: 40rem;
+    aspect-ratio: 16 / 9;
+    border: 0;
+    border-radius: var(--radius-md);
+}
+
+/* The fill shows only until the thumbnail loads, like a poster's. */
+.trailer-play {
+    position: relative;
+    overflow: hidden;
+    padding: 0;
+    background-color: var(--color-subtle);
+    cursor: pointer;
+}
+
+/* YouTube thumbnails are 4:3 with black bars; covering the 16:9 box crops the bars. */
+.trailer-thumbnail {
+    width: 100%;
+    height: 100%;
+    object-fit: cover;
+    transition: filter var(--duration-fast) ease;
+}
+
+.trailer-play-icon {
+    position: absolute;
+    top: 50%;
+    left: 50%;
+    display: grid;
+    place-items: center;
+    width: 3.5rem;
+    height: 3.5rem;
+    font-size: 1.25rem;
+    /* It sits on the picture, not the page, so it looks the same in both themes. */
+    color: var(--color-play-icon);
+    background-color: var(--color-play-bg);
+    border-radius: 50%;
+    transform: translate(-50%, -50%);
+    transition: background-color var(--duration-fast) ease;
+}
+
+/* The triangle's visual centre sits left of its box. */
+.trailer-play-icon .icon {
+    margin-left: 0.15em;
+}
+
+.trailer-play:hover .trailer-thumbnail {
+    filter: brightness(0.85);
+}
+
+.trailer-play:hover .trailer-play-icon {
+    background-color: var(--color-play-bg-hover);
+}
+
+.trailer-link {
+    margin-top: 0.5rem;
+}
+
+/* The card grid under the article, after a hairline. */
+.detail-cards {
+    margin-top: 3rem;
+    padding-top: 2rem;
+    border-top: 1px solid var(--color-hairline);
+}
+
+/* --- Person page --- */
+.person-role {
+    margin-top: 0.5rem;
+    font-size: 1rem;
+    color: var(--color-text-muted);
+}
+
+.person-known-for {
+    font-size: 0.875rem;
+    color: var(--color-text-muted);
+}
+
+.person-facts {
+    display: grid;
+    grid-template-columns: max-content minmax(0, 1fr);
+    gap: 0.375rem 1.25rem;
+    max-width: 65ch;
+    font-size: 0.9375rem;
+    font-variant-numeric: tabular-nums;
+}
+
+.person-facts dt {
+    color: var(--color-text-muted);
+}
+
+.person-facts dd {
+    overflow-wrap: anywhere;
+}
+
+/* A biography without facts above it starts the body. */
+.detail-body > .detail-section:first-child {
+    margin-top: 0;
+}
+
+/* TMDb biographies separate paragraphs with line breaks. */
+.person-biography p {
+    white-space: pre-line;
+}
+
+/* "Devamını Oku" reads like the name links. */
+.person-biography summary {
+    display: inline-block;
+    margin-top: 0.5rem;
+    font-weight: 500;
+    color: var(--color-ink);
+    text-decoration: underline;
+    text-decoration-color: var(--color-hairline-strong);
+    text-decoration-thickness: 1px;
+    text-underline-offset: 0.2em;
+    list-style: none;
+    cursor: pointer;
+    transition: text-decoration-color var(--duration-fast) ease;
+}
+
+.person-biography summary::-webkit-details-marker {
+    display: none;
+}
+
+.person-biography summary:hover {
+    text-decoration-color: var(--color-accent);
+}
+
+/* Once open, the rest of the text simply continues the preview. */
+.person-biography details[open] summary {
+    display: none;
+}
+
+@media (min-width: 600px) {
+    .detail-layout {
+        grid-template-columns: 200px minmax(0, 1fr);
+        grid-template-rows: auto 1fr;
+        grid-template-areas:
+            "media header"
+            "media body";
+        gap: 1.75rem 2rem;
+    }
+
+    .detail-image-placeholder {
+        gap: 0.75rem;
+        font-size: 0.875rem;
+    }
+
+    .detail-image-placeholder .icon {
+        font-size: 2.5rem;
+    }
+
+    .detail-title {
+        font-size: 2.5rem;
+    }
+
+    .movie-tagline {
+        font-size: 1.1875rem;
+    }
+
+    .movie-detail-meta {
+        flex-direction: row;
+        font-size: 0.9375rem;
+    }
+
+    .movie-detail-meta > li::before {
+        display: inline;
+    }
+
+    .action-btn {
+        flex-grow: 0;
+    }
+
+    .person-role {
+        font-size: 1.0625rem;
+    }
+}
+
+@media (min-width: 900px) {
+    .detail-layout {
+        grid-template-columns: 260px minmax(0, 1fr);
+        column-gap: 3rem;
+    }
+
+    .detail-title {
+        font-size: 3rem;
+    }
+
+    .detail-cards {
+        margin-top: 4rem;
+        padding-top: 2.5rem;
+    }
+}
+
+@media (min-width: 1200px) {
+    .detail-layout {
+        grid-template-columns: 300px minmax(0, 1fr);
+        column-gap: 3.5rem;
+    }
+}
