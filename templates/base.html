@@ -16,14 +16,6 @@
     {# Blocking and before the stylesheets on purpose: it puts the stored theme on <html> before
        the first paint, so a dark choice never flashes light. #}
     <script src="{{ asset_url('js/theme.js') }}"></script>
-    <link rel="preconnect" href="https://fonts.googleapis.com">
-    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-    {# IBM Plex Sans for text, IBM Plex Sans Condensed for the logo and page titles; only the
-       weights the stylesheets use (tests/test_layout.py checks it). Google serves the latin-ext
-       subset for the Turkish letters. #}
-    <link
-        href="https://fonts.googleapis.com/css2?family=IBM+Plex+Sans:wght@400;500;600&family=IBM+Plex+Sans+Condensed:wght@500;600;700&display=swap"
-        rel="stylesheet">
     <link rel="stylesheet" href="{{ asset_url('css/base.css') }}">
     <link rel="stylesheet" href="{{ asset_url('css/cards.css') }}">
     {# Each page adds its own stylesheet here. #}

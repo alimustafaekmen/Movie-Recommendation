@@ -165,9 +165,11 @@ def test_page_titles_use_the_condensed_display_face_and_everything_else_is_sans(
 def test_stylesheets_name_only_the_two_plex_families(sheet):
     css = (STATIC / "css" / sheet).read_text(encoding="utf-8")
 
-    # Every font-family goes through the two tokens; the old faces and token are gone.
-    for family in re.findall(r"font-family:\s*([^;]+);", css):
-        assert family.strip() in {"var(--font-sans)", "var(--font-display)", "inherit"}, sheet
+    # Every font-family goes through the two tokens (the @font-face rules that name the files
+    # are no style rules); the old faces and token are gone.
+    for _, _, body in _css_rules(css):
+        for family in re.findall(r"font-family:\s*([^;]+)", body):
+            assert family.strip() in {"var(--font-sans)", "var(--font-display)", "inherit"}, sheet
     for old in ("Inter", "Source Serif", "--font-serif", "Poppins", "Roboto Slab"):
         assert old not in css, (sheet, old)
 
@@ -461,28 +463,66 @@ def _weights_by_family():
     return weights
 
 
-def test_google_fonts_load_the_two_plex_families_in_the_weights_the_css_uses(client):
-    [fonts] = [
-        tag["href"]
-        for tag in Page(body_text(client.get("/"))).all("link", rel="stylesheet")
-        if tag["href"].startswith("https://fonts.googleapis.com/")
+def _font_faces():
+    """The descriptors of every @font-face rule in base.css, each as {name: value}."""
+    css = re.sub(r"/\*.*?\*/", "", BASE_CSS.read_text(encoding="utf-8"), flags=re.S)
+    return [
+        dict(re.findall(r"([\w-]+):\s*([^;]+);", body))
+        for body in re.findall(r"@font-face\s*\{(.*?)\}", css, flags=re.S)
     ]
-    query = parse_qs(urlsplit(fonts).query)
-    loaded = {
-        name: set(weights.split(";"))
-        for name, weights in (f.split(":wght@") for f in query["family"])
-    }
 
-    assert loaded == {
-        "IBM Plex Sans": {"400", "500", "600"},
-        "IBM Plex Sans Condensed": {"500", "600", "700"},
+
+def _in_unicode_range(char, unicode_range):
+    """True when char is in a unicode-range value such as "U+0000-00FF, U+0131"."""
+    for part in unicode_range.split(","):
+        low, _, high = part.strip().removeprefix("U+").partition("-")
+        if int(low, 16) <= ord(char) <= int(high or low, 16):
+            return True
+    return False
+
+
+def test_the_two_plex_families_come_in_the_weights_the_css_uses():
+    faces = _font_faces()
+    weights = {}
+    for face in faces:
+        weights.setdefault(face["font-family"], set()).add(face["font-weight"])
+
+    # IBM Plex Sans is one variable font for its weights; the condensed face has a file each.
+    assert weights == {
+        '"IBM Plex Sans"': {"400 600"},
+        '"IBM Plex Sans Condensed"': {"500", "600", "700"},
     }
-    assert query["display"] == ["swap"]
-    # A weight the CSS uses but nobody loads would be faked by the browser; an unused one is
+    # A weight the CSS uses but no face holds would be faked by the browser; an unused one is
     # waste. Body text is 400 without a font-weight rule.
     used = _weights_by_family()
-    assert used["--font-sans"] == loaded["IBM Plex Sans"]
-    assert used["--font-display"] == loaded["IBM Plex Sans Condensed"]
+    assert used["--font-sans"] == {"400", "500", "600"}
+    assert used["--font-display"] == weights['"IBM Plex Sans Condensed"']
+    assert {face["font-display"] for face in faces} == {"swap"}
+
+
+def test_the_fonts_are_woff2_files_of_this_site_with_their_licence():
+    fonts = STATIC / "fonts"
+    files = set()
+    for face in _font_faces():
+        [name] = re.findall(r'^url\("\.\./fonts/([\w-]+\.woff2)"\) format\("woff2"\)$', face["src"])
+        assert (fonts / name).read_bytes()[:4] == b"wOF2", name
+        files.add(name)
+
+    assert files == {path.name for path in fonts.glob("*.woff2")}
+    licence = (fonts / "OFL.txt").read_text(encoding="utf-8")
+    assert "SIL OPEN FONT LICENSE Version 1.1" in licence
+
+
+@pytest.mark.parametrize("char", "çğıöşüÇĞİÖŞÜ")
+def test_every_font_weight_has_the_turkish_letters(char):
+    ranges = {}
+    for face in _font_faces():
+        key = (face["font-family"], face["font-weight"])
+        ranges.setdefault(key, []).append(face["unicode-range"])
+
+    assert ranges
+    for key, unicode_ranges in ranges.items():
+        assert any(_in_unicode_range(char, value) for value in unicode_ranges), key
 
 
 def test_headings_and_bold_text_use_a_loaded_weight():

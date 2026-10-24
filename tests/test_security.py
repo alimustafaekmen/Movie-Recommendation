@@ -65,8 +65,8 @@ def test_links_that_open_a_new_tab_cannot_reach_back_to_the_opener():
 CSP = {
     "default-src": ["'self'"],
     "script-src": ["'self'"],
-    "style-src": ["'self'", "https://fonts.googleapis.com"],
-    "font-src": ["https://fonts.gstatic.com"],
+    "style-src": ["'self'"],
+    "font-src": ["'self'"],
     "img-src": [
         "'self'",
         "https://image.tmdb.org",
@@ -181,12 +181,14 @@ def test_scripts_and_stylesheets_reach_only_origins_the_policy_allows():
     }
     assert origins == {"https://www.youtube-nocookie.com"}
     assert all(_allows("frame-src", origin) for origin in origins)
-    # The stylesheets draw their small images as data: URLs and import nothing.
+    # The stylesheets draw their small images as data: URLs, load the fonts from this site and
+    # import nothing.
     for sheet in (STATIC / "css").glob("*.css"):
         css = sheet.read_text(encoding="utf-8")
         assert "@import" not in css, sheet.name
         for url in re.findall(r"url\(\s*[\"']?([^\"')]+)", css):
-            assert _allows("img-src", url), (sheet.name, url[:40])
+            directive = "font-src" if url.endswith(".woff2") else "img-src"
+            assert _allows(directive, url), (sheet.name, url[:40])
 
 
 def test_powerful_browser_features_are_switched_off(client):

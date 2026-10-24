@@ -42,14 +42,14 @@ _ERRORS = {
 MAX_REQUEST_BODY_BYTES = 16 * 1024
 # How long browsers may cache versioned static files and remember HSTS.
 ONE_YEAR_SECONDS = 365 * 24 * 60 * 60
-# Pages load scripts and styles only from this site (no inline code), the fonts from Google,
-# images from this site, TMDb and YouTube, and the trailer player from youtube-nocookie.com.
+# Pages load scripts, styles and fonts only from this site (no inline code), images from this
+# site, TMDb and YouTube, and the trailer player from youtube-nocookie.com.
 CONTENT_SECURITY_POLICY = "; ".join(
     (
         "default-src 'self'",
         "script-src 'self'",
-        "style-src 'self' https://fonts.googleapis.com",
-        "font-src https://fonts.gstatic.com",
+        "style-src 'self'",
+        "font-src 'self'",
         "img-src 'self' https://image.tmdb.org https://i.ytimg.com https://www.themoviedb.org data:",
         "frame-src https://www.youtube-nocookie.com",
         "connect-src 'self'",
