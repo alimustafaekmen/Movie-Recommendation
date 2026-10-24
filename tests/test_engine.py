@@ -110,7 +110,7 @@ def test_the_start_of_a_turkish_title_finds_it(turkish_engine):
 @pytest.mark.parametrize(
     ("query", "movie_id"),
     [
-        # "Hobbit: Beş Ordunun Savaşı" and "VOL-İ" are not a closer match for these.
+        # "Hobbit: Beş Ordunun Savaşı" and "VOL-İ" score higher, but these are typed titles.
         ("hobbit", 49051),
         ("bill vol", 24),
         ("kill bill vol", 24),
@@ -118,6 +118,15 @@ def test_the_start_of_a_turkish_title_finds_it(turkish_engine):
 )
 def test_a_query_inside_an_original_title_keeps_to_the_titles(turkish_engine, query, movie_id):
     assert turkish_engine.find_movie_id(query) == movie_id
+
+
+def test_a_turkish_title_typed_without_its_apostrophe_is_an_exact_match(turkish_engine):
+    results, warnings = turkish_engine.recommend_by_similarity(
+        "karayip korsanlari siyah incinin laneti"
+    )
+
+    assert warnings == []
+    assert 22 not in [movie["id"] for movie in results]
 
 
 def test_a_turkish_title_typed_without_its_accents_is_an_exact_match(turkish_engine):

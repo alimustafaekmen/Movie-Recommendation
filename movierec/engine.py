@@ -20,8 +20,8 @@ from movierec.search_filters import (
     apply_filters,
     genre_keys,
     is_plausible_name,
-    name_key,
     parse_numeric_filters,
+    title_key,
 )
 from movierec.similarity import (
     build_tfidf_matrix,
@@ -60,10 +60,10 @@ class RecommendationEngine:
         self.movies_df = df
         self.tfidf_matrix = build_tfidf_matrix(df)
         self._casefolded_titles = df["title"].str.casefold()
-        self._title_keys = df["title"].map(name_key)
-        # Turkish titles compare without case or accents, so "baslangic" finds "Başlangıç".
-        # A film without one has "".
-        self._turkish_keys = df["title_tr"].map(name_key)
+        self._title_keys = df["title"].map(title_key)
+        # Turkish titles compare without case, accents or apostrophes, so "baslangic" finds
+        # "Başlangıç". A film without one has "".
+        self._turkish_keys = df["title_tr"].map(title_key)
         self._all_turkish_keys = sorted(set(self._turkish_keys) - {""})
         # Plain numpy copies of the columns each query reads. Position r in each one is row r of
         # movies_df and of tfidf_matrix; indexing an array is cheaper than a DataFrame column.
@@ -199,7 +199,7 @@ class RecommendationEngine:
         is_same_title = (self._casefolded_titles == query.casefold()).to_numpy()
         if is_same_title.any():
             return self._most_voted_row(is_same_title), True
-        query_key = name_key(query)
+        query_key = title_key(query)
         is_same_turkish = (self._turkish_keys == query_key).to_numpy()
         if query_key and is_same_turkish.any():
             return self._most_voted_row(is_same_turkish), True

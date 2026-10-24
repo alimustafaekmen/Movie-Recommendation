@@ -59,6 +59,7 @@ PERSON = {
 # Turkish TMDb titles of a few fixture films. Like the Kaggle files, the fixture has no
 # title_tr column; turkish_engine adds these.
 TURKISH_TITLES = {
+    22: "Karayip Korsanları: Siyah İnci'nin Laneti",
     120: "Yüzüklerin Efendisi: Yüzük Kardeşliği",
     121: "Yüzüklerin Efendisi: İki Kule",
     122: "Yüzüklerin Efendisi: Kralın Dönüşü",

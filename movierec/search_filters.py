@@ -25,6 +25,8 @@ YEARS_SWAPPED_WARNING = message("warning.years_swapped")
 
 # Runs of anything but letters and digits; \W alone would keep "_".
 _NON_ALNUM = re.compile(r"[\W_]+")
+# Apostrophes and the marks people type for one.
+_APOSTROPHES = re.compile("['’‘`´]")
 
 
 @dataclass(frozen=True)
@@ -125,6 +127,15 @@ def name_key(text: str) -> str:
     # "Trenchard-Smith" -> "trenchard smith".
     spaced = _NON_ALNUM.sub(" ", plain.casefold().replace("ı", "i"))
     return spaced.strip()
+
+
+def title_key(text: str) -> str:
+    """Return name_key of a title without its apostrophes.
+
+    Turkish puts one before a suffix, and people often leave it out: "Pan'ın Labirenti" and
+    "panin labirenti" both give "panin labirenti".
+    """
+    return name_key(_APOSTROPHES.sub("", text))
 
 
 def is_plausible_name(query: str, name: str) -> bool:
