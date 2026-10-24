@@ -8,9 +8,11 @@ ENV PYTHONDONTWRITEBYTECODE=1 \
 
 WORKDIR /app
 
-# Dependencies first, so a code change does not reinstall them.
+# Dependencies first, so a code change does not reinstall them. The pip that comes with the
+# base image has known advisories, so a newer pinned pip installs them.
 COPY requirements.lock .
-RUN pip install --require-hashes -r requirements.lock
+RUN pip install pip==26.2.1 \
+    && pip install --require-hashes -r requirements.lock
 
 # The code and the dataset CSVs stay owned by root: the app only reads them, so its user
 # cannot change them. The user has no home directory, as nothing the app runs writes one.
