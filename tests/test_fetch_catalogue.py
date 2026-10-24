@@ -277,6 +277,52 @@ def test_a_run_fetches_each_film_once_and_drops_the_ones_tmdb_no_longer_has(run,
     assert "1 dropped" in summary
 
 
+def keywords(*names):
+    return {"keywords": {"keywords": [{"id": n, "name": name} for n, name in enumerate(names)]}}
+
+
+@pytest.mark.parametrize(
+    "change",
+    [
+        keywords("lighthouse", "Erotic Movie"),
+        keywords("softcore"),
+        keywords("torture porn"),
+        {"adult": True},
+        {"id": min(fetch_catalogue.EXCLUDED_IDS)},
+    ],
+)
+def test_erotic_shock_and_adult_films_are_left_out(change):
+    assert fetch_catalogue.is_excluded({**TIDEKEEPER, **change})
+
+
+def test_a_dark_subject_alone_leaves_no_film_out():
+    # Such tags also mark well-known dramas, so only the tags of the genres themselves count.
+    dark = keywords("rape", "pornography", "eroticism", "prostitute")
+
+    assert not fetch_catalogue.is_excluded({**TIDEKEEPER, **dark})
+    assert not fetch_catalogue.is_excluded(TIDEKEEPER)
+    assert not fetch_catalogue.is_excluded(PAPER_MOONS)
+    assert not fetch_catalogue.is_excluded({"id": 105, "keywords": None})
+
+
+def test_a_run_leaves_the_excluded_films_out_and_counts_them(run, tmp_path, capsys):
+    session = CatalogueSession(
+        routes={
+            "/movie/101": FakeResponse(TIDEKEEPER),
+            "/movie/102": FakeResponse({**PAPER_MOONS, **keywords("sexploitation")}),
+        }
+    )
+
+    assert run(session) == 0
+
+    out = tmp_path / "out"
+    df = load_movies(str(out / "tmdb_5000_movies.csv"), str(out / "tmdb_5000_credits.csv"))
+    assert df["id"].tolist() == [101]
+    summary = capsys.readouterr().out
+    assert "Wrote 1 films" in summary
+    assert "1 left out" in summary
+
+
 def test_a_trial_run_fetches_only_the_first_films(run, tmp_path):
     session = CatalogueSession(routes={"/movie/101": FakeResponse(TIDEKEEPER)})
 

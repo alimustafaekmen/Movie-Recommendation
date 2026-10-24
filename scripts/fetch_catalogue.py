@@ -1,9 +1,10 @@
 """Fetch a fresh catalogue from TMDb in the format of the Kaggle TMDB 5000 CSVs.
 
 The films are the ids of the Kaggle set plus, for each release year from FIRST_YEAR on,
-the PER_YEAR most-voted films with at least MIN_VOTES_THRESHOLD votes. Every film is
-fetched on the same day, so their vote counts and popularity can be compared. A full run
-makes about 15,000 requests and takes about 15 minutes. It needs TMDB_API_KEY in .env.
+the PER_YEAR most-voted films with at least MIN_VOTES_THRESHOLD votes, less the erotic, porn
+and shock films (EXCLUDED_KEYWORDS). Every film is fetched on the same day, so their vote
+counts and popularity can be compared. A full run makes about 15,000 requests and takes about
+15 minutes. It needs TMDB_API_KEY in .env.
 
 The files land in dataset/refreshed/, which git ignores; DATASET_DIR=dataset/refreshed
 points the app at them. TMDb's terms allow keeping the data for at most 6 months, so run
@@ -45,6 +46,38 @@ PER_YEAR = 400
 # the refreshed catalogue.
 KAGGLE_MOVIES_CSV = REPO / "dataset" / "tmdb_5000_movies.csv"
 OUT_DIR = REPO / "dataset" / "refreshed"
+# The catalogue is a showcase, so it leaves out the films TMDb tags as erotic, porn or shock
+# films; TMDb's adult flag misses them. Tags such as "rape" or "pornography" also mark
+# well-known dramas, so only the tags of these genres count.
+EXCLUDED_KEYWORDS = frozenset(
+    {
+        "adult filmmaking",
+        "erotic drama",
+        "erotic fantasy",
+        "erotic movie",
+        "porn industry",
+        "porno",
+        "sexploitation",
+        "soft porn",
+        "softcore",
+        "torture porn",
+    }
+)
+# The films no such tag marks, picked one by one: explicit or offensive titles, sex films and
+# porn documentaries, and notorious shock films.
+# fmt: off
+EXCLUDED_IDS = frozenset({
+    692, 979, 1378, 1631, 1836, 3134, 4241, 7090, 7295, 8675,
+    9539, 9696, 10068, 10358, 10842, 11845, 12228, 12517, 12703, 12838,
+    13429, 13461, 13492, 13702, 13797, 14125, 14758, 15356, 16363, 18167,
+    18392, 20712, 23966, 24593, 24836, 24922, 26715, 27274, 27297, 28005,
+    31022, 33380, 33431, 33560, 36253, 38410, 39857, 40185, 43947, 48266,
+    48636, 52462, 53064, 53932, 63197, 65599, 67911, 69778, 73861, 102840,
+    112160, 123229, 132030, 162396, 171424, 178862, 179538, 207768, 215743, 216015,
+    292431, 319314, 325848, 337167, 341174, 357096, 499726, 598133, 664413, 728949,
+    776797, 829557, 829560, 833326, 1252309, 1288059,
+})
+# fmt: on
 # Films per /discover/movie page, set by TMDb.
 PAGE_SIZE = 20
 DETAILS_PARAMS = {"language": "en-US", "append_to_response": "credits,keywords,translations"}
@@ -171,6 +204,14 @@ def fetch_movies(client: Client, ids: list[int]) -> list[dict]:
     return [answer for answer in answers if answer is not None]
 
 
+def is_excluded(movie: dict) -> bool:
+    """Return whether the catalogue leaves out a details answer (see EXCLUDED_KEYWORDS)."""
+    if movie.get("adult") is True or tmdb.valid_id(movie.get("id")) in EXCLUDED_IDS:
+        return True
+    keywords = tmdb.records(tmdb.record(movie.get("keywords")).get("keywords"))
+    return any(tmdb.text(item.get("name")).casefold() in EXCLUDED_KEYWORDS for item in keywords)
+
+
 def to_json(items: list[dict], keys: tuple[str, ...]) -> str:
     """Return items as a JSON list column of the Kaggle CSVs, with only the given keys."""
     kept = [{key: item.get(key) for key in keys} for item in items]
@@ -270,9 +311,13 @@ def main(argv=None) -> int:
     except FetchError as exc:
         print(f"TMDb request failed ({exc}); nothing was written.", file=sys.stderr)
         return 1
-    write_catalogue(args.out, movies, date.today())
+    kept = [movie for movie in movies if not is_excluded(movie)]
+    write_catalogue(args.out, kept, date.today())
     dropped = len(ids) - len(movies)
-    print(f"Wrote {len(movies):,} films to {args.out}; {dropped:,} dropped (not on TMDb anymore).")
+    print(
+        f"Wrote {len(kept):,} films to {args.out}; {dropped:,} dropped (not on TMDb anymore), "
+        f"{len(movies) - len(kept):,} left out (EXCLUDED_KEYWORDS)."
+    )
     return 0
 
 
