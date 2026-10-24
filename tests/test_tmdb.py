@@ -269,15 +269,15 @@ def test_missing_poster_is_cached_after_not_found(fake, cold_details):
 
 
 def test_poster_cache_holds_the_whole_refreshed_catalogue_in_both_languages(fake, cold_details):
-    # The refreshed catalogue has about 9,000 films.
+    # The refreshed catalogue has about 14,000 films.
     _poster_routes(fake, [1])
-    cold_details.poster_cache.update((f"filler-{n}", None) for n in range(19999))
+    cold_details.poster_cache.update((f"filler-{n}", None) for n in range(29999))
 
     assert cold_details.get_movie_poster_url(1, "tr") == _poster(1)
-    assert len(cold_details.poster_cache) == 20000 == POSTER_CACHE_LIMIT
+    assert len(cold_details.poster_cache) == 30000 == POSTER_CACHE_LIMIT
 
 
-def test_poster_cache_is_emptied_once_it_holds_20000_entries(fake, cold_details):
+def test_poster_cache_is_emptied_once_it_holds_30000_entries(fake, cold_details):
     fake.routes["/movie/155"] = FakeResponse(DARK_KNIGHT_TR)
     cold_details.poster_cache.update((f"filler-{n}", None) for n in range(POSTER_CACHE_LIMIT))
 

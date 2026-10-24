@@ -13,8 +13,8 @@ logger = logging.getLogger(__name__)
 
 # Any visitor can make the app look up arbitrary ids, so the poster cache is emptied once it
 # holds this many posters; that is simpler than LRU, and the whole catalogue still fits in both
-# languages (Kaggle's 4,803 films or the about 9,000 of a refreshed one).
-POSTER_CACHE_LIMIT = 20000
+# languages (Kaggle's 4,803 films or the about 14,000 of a refreshed one).
+POSTER_CACHE_LIMIT = 30000
 # List cards of films outside the dataset, emptied the same way. The ids are the visitor's
 # choice, so without it every list request would repeat its TMDb lookups.
 LIST_CARD_CACHE_LIMIT = 2000
