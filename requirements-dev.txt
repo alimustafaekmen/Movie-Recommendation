@@ -9,4 +9,4 @@ pytest-cov==7.1.0
 coverage==7.16.2
 
 # Lint and format
-ruff==0.16.8
+ruff==0.17.0
