@@ -46,9 +46,13 @@ def _filter_summary(genres: list[str], filters: dict[str, str]) -> str:
         parts.append(t_count("summary.genres", len(genres), genres=genre_names))
     if filters["yonetmen"]:
         parts.append(t("summary.director", name=filters["yonetmen"]))
-    years = [year for year in (filters["min_yil"], filters["max_yil"]) if year]
-    if years:
-        parts.append(t("summary.years", years=" - ".join(years)))
+    min_year, max_year = filters["min_yil"], filters["max_yil"]
+    if min_year and max_year:
+        parts.append(t("summary.years", years=f"{min_year} - {max_year}"))
+    elif min_year:
+        parts.append(t("summary.years_from", year=min_year))
+    elif max_year:
+        parts.append(t("summary.years_to", year=max_year))
     if filters["min_puan"]:
         parts.append(t("summary.min_rating", rating=decimal_text(filters["min_puan"], lang)))
     return " · ".join(parts)

@@ -352,6 +352,21 @@ def test_a_reversed_year_range_is_shown_in_order(client):
     assert "Yıl aralığı ters girilmişti, düzeltildi." in _text(body)
 
 
+@pytest.mark.parametrize(
+    ("query", "lang", "summary"),
+    [
+        ("min_yil=2010", "tr", "Yıl: 2010 ve sonrası"),
+        ("max_yil=2010", "tr", "Yıl: 2010 ve öncesi"),
+        ("min_yil=2010", "en", "Years: 2010 onward"),
+        ("max_yil=2010", "en", "Years: up to 2010"),
+    ],
+)
+def test_a_year_range_open_at_one_end_says_so(client, query, lang, summary):
+    _, page = _get(client, f"/?{query}&lang={lang}")
+
+    assert texts(page, "p", "results-summary") == [summary]
+
+
 def test_an_english_page_shows_the_warning_and_the_filters_in_english(client):
     url = "/?tur=Action&tur=Science+Fiction&yonetmen=nolan&min_yil=2015&max_yil=1990&min_puan=7.5"
     _, page = _get(client, f"{url}&lang=en")

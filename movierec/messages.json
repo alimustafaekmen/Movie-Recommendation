@@ -523,6 +523,14 @@
     "en": "Years: {years}",
     "tr": "Yıl: {years}"
   },
+  "summary.years_from": {
+    "en": "Years: {year} onward",
+    "tr": "Yıl: {year} ve sonrası"
+  },
+  "summary.years_to": {
+    "en": "Years: up to {year}",
+    "tr": "Yıl: {year} ve öncesi"
+  },
   "theme.to_dark": {
     "en": "Switch to dark theme",
     "tr": "Koyu temaya geç"
