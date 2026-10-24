@@ -1,5 +1,5 @@
-# Packages the app imports, pinned exactly so CI and the Docker image install the same
-# versions. pip resolves their own dependencies.
+# Packages the app imports, pinned exactly. requirements.lock pins their own dependencies
+# too, with hashes; CI and the Docker image install from it. README shows how to regenerate it.
 
 # Web
 flask==3.1.3

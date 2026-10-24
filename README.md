@@ -166,7 +166,7 @@ You need Python 3.12 and the two Kaggle CSV files.
 
    ```bash
    python -m venv .venv && source .venv/bin/activate
-   pip install -r requirements.txt
+   pip install --require-hashes -r requirements.lock
    python app.py
    ```
 
@@ -184,10 +184,19 @@ The script keeps the Kaggle films and adds, for each release year since 2016, th
 
 **Docker.** Put the Kaggle CSVs in `dataset/` first, and fetch the refreshed catalogue if you use it, because the image copies them in. An image built with them holds TMDb data, so never push it to a registry. Then `docker compose up --build` serves the app with gunicorn at http://localhost:5001. The container runs as a non-root user with a health check and no Linux capabilities. Its file system is read-only apart from an in-memory `/tmp`, and only this computer can reach it.
 
+**Dependencies.** `requirements.txt` and `requirements-dev.txt` list the packages the project uses directly, with exact versions. `requirements.lock` and `requirements-dev.lock` pin every package, their dependencies included, with hashes, so pip refuses a file that differs from the one locked. CI and the Docker image install from the lockfiles. After a change to a `.txt` file, regenerate both with [uv](https://docs.astral.sh/uv/):
+
+```bash
+uv pip compile --universal --python-version 3.12 --generate-hashes --exclude-newer 14d requirements.txt -o requirements.lock
+uv pip compile --universal --python-version 3.12 --generate-hashes --exclude-newer 14d requirements-dev.txt -o requirements-dev.lock
+```
+
+`--universal` keeps the hashes for every platform, so the same files work on macOS and in the Linux image. `--exclude-newer 14d` leaves out releases younger than two weeks.
+
 ## Tests
 
 ```bash
-pip install -r requirements-dev.txt
+pip install --require-hashes -r requirements-dev.lock
 ruff check . && ruff format --check .
 pytest --cov
 node --test "tests/js/*.test.mjs"

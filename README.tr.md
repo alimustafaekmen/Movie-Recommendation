@@ -166,7 +166,7 @@ Python 3.12 ve iki Kaggle CSV dosyası gerekir.
 
    ```bash
    python -m venv .venv && source .venv/bin/activate
-   pip install -r requirements.txt
+   pip install --require-hashes -r requirements.lock
    python app.py
    ```
 
@@ -184,10 +184,19 @@ Betik Kaggle filmlerini korur ve 2016'dan bu yana her yayın yılından, en az 1
 
 **Docker.** Önce Kaggle CSV dosyalarını `dataset/` klasörüne koyun, kullanıyorsanız yenilenmiş kataloğu da çekin, çünkü imaj onları içine kopyalar. Bu dosyalarla derlenen imaj TMDb verisi içerir, bu yüzden onu hiçbir registry'ye göndermeyin. Sonra `docker compose up --build` komutu uygulamayı gunicorn ile http://localhost:5001 adresinde açar. Konteyner yetkisiz bir kullanıcıyla, sağlık kontrolüyle ve Linux yetkileri olmadan çalışır. Dosya sistemi, bellekteki `/tmp` dışında salt okunurdur ve yalnızca bu bilgisayardan erişilebilir.
 
+**Bağımlılıklar.** `requirements.txt` ve `requirements-dev.txt`, projenin doğrudan kullandığı paketleri kesin sürümleriyle listeler. `requirements.lock` ve `requirements-dev.lock` ise bağımlılıkları dahil her paketi hash değerleriyle sabitler; böylece pip, kilitlenenden farklı bir dosyayı reddeder. CI ve Docker imajı kurulumu bu kilit dosyalarından yapar. Bir `.txt` dosyası değiştikten sonra ikisini de [uv](https://docs.astral.sh/uv/) ile yeniden üretin:
+
+```bash
+uv pip compile --universal --python-version 3.12 --generate-hashes --exclude-newer 14d requirements.txt -o requirements.lock
+uv pip compile --universal --python-version 3.12 --generate-hashes --exclude-newer 14d requirements-dev.txt -o requirements-dev.lock
+```
+
+`--universal` her platformun hash değerlerini tutar, böylece aynı dosyalar macOS'ta ve Linux imajında çalışır. `--exclude-newer 14d` iki haftadan yeni sürümleri dışarıda bırakır.
+
 ## Testler
 
 ```bash
-pip install -r requirements-dev.txt
+pip install --require-hashes -r requirements-dev.lock
 ruff check . && ruff format --check .
 pytest --cov
 node --test "tests/js/*.test.mjs"

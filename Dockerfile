@@ -9,8 +9,8 @@ ENV PYTHONDONTWRITEBYTECODE=1 \
 WORKDIR /app
 
 # Dependencies first, so a code change does not reinstall them.
-COPY requirements.txt .
-RUN pip install -r requirements.txt
+COPY requirements.lock .
+RUN pip install --require-hashes -r requirements.lock
 
 # The code and the dataset CSVs stay owned by root: the app only reads them, so its user
 # cannot change them. The user has no home directory, as nothing the app runs writes one.

@@ -5,7 +5,7 @@
 !movierec/
 !templates/
 !static/
-!requirements.txt
+!requirements.lock
 # The Kaggle CSVs and the refreshed catalogue, when present; CI builds without them and
 # mounts the fixture dataset. An image built with them holds TMDb data: never push it.
 !dataset/tmdb_5000_movies.csv
