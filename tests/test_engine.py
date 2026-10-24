@@ -1,7 +1,60 @@
+import pandas as pd
 import pytest
+from conftest import FIXTURE_DATASET_DIR
 
 from movierec.engine import DETAIL_SIMILAR_COUNT, RecommendationEngine, clamp_count
 from movierec.i18n import message
+
+# Titles that the yearly lists of the refreshed catalogue add next to better-known films, with
+# made-up vote counts in the same order. catalogue_engine gives them to fixture films, whose
+# ids keep their credits; the fixture's E.T., The Empire Strikes Back and Thor stay.
+CATALOGUE_TITLES = {
+    "John Wick": 2100,
+    "John Wick: Chapter 2": 1400,
+    "John Wick: Chapter 3 - Parabellum": 1200,
+    "John Wick: Chapter 4": 800,
+    "Home Alone": 1300,
+    "Home Alone 2: Lost in New York": 1100,
+    "Home Alone 3": 300,
+    "Enigma": 40,
+    "Python": 15,
+    "Monty Python and the Holy Grail": 700,
+    "Extraterrestrial": 60,
+    "Gone": 130,
+    "Gone in Sixty Seconds": 500,
+    "Interview": 20,
+    "Interview with the Vampire": 700,
+    "Empire": 12,
+    "The Big Green": 20,
+    "The Green Mile": 2000,
+    "The Jungle Book": 870,
+    "Jumanji: Welcome to the Jungle": 1500,
+    "Love": 270,
+    "Thor: Love and Thunder": 900,
+}
+KEPT_FIXTURE_IDS = {601, 1891, 10195, 205596}
+
+
+@pytest.fixture(scope="module")
+def catalogue_engine(tmp_path_factory):
+    """An engine over the fixture films with CATALOGUE_TITLES.
+
+    "Enigma" is the Turkish title of The Imitation Game (id 205596), as on TMDb.
+    """
+    movies = pd.read_csv(FIXTURE_DATASET_DIR / "tmdb_5000_movies.csv")
+    rows = movies.index[~movies["id"].isin(KEPT_FIXTURE_IDS)][-len(CATALOGUE_TITLES) :]
+    movies.loc[rows, "title"] = list(CATALOGUE_TITLES)
+    movies.loc[rows, "vote_count"] = list(CATALOGUE_TITLES.values())
+    movies["title_tr"] = movies["id"].map({205596: "Enigma"})
+    movies_path = tmp_path_factory.mktemp("catalogue") / "tmdb_5000_movies.csv"
+    movies.to_csv(movies_path, index=False)
+    return RecommendationEngine(
+        str(movies_path), str(FIXTURE_DATASET_DIR / "tmdb_5000_credits.csv")
+    )
+
+
+def _found_title(engine, query):
+    return engine.title_of(engine.find_movie_id(query))
 
 
 def test_similarity_excludes_the_query_movie(engine):
@@ -75,6 +128,46 @@ def test_sequel_query_does_not_match_a_short_unrelated_title(engine, query, movi
     # WRatio gave "Her" (inside "godfather") and "2 Fast 2 Furious" (first of the tied "2"
     # titles) 90 and 86.
     assert engine.find_movie_id(query) == movie_id
+
+
+@pytest.mark.parametrize(
+    ("query", "title"),
+    [
+        ("john wick", "John Wick"),
+        ("john wick 2", "John Wick: Chapter 2"),
+        ("john wick 3", "John Wick: Chapter 3 - Parabellum"),
+        ("john wick 4", "John Wick: Chapter 4"),
+        ("home alone 2", "Home Alone 2: Lost in New York"),
+        ("monty python", "Monty Python and the Holy Grail"),
+        ("et the extraterrestrial", "E.T. the Extra-Terrestrial"),
+        ("gone in 60 seconds", "Gone in Sixty Seconds"),
+        ("interview with", "Interview with the Vampire"),
+        ("the empire", "The Empire Strikes Back"),
+        ("thor: love", "Thor: Love and Thunder"),
+    ],
+)
+def test_a_title_that_holds_more_query_words_wins(catalogue_engine, query, title):
+    # WRatio scores the shorter title (John Wick, Python, Gone) as high or higher.
+    assert _found_title(catalogue_engine, query) == title
+
+
+@pytest.mark.parametrize(
+    ("query", "title"),
+    [
+        # Each holds every query word; the most-voted title that starts with the query wins.
+        ("the green", "The Green Mile"),
+        ("the jungle", "The Jungle Book"),
+        ("harry potter", "Harry Potter and the Philosopher's Stone"),
+    ],
+)
+def test_a_query_held_by_several_titles_finds_the_most_voted(catalogue_engine, query, title):
+    assert _found_title(catalogue_engine, query) == title
+
+
+@pytest.mark.parametrize("query", ["enigma", "Enigma", "enimga"])
+def test_the_most_voted_film_wins_between_a_title_and_a_turkish_title(catalogue_engine, query):
+    # The film Enigma has far fewer votes than The Imitation Game, whose Turkish title it is.
+    assert _found_title(catalogue_engine, query) == "The Imitation Game"
 
 
 @pytest.mark.parametrize(

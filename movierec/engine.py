@@ -59,7 +59,6 @@ class RecommendationEngine:
             raise ValueError(f"No movie in {movies_path} has credits in {credits_path}")
         self.movies_df = df
         self.tfidf_matrix = build_tfidf_matrix(df)
-        self._casefolded_titles = df["title"].str.casefold()
         self._title_keys = df["title"].map(title_key)
         # Turkish titles compare without case, accents or apostrophes, so "baslangic" finds
         # "Başlangıç". A film without one has "".
@@ -127,22 +126,58 @@ class RecommendationEngine:
 
     def _find_best_match(self, query: str, choices: list[str]) -> str | None:
         """Return the choice closest to ``query`` (thefuzz WRatio), or None below the cutoff."""
-        match = self._closest(query, choices)
-        if match is None:
+        matches = self._fuzzy_matches(query, choices)
+        if not matches:
             return None
-        choice, _scores = match
+        choice, _scores = self._closest(query, matches)
         return choice
 
-    def _closest(self, query: str, choices: list[str]) -> tuple[str, tuple[int, int]] | None:
-        """Return (choice, scores) for the choice closest to ``query``, or None below the cutoff.
+    def _closest(self, query: str, matches: list[tuple[str, int]]) -> tuple[str, tuple[int, int]]:
+        """Return (choice, (WRatio, token_sort_ratio)) for the best of ``matches``.
 
-        scores is (WRatio, token_sort_ratio), so the matches of two lists compare as tuples.
+        matches: (choice, WRatio) pairs from _fuzzy_matches, best score first.
         """
+        # WRatio often ties (every "... 2" title scores the same); the closest whole title wins.
+        best_score = matches[0][1]
+        tied = [choice for choice, score in matches if score == best_score]
+        # On equal ratios max() returns the first one in tied.
+        closest = max(tied, key=lambda choice: fuzz.token_sort_ratio(query, choice))
+        return closest, (best_score, fuzz.token_sort_ratio(query, closest))
+
+    def _closest_titles(
+        self, query: str, titles: list[str]
+    ) -> tuple[list[str], tuple[int, int, int]] | None:
+        """Return (titles, rank) for the fuzzy matches that hold the most query words, or None.
+
+        When they hold every word of the query, the query names part of those titles
+        ("john wick 2" in John Wick: Chapter 2, not John Wick), so they are returned, the ones
+        that start with the query if any, and the caller takes the most-voted film. Otherwise
+        only the closest one is. rank is (words held, WRatio, token_sort_ratio), so the
+        matches of two lists compare as tuples.
+        """
+        matches = self._fuzzy_matches(query, titles)
+        if not matches:
+            return None
+        query_words = _words(query)
+        held = [len(query_words & _words(title)) for title, _score in matches]
+        most_held = max(held)
+        kept = [match for match, count in zip(matches, held, strict=True) if count == most_held]
+        closest, scores = self._closest(query, kept)
+        if most_held < len(query_words):
+            return [closest], (most_held, *scores)
+        # "the jungle" is The Jungle Book rather than Jumanji: Welcome to the Jungle.
+        kept_titles = [title for title, _score in kept]
+        query_key = title_key(query)
+        starting = [title for title in kept_titles if title_key(title).startswith(query_key)]
+        return starting or kept_titles, (most_held, *scores)
+
+    def _fuzzy_matches(self, query: str, choices: list[str]) -> list[tuple[str, int]]:
+        """Return (choice, WRatio) for the choices that reach the cutoff, best score first."""
         # full_process lowercases and drops punctuation. A query of only symbols becomes "",
         # scores 0 everywhere, and thefuzz would log a warning for each one a visitor sends.
         cleaned_query = utils.full_process(query)
         if not cleaned_query:
-            return None
+            return []
         query_words = set(cleaned_query.split())
 
         # WRatio's partial scoring lets a short title win inside a longer word ("O" for "Bogs",
@@ -157,18 +192,9 @@ class RecommendationEngine:
             if choice_words.issubset(query_words):
                 candidates.append(choice)
 
-        # (choice, score) pairs that reach the cutoff, best score first.
-        matches = process.extractBests(
+        return process.extractBests(
             query, candidates, scorer=fuzz.WRatio, score_cutoff=FUZZY_SCORE_CUTOFF, limit=None
         )
-        if not matches:
-            return None
-        # WRatio often ties (every "... 2" title scores the same); the closest whole title wins.
-        best_score = matches[0][1]
-        tied = [choice for choice, score in matches if score == best_score]
-        # On equal ratios max() returns the first one in tied.
-        closest = max(tied, key=lambda choice: fuzz.token_sort_ratio(query, choice))
-        return closest, (best_score, fuzz.token_sort_ratio(query, closest))
 
     def find_movie_id(self, query: str) -> int | None:
         """Return the TMDb id of the movie a title query refers to, or None."""
@@ -183,28 +209,28 @@ class RecommendationEngine:
         return str(self.movies_df["title"].iat[self.row_of[movie_id]])
 
     def _resolve_title(self, query) -> tuple[int, bool] | None:
-        """Return (row, is_exact) for a title query; exact case-insensitive matches win.
+        """Return (row, is_exact) for a title query; exact matches win.
 
-        Then an exact Turkish title wins. A query inside an original title is that title being
-        typed, so only the titles count for it. Otherwise the most-voted film whose Turkish
-        title starts with the query wins, and then the closer fuzzy match of the titles and
-        the Turkish titles. Without Turkish titles (the Kaggle files) only the titles count.
+        A title or Turkish title is an exact match when it equals the query without case,
+        accents or apostrophes; of several, the most-voted film wins. A query inside an
+        original title is that title being typed, so only the titles count for it. Otherwise
+        the most-voted film whose Turkish title starts with the query wins, and then the
+        closer fuzzy match of the titles and the Turkish titles (see _closest_titles). Without
+        Turkish titles (the Kaggle files) only the titles count.
         """
         if not isinstance(query, str):
             return None
         query = query.strip()[:MAX_QUERY_LENGTH]
         if len(query) < MIN_QUERY_LENGTH:
             return None
-        # One True/False per film: is its title the query, ignoring case?
-        is_same_title = (self._casefolded_titles == query.casefold()).to_numpy()
-        if is_same_title.any():
-            return self._most_voted_row(is_same_title), True
         query_key = title_key(query)
-        is_same_turkish = (self._turkish_keys == query_key).to_numpy()
-        if query_key and is_same_turkish.any():
-            return self._most_voted_row(is_same_turkish), True
+        # One True/False per film: is its title or Turkish title the query? "Enigma" is a
+        # film and the Turkish title of the far better-known The Imitation Game.
+        is_same = ((self._title_keys == query_key) | (self._turkish_keys == query_key)).to_numpy()
+        if query_key and is_same.any():
+            return self._most_voted_row(is_same), True
 
-        title_match = self._closest(query, self.all_movie_titles)
+        title_match = self._closest_titles(query, self.all_movie_titles)
         turkish_match = None
         # "terminator 2" is Terminator 2: Judgment Day, not The Terminator ("Terminatör").
         if (
@@ -215,14 +241,17 @@ class RecommendationEngine:
             starts_turkish = self._turkish_keys.str.startswith(query_key).to_numpy()
             if starts_turkish.any():
                 return self._most_voted_row(starts_turkish), False
-            turkish_match = self._closest(query_key, self._all_turkish_keys)
-        # On equal scores the title wins.
-        if turkish_match and (title_match is None or turkish_match[1] > title_match[1]):
-            is_matched = (self._turkish_keys == turkish_match[0]).to_numpy()
-        elif title_match:
-            is_matched = (self.movies_df["title"] == title_match[0]).to_numpy()
-        else:
+            turkish_match = self._closest_titles(query_key, self._all_turkish_keys)
+        ranks = [match[1] for match in (title_match, turkish_match) if match]
+        if not ranks:
             return None
+        # The better-ranked match wins. On equal ranks the most-voted film of both does:
+        # "enimga" is as close to the film Enigma as to the Turkish title of The Imitation Game.
+        is_matched = np.zeros(len(self._ids), dtype=bool)
+        if title_match and title_match[1] == max(ranks):
+            is_matched |= self.movies_df["title"].isin(title_match[0]).to_numpy()
+        if turkish_match and turkish_match[1] == max(ranks):
+            is_matched |= self._turkish_keys.isin(turkish_match[0]).to_numpy()
         return self._most_voted_row(is_matched), False
 
     def _most_voted_row(self, is_candidate: np.ndarray) -> int:
@@ -387,6 +416,11 @@ class RecommendationEngine:
         if closest is not None and is_plausible_name(query, closest):
             return closest, message("warning.director_fuzzy", query=query, name=closest)
         return None, message("warning.director_not_found", query=query)
+
+
+def _words(title: str) -> set[str]:
+    """Return the words of a title as title_key gives them, with "E.T." as the word "et"."""
+    return set(title_key(title.replace(".", "")).split())
 
 
 def clamp_count(num: int | str | None) -> int:
