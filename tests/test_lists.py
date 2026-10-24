@@ -239,6 +239,44 @@ def test_api_movies_looks_up_at_most_20_ids_outside_the_dataset(client, fake, co
     ]
 
 
+def test_api_movies_remembers_cards_and_unknown_ids_outside_the_dataset(client, fake, cold_details):
+    fake.routes["/movie/999001"] = FakeResponse({**TMDB_ONLY, "poster_path": None})
+
+    first = _cards(client, "999001,424242")
+    second = _cards(client, "999001,424242")
+
+    assert first == second
+    assert [(card["id"], card["poster_url"]) for card in first] == [(999001, None)]
+    # A film without a poster is still a film; only TMDb's 404 marks an id as unknown.
+    assert fake.paths == ["/movie/999001", "/movie/424242"]
+
+
+def test_api_movies_remembers_cards_per_language(client, fake, cold_details):
+    fake.routes["/movie/999001"] = FakeResponse(TMDB_ONLY)
+
+    _cards(client, "999001")
+    client.get("/api/movies", query_string={"ids": "999001", "lang": "en"})
+
+    assert [params["language"] for _, params in fake.calls] == ["tr-TR", "en-US"]
+
+
+def test_api_movies_looks_up_an_id_again_after_tmdb_failed(client, fake, cold_details):
+    # An answer that is not a JSON object is a failure, like a timeout.
+    fake.routes["/movie/999001"] = [FakeResponse(["broken"]), FakeResponse(TMDB_ONLY)]
+
+    assert _cards(client, "999001") == []
+    assert [card["id"] for card in _cards(client, "999001")] == [999001]
+
+
+def test_the_list_card_cache_is_emptied_when_full(fake, cold_details, monkeypatch):
+    monkeypatch.setattr("movierec.movie_details.LIST_CARD_CACHE_LIMIT", 2)
+    for movie_id in (999001, 999002, 999003):
+        fake.routes[f"/movie/{movie_id}"] = FakeResponse({**TMDB_ONLY, "id": movie_id})
+        cold_details.get_list_card(movie_id, "tr")
+
+    assert list(cold_details.list_card_cache) == [(999003, "tr")]
+
+
 @pytest.mark.parametrize("query_string", [{}, {"ids": ""}, {"ids": "abc,0"}])
 def test_api_movies_without_ids_returns_an_empty_list(client, query_string):
     response = client.get("/api/movies", query_string=query_string)

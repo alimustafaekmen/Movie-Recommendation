@@ -15,6 +15,9 @@ logger = logging.getLogger(__name__)
 # holds this many posters; that is simpler than LRU, and the whole catalogue still fits in both
 # languages (Kaggle's 4,803 films or the about 9,000 of a refreshed one).
 POSTER_CACHE_LIMIT = 20000
+# List cards of films outside the dataset, emptied the same way. The ids are the visitor's
+# choice, so without it every list request would repeat its TMDb lookups.
+LIST_CARD_CACHE_LIMIT = 2000
 # Uncached posters are fetched this many at a time. The pool is shared by all requests, so
 # this caps the lookups in flight however many pages load at once: at 16 in parallel, TMDb
 # answered several times slower.
@@ -42,6 +45,9 @@ class MovieDetails:
         self.engine = engine
         # TMDb poster path (None when the film has none) per (movie id, language).
         self.poster_cache: dict[tuple[int, str], str | None] = {}
+        # List card per (movie id, language) of films outside the dataset; None when TMDb
+        # answered that it does not know the id or gave no title.
+        self.list_card_cache: dict[tuple[int, str], dict | None] = {}
         # Threads start on first use, so an app without a TMDb key never creates any, and none
         # exist before gunicorn forks its worker. At exit Python joins them; each lookup is
         # bounded by tmdb's connect and read timeouts and stops at once during the cooldown.
@@ -288,18 +294,40 @@ class MovieDetails:
                 "vote_average": round(float(movie["vote_average"]), 1),
                 "poster_url": poster_url,
             }
-        data = self._fetch_movie(movie_id, lang) or {}
-        title = tmdb.title(data)
-        if not title:
+        if not tmdb.is_configured():
             return None
-        # The requested id, which the browser's list holds, even if TMDb answered with another.
-        return {
-            "id": movie_id,
-            "title": title,
-            "year": tmdb.release_year(data),
-            "vote_average": round(tmdb.number(data.get("vote_average")), 1),
-            "poster_url": tmdb.image_url(data.get("poster_path"), "w342"),
-        }
+        cache_key = (movie_id, lang)
+        card = self.list_card_cache.get(cache_key, _UNCACHED)
+        if card is not _UNCACHED:
+            return card
+        try:
+            data = self._fetch_movie(movie_id, lang, strict=True)
+        except tmdb.TmdbUnavailableError:
+            # Not remembered, so the film shows up once TMDb answers again.
+            return None
+        card = _list_card(movie_id, data) if data is not None else None
+        if len(self.list_card_cache) >= LIST_CARD_CACHE_LIMIT:
+            self.list_card_cache.clear()
+        self.list_card_cache[cache_key] = card
+        return card
+
+
+def _list_card(movie_id: int, data: dict) -> dict | None:
+    """Return the list card of a film outside the dataset; None without a title.
+
+    data: TMDb's /movie/{id} answer.
+    """
+    title = tmdb.title(data)
+    if not title:
+        return None
+    # The requested id, which the browser's list holds, even if TMDb answered with another.
+    return {
+        "id": movie_id,
+        "title": title,
+        "year": tmdb.release_year(data),
+        "vote_average": round(tmdb.number(data.get("vote_average")), 1),
+        "poster_url": tmdb.image_url(data.get("poster_path"), "w342"),
+    }
 
 
 def _genre_badges(genre_list: list[str], lang: str) -> list[dict]:

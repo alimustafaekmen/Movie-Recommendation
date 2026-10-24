@@ -139,8 +139,9 @@ def pages(client, person_client):
 
 @pytest.fixture
 def cold_details(details, monkeypatch):
-    """The shared MovieDetails with an empty poster cache, restored after the test."""
+    """The shared MovieDetails with empty poster and list card caches, restored after the test."""
     monkeypatch.setattr(details, "poster_cache", {})
+    monkeypatch.setattr(details, "list_card_cache", {})
     return details
 
 
