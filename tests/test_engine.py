@@ -77,6 +77,57 @@ def test_sequel_query_does_not_match_a_short_unrelated_title(engine, query, movi
     assert engine.find_movie_id(query) == movie_id
 
 
+@pytest.mark.parametrize(
+    ("query", "movie_id"),
+    [
+        ("Yüzüklerin Efendisi: Yüzük Kardeşliği", 120),
+        ("yuzuklerin efendisi yuzuk kardesligi", 120),
+        ("YÜZÜKLERİN EFENDİSİ: İKİ KULE", 121),
+        ("yuzuklerin efendisi kralin donusu", 122),
+        ("Başlangıç", 27205),
+        ("baslangic", 27205),
+        ("BAŞLANGIÇ", 27205),
+        ("baslangc", 27205),
+        # The original titles still work.
+        ("Inception", 27205),
+        ("The Lord of the Rings: The Two Towers", 121),
+        ("avatr", 19995),
+    ],
+)
+def test_a_film_is_found_by_its_turkish_title_too(turkish_engine, query, movie_id):
+    assert turkish_engine.find_movie_id(query) == movie_id
+
+
+def test_the_start_of_a_series_turkish_title_finds_a_film_of_the_series(turkish_engine):
+    assert turkish_engine.find_movie_id("yuzuklerin efendisi") in {120, 121, 122}
+
+
+def test_a_turkish_title_typed_without_its_accents_is_an_exact_match(turkish_engine):
+    results, warnings = turkish_engine.recommend_by_similarity("baslangic")
+
+    assert warnings == []
+    assert 27205 not in [movie["id"] for movie in results]
+
+
+def test_a_fuzzy_turkish_match_names_the_original_title(turkish_engine):
+    _, warnings = turkish_engine.recommend_by_similarity("baslangc")
+
+    assert warnings == [message("warning.not_exact", query="baslangc", title="Inception")]
+
+
+def test_without_turkish_titles_the_suggestions_are_the_titles(engine):
+    assert engine.title_suggestions == engine.all_movie_titles
+
+
+def test_a_suggestion_carries_the_turkish_title_of_its_film(turkish_engine):
+    suggestions = turkish_engine.title_suggestions
+
+    assert len(suggestions) == len(turkish_engine.all_movie_titles)
+    assert ["Inception", "Başlangıç"] in suggestions
+    assert "Inception" not in suggestions
+    assert "Avatar" in suggestions
+
+
 @pytest.mark.parametrize("query", ["a", " ", "", None, 5, "qqqqzzzzxx"])
 def test_find_movie_id_rejects_junk(engine, query):
     assert engine.find_movie_id(query) is None

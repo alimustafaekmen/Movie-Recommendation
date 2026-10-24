@@ -591,7 +591,7 @@ def test_header_search_suggests_titles_on_every_page(pages):
 
 @pytest.mark.parametrize(
     ("path", "attribute"),
-    [("/api/titles", "all_movie_titles"), ("/api/directors", "all_director_names")],
+    [("/api/titles", "title_suggestions"), ("/api/directors", "all_director_names")],
 )
 def test_suggestion_endpoints_return_cacheable_lists(client, engine, path, attribute):
     response = client.get(path)
@@ -604,6 +604,21 @@ def test_suggestion_endpoints_return_cacheable_lists(client, engine, path, attri
 
     again = client.get(path, headers={"If-None-Match": response.headers["ETag"]})
     assert again.status_code == 304
+
+
+def test_title_suggestions_carry_the_turkish_titles_when_the_catalogue_has_them(turkish_client):
+    titles = turkish_client.get("/api/titles").get_json()
+
+    assert ["Inception", "Başlangıç"] in titles
+    assert "Avatar" in titles
+
+
+def test_a_similar_search_by_turkish_title_shows_the_original_title(turkish_client):
+    _, page = _get(turkish_client, "/?film=baslangic&n=3")
+
+    assert page.all("input", name="film")[0]["value"] == "Inception"
+    assert 1 <= len(_card_ids(page)) <= 3
+    assert 27205 not in _card_ids(page)
 
 
 def test_suggestion_endpoint_without_engine_returns_503_json(client, app_module, monkeypatch):

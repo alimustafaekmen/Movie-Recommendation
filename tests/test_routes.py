@@ -197,6 +197,15 @@ def test_header_search_redirects_to_closest_title(client):
     assert response.headers["Location"].endswith("/movie/19995")
 
 
+@pytest.mark.parametrize(
+    ("query", "movie_id"), [("yuzuklerin efendisi yuzuk kardesligi", 120), ("Başlangıç", 27205)]
+)
+def test_header_search_finds_a_film_by_its_turkish_title(turkish_client, query, movie_id):
+    response = turkish_client.post("/search_movie_redirect", data={"search_query": query})
+
+    assert response.headers["Location"].endswith(f"/movie/{movie_id}")
+
+
 def test_header_search_without_match_returns_to_the_previous_page(client):
     response = client.post(
         "/search_movie_redirect",

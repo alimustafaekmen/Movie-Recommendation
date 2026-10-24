@@ -1,6 +1,7 @@
 import os
 from pathlib import Path
 
+import pandas as pd
 import pytest
 import requests
 from pages import body_text
@@ -55,6 +56,15 @@ PERSON = {
     ],
 }
 
+# Turkish TMDb titles of a few fixture films. Like the Kaggle files, the fixture has no
+# title_tr column; turkish_engine adds these.
+TURKISH_TITLES = {
+    120: "Yüzüklerin Efendisi: Yüzük Kardeşliği",
+    121: "Yüzüklerin Efendisi: İki Kule",
+    122: "Yüzüklerin Efendisi: Kralın Dönüşü",
+    27205: "Başlangıç",
+}
+
 # Home page searches, each a shareable GET URL: results, a warning and the empty state.
 SEARCHES = {
     "results": "/?film=Avatar&n=5",
@@ -104,6 +114,27 @@ def client(app_module):
 @pytest.fixture(scope="session")
 def engine(app_module):
     return app_module.app.extensions["engine"]
+
+
+@pytest.fixture(scope="session")
+def turkish_engine(tmp_path_factory):
+    """An engine over the fixture films, with TURKISH_TITLES in a title_tr column."""
+    from movierec.engine import RecommendationEngine
+
+    movies = pd.read_csv(FIXTURE_DATASET_DIR / "tmdb_5000_movies.csv")
+    movies["title_tr"] = movies["id"].map(TURKISH_TITLES)
+    movies_path = tmp_path_factory.mktemp("turkish") / "tmdb_5000_movies.csv"
+    movies.to_csv(movies_path, index=False)
+    return RecommendationEngine(
+        str(movies_path), str(FIXTURE_DATASET_DIR / "tmdb_5000_credits.csv")
+    )
+
+
+@pytest.fixture
+def turkish_client(client, app_module, turkish_engine, monkeypatch):
+    """The test client, with turkish_engine answering instead of the app's engine."""
+    monkeypatch.setitem(app_module.app.extensions, "engine", turkish_engine)
+    return client
 
 
 @pytest.fixture(scope="session")

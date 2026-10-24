@@ -301,7 +301,7 @@ def header_search():
     return redirect(url_for("movies.movie_detail", movie_id=movie_id))
 
 
-def _cacheable_json_response(items: list[str]):
+def _cacheable_json_response(items: list):
     """Return items as JSON browsers may keep for a day; an unchanged list answers 304."""
     response = jsonify(items)
     response.cache_control.public = True
@@ -312,11 +312,15 @@ def _cacheable_json_response(items: list[str]):
 
 @bp.route("/api/titles")
 def api_titles():
-    """Every movie title, for the film and header search suggestions."""
+    """Every movie title, for the film and header search suggestions.
+
+    A title whose film has a Turkish title comes as [title, Turkish title], so base.js can
+    show why typing the Turkish title suggests it.
+    """
     engine = get_engine()
     if engine is None:
         abort(503)
-    return _cacheable_json_response(engine.all_movie_titles)
+    return _cacheable_json_response(engine.title_suggestions)
 
 
 @bp.route("/api/directors")

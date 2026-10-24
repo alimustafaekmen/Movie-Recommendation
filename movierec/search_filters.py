@@ -115,14 +115,15 @@ def genre_keys(genres: list[str] | str | None) -> frozenset[str]:
 
 
 def name_key(text: str) -> str:
-    """Return a person's name casefolded, without accents, with punctuation as spaces."""
+    """Return a name or title casefolded, without accents, with punctuation as spaces."""
     # NFKD splits an accented letter into the letter plus a combining accent ("é" -> "e" and
     # U+0301); dropping the combining characters leaves the plain letter.
     decomposed = unicodedata.normalize("NFKD", text)
     plain = "".join(char for char in decomposed if not unicodedata.combining(char))
-    # Each run of punctuation, symbols or underscores becomes one space:
+    # The dotless "ı" has no accent to drop, but people type it as "i": "Başlangıç" ->
+    # "baslangic". Each run of punctuation, symbols or underscores becomes one space:
     # "Trenchard-Smith" -> "trenchard smith".
-    spaced = _NON_ALNUM.sub(" ", plain.casefold())
+    spaced = _NON_ALNUM.sub(" ", plain.casefold().replace("ı", "i"))
     return spaced.strip()
 
 

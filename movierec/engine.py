@@ -20,6 +20,7 @@ from movierec.search_filters import (
     apply_filters,
     genre_keys,
     is_plausible_name,
+    name_key,
     parse_numeric_filters,
 )
 from movierec.similarity import (
@@ -59,6 +60,10 @@ class RecommendationEngine:
         self.movies_df = df
         self.tfidf_matrix = build_tfidf_matrix(df)
         self._casefolded_titles = df["title"].str.casefold()
+        # Turkish titles compare without case or accents, so "baslangic" finds "Başlangıç".
+        # A film without one has "".
+        self._turkish_keys = df["title_tr"].map(name_key)
+        self._all_turkish_keys = sorted(set(self._turkish_keys) - {""})
         # Plain numpy copies of the columns each query reads. Position r in each one is row r of
         # movies_df and of tfidf_matrix; indexing an array is cheaper than a DataFrame column.
         self._ids = df["id"].to_numpy()
@@ -72,11 +77,26 @@ class RecommendationEngine:
         genres = df["genre_list"].explode().dropna().unique()
         self.all_genres = sorted(genre for genre in genres if not is_excluded(genre))
         self.all_movie_titles = sorted(df["title"].dropna().unique().tolist())
+        self.title_suggestions = self._title_suggestions(df)
         self.all_director_names = sorted(df["directors"].explode().dropna().unique().tolist())
         well_voted = df[df["vote_count"] >= MIN_VOTES_THRESHOLD]
         by_votes = well_voted.sort_values("vote_count", ascending=False, kind="stable")
         self._most_voted_movies = by_votes.head(POPULAR_CARD_COUNT)
         logger.info("Loaded %d movies in %.2fs", len(df), time.perf_counter() - start_time)
+
+    def _title_suggestions(self, df: pd.DataFrame) -> list[str | list[str]]:
+        """Return all_movie_titles, each as [title, Turkish title] when its film has one.
+
+        df: the movies table. Remakes share a title; the most-voted one gives the Turkish title.
+        """
+        by_votes = df.sort_values("vote_count", ascending=False, kind="stable")
+        most_voted = by_votes.drop_duplicates("title")
+        turkish_of = dict(zip(most_voted["title"], most_voted["title_tr"], strict=True))
+        suggestions = []
+        for title in self.all_movie_titles:
+            turkish = turkish_of[title]
+            suggestions.append([title, turkish] if turkish else title)
+        return suggestions
 
     def format_results(self, ranked: pd.DataFrame, num: int) -> list[dict]:
         """Return the card dictionaries for the first ``num`` ranked rows.
@@ -106,6 +126,17 @@ class RecommendationEngine:
 
     def _find_best_match(self, query: str, choices: list[str]) -> str | None:
         """Return the choice closest to ``query`` (thefuzz WRatio), or None below the cutoff."""
+        match = self._closest(query, choices)
+        if match is None:
+            return None
+        choice, _scores = match
+        return choice
+
+    def _closest(self, query: str, choices: list[str]) -> tuple[str, tuple[int, int]] | None:
+        """Return (choice, scores) for the choice closest to ``query``, or None below the cutoff.
+
+        scores is (WRatio, token_sort_ratio), so the matches of two lists compare as tuples.
+        """
         # full_process lowercases and drops punctuation. A query of only symbols becomes "",
         # scores 0 everywhere, and thefuzz would log a warning for each one a visitor sends.
         cleaned_query = utils.full_process(query)
@@ -135,7 +166,8 @@ class RecommendationEngine:
         best_score = matches[0][1]
         tied = [choice for choice, score in matches if score == best_score]
         # On equal ratios max() returns the first one in tied.
-        return max(tied, key=lambda choice: fuzz.token_sort_ratio(query, choice))
+        closest = max(tied, key=lambda choice: fuzz.token_sort_ratio(query, choice))
+        return closest, (best_score, fuzz.token_sort_ratio(query, closest))
 
     def find_movie_id(self, query: str) -> int | None:
         """Return the TMDb id of the movie a title query refers to, or None."""
@@ -150,7 +182,11 @@ class RecommendationEngine:
         return str(self.movies_df["title"].iat[self.row_of[movie_id]])
 
     def _resolve_title(self, query) -> tuple[int, bool] | None:
-        """Return (row, is_exact) for a title query; exact case-insensitive matches win."""
+        """Return (row, is_exact) for a title query; exact case-insensitive matches win.
+
+        A film matches by its title or by its Turkish title, whichever is closer. Without
+        Turkish titles (the Kaggle files) only the titles count.
+        """
         if not isinstance(query, str):
             return None
         query = query.strip()[:MAX_QUERY_LENGTH]
@@ -160,11 +196,21 @@ class RecommendationEngine:
         is_same_title = (self._casefolded_titles == query.casefold()).to_numpy()
         if is_same_title.any():
             return self._most_voted_row(is_same_title), True
-        title = self._find_best_match(query, self.all_movie_titles)
-        if title is None:
+        query_key = name_key(query)
+        is_same_turkish = (self._turkish_keys == query_key).to_numpy()
+        if query_key and is_same_turkish.any():
+            return self._most_voted_row(is_same_turkish), True
+
+        title_match = self._closest(query, self.all_movie_titles)
+        turkish_match = self._closest(query_key, self._all_turkish_keys)
+        # On equal scores the title wins.
+        if turkish_match and (title_match is None or turkish_match[1] > title_match[1]):
+            is_matched = (self._turkish_keys == turkish_match[0]).to_numpy()
+        elif title_match:
+            is_matched = (self.movies_df["title"] == title_match[0]).to_numpy()
+        else:
             return None
-        is_matched_title = (self.movies_df["title"] == title).to_numpy()
-        return self._most_voted_row(is_matched_title), False
+        return self._most_voted_row(is_matched), False
 
     def _most_voted_row(self, is_candidate: np.ndarray) -> int:
         """Return the most-voted row among those where ``is_candidate`` is True.
