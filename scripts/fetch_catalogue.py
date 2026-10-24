@@ -37,8 +37,9 @@ from movierec import tmdb  # noqa: E402
 from movierec.config import MIN_VOTES_THRESHOLD, TMDB_API_BASE_URL, TMDB_API_KEY  # noqa: E402
 from movierec.dataset import CAST_LIMIT, CREDIT_COLUMNS, MOVIE_COLUMNS  # noqa: E402
 
-# The Kaggle set ends in late 2016, so the newer films start with that year.
-FIRST_YEAR = 2016
+# The Kaggle set ends in late 2016 and holds only part of each earlier year, so it misses
+# well-known films such as John Wick (2014). The years from 1990 on are filled in too.
+FIRST_YEAR = 1990
 PER_YEAR = 400
 # The seed ids always come from the Kaggle file, even when DATASET_DIR points the app at
 # the refreshed catalogue.
@@ -150,7 +151,8 @@ def film_ids(client: Client, per_year: int) -> list[int]:
         ids += found
     # dict.fromkeys drops repeats and keeps the first of each.
     ids = list(dict.fromkeys(ids))
-    print(f"{len(kaggle_ids):,} Kaggle films and {len(ids) - len(kaggle_ids):,} newer ones")
+    added = len(ids) - len(kaggle_ids)
+    print(f"{len(kaggle_ids):,} Kaggle films and {added:,} more from the yearly lists")
     return ids
 
 

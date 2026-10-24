@@ -224,11 +224,11 @@ def test_discover_keeps_to_the_vote_floor_and_stops_at_the_last_page():
 
 
 def test_the_film_list_is_the_kaggle_ids_then_each_years_new_films_once():
-    # The seeds are 101, 404 and 102; 102 is also among 2016's most-voted films.
+    # The seeds are 101, 404 and 102; 102 is also among 1990's most-voted films.
     session = CatalogueSession(
         films_by_year={
-            2016: [{"id": 102, "vote_count": 900}, {"id": 201, "vote_count": 800}],
-            2017: [{"id": 202, "vote_count": 700}],
+            1990: [{"id": 102, "vote_count": 900}, {"id": 201, "vote_count": 800}],
+            1991: [{"id": 202, "vote_count": 700}],
         }
     )
 
@@ -236,7 +236,7 @@ def test_the_film_list_is_the_kaggle_ids_then_each_years_new_films_once():
 
     assert ids == [101, 404, 102, 201, 202]
     years = [int(params["primary_release_date.gte"][:4]) for _, params in session.calls]
-    assert years == list(range(2016, date.today().year + 1))
+    assert years == list(range(1990, date.today().year + 1))
 
 
 def test_a_run_fetches_each_film_once_and_drops_the_ones_tmdb_no_longer_has(run, tmp_path, capsys):
