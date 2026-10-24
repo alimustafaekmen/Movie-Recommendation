@@ -138,6 +138,7 @@ def test_sequel_query_does_not_match_a_short_unrelated_title(engine, query, movi
         ("john wick 3", "John Wick: Chapter 3 - Parabellum"),
         ("john wick 4", "John Wick: Chapter 4"),
         ("home alone 2", "Home Alone 2: Lost in New York"),
+        ("alien 3", "Alien³"),
         ("monty python", "Monty Python and the Holy Grail"),
         ("et the extraterrestrial", "E.T. the Extra-Terrestrial"),
         ("gone in 60 seconds", "Gone in Sixty Seconds"),

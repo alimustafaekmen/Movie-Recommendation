@@ -1,6 +1,7 @@
 """Content-based movie recommendations over the TMDB 5000 dataset, computed offline."""
 
 import logging
+import re
 import time
 
 import numpy as np
@@ -44,6 +45,8 @@ FAVOURITE_NEIGHBOURS = MAX_RECOMMENDATION_COUNT
 # Re-ranking looks a little past the longest list we serve. The pool does not depend on the
 # requested count, so every list is a prefix of the MAX_RECOMMENDATION_COUNT list.
 NEIGHBOUR_POOL_SIZE = 3 * MAX_RECOMMENDATION_COUNT + 1
+# A run of digits or of letters is one word of a title: "Alien³" has "alien" and "3".
+_WORD = re.compile(r"\d+|[^\W\d_]+")
 
 
 class RecommendationEngine:
@@ -419,8 +422,8 @@ class RecommendationEngine:
 
 
 def _words(title: str) -> set[str]:
-    """Return the words of a title as title_key gives them, with "E.T." as the word "et"."""
-    return set(title_key(title.replace(".", "")).split())
+    """Return the _WORD words of title_key(title), with "E.T." as the word "et"."""
+    return set(_WORD.findall(title_key(title.replace(".", ""))))
 
 
 def clamp_count(num: int | str | None) -> int:
