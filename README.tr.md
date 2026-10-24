@@ -87,7 +87,7 @@ Listeler sayfası, beğendiğiniz ve izleme listenizdeki filmlerin numaraların�
 
 ### Filtreli arama
 
-Arama; seçilen her türe, yönetmene, yıl ve puan sınırlarına uyan filmleri tutar. Birden çok yönetmeni olan bir film, yönetmenlerinden herhangi biriyle eşleşir. 100 oyun altındaki filmler, başka eşleşme yoksa dışarıda bırakılır. Kalanlar şu formülle sıralanır:
+Arama; seçilen her türe, yönetmene, yıl ve puan sınırlarına uyan filmleri tutar. Birden çok yönetmeni olan bir film, yönetmenlerinden herhangi biriyle eşleşir. 100 oyun altındaki filmler, başka eşleşme olmadığı sürece dışarıda bırakılır. Kalanlar şu formülle sıralanır:
 
 ```text
 0.40 * puan + 0.45 * popülerlik + 0.15 * oy sayısı
