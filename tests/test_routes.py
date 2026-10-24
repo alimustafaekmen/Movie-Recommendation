@@ -198,7 +198,12 @@ def test_header_search_redirects_to_closest_title(client):
 
 
 @pytest.mark.parametrize(
-    ("query", "movie_id"), [("yuzuklerin efendisi yuzuk kardesligi", 120), ("Başlangıç", 27205)]
+    ("query", "movie_id"),
+    [
+        ("yuzuklerin efendisi yuzuk kardesligi", 120),
+        ("Yüzüklerin Efendisi", 120),
+        ("Başlangıç", 27205),
+    ],
 )
 def test_header_search_finds_a_film_by_its_turkish_title(turkish_client, query, movie_id):
     response = turkish_client.post("/search_movie_redirect", data={"search_query": query})

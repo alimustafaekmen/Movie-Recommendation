@@ -60,6 +60,7 @@ class RecommendationEngine:
         self.movies_df = df
         self.tfidf_matrix = build_tfidf_matrix(df)
         self._casefolded_titles = df["title"].str.casefold()
+        self._title_keys = df["title"].map(name_key)
         # Turkish titles compare without case or accents, so "baslangic" finds "Başlangıç".
         # A film without one has "".
         self._turkish_keys = df["title_tr"].map(name_key)
@@ -184,8 +185,10 @@ class RecommendationEngine:
     def _resolve_title(self, query) -> tuple[int, bool] | None:
         """Return (row, is_exact) for a title query; exact case-insensitive matches win.
 
-        A film matches by its title or by its Turkish title, whichever is closer. Without
-        Turkish titles (the Kaggle files) only the titles count.
+        Then an exact Turkish title wins. A query inside an original title is that title being
+        typed, so only the titles count for it. Otherwise the most-voted film whose Turkish
+        title starts with the query wins, and then the closer fuzzy match of the titles and
+        the Turkish titles. Without Turkish titles (the Kaggle files) only the titles count.
         """
         if not isinstance(query, str):
             return None
@@ -202,7 +205,17 @@ class RecommendationEngine:
             return self._most_voted_row(is_same_turkish), True
 
         title_match = self._closest(query, self.all_movie_titles)
-        turkish_match = self._closest(query_key, self._all_turkish_keys)
+        turkish_match = None
+        # "terminator 2" is Terminator 2: Judgment Day, not The Terminator ("Terminatör").
+        if (
+            self._all_turkish_keys
+            and query_key
+            and not self._title_keys.str.contains(query_key, regex=False).any()
+        ):
+            starts_turkish = self._turkish_keys.str.startswith(query_key).to_numpy()
+            if starts_turkish.any():
+                return self._most_voted_row(starts_turkish), False
+            turkish_match = self._closest(query_key, self._all_turkish_keys)
         # On equal scores the title wins.
         if turkish_match and (title_match is None or turkish_match[1] > title_match[1]):
             is_matched = (self._turkish_keys == turkish_match[0]).to_numpy()

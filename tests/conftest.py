@@ -62,7 +62,10 @@ TURKISH_TITLES = {
     120: "Yüzüklerin Efendisi: Yüzük Kardeşliği",
     121: "Yüzüklerin Efendisi: İki Kule",
     122: "Yüzüklerin Efendisi: Kralın Dönüşü",
+    10681: "VOL-İ",
     27205: "Başlangıç",
+    49051: "Hobbit: Beklenmedik Yolculuk",
+    122917: "Hobbit: Beş Ordunun Savaşı",
 }
 
 # Home page searches, each a shareable GET URL: results, a warning and the empty state.

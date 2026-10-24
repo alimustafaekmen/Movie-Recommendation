@@ -98,8 +98,26 @@ def test_a_film_is_found_by_its_turkish_title_too(turkish_engine, query, movie_i
     assert turkish_engine.find_movie_id(query) == movie_id
 
 
-def test_the_start_of_a_series_turkish_title_finds_a_film_of_the_series(turkish_engine):
-    assert turkish_engine.find_movie_id("yuzuklerin efendisi") in {120, 121, 122}
+@pytest.mark.parametrize("query", ["yuzuklerin efendisi", "Yüzüklerin Efendisi", "yuzuk"])
+def test_the_start_of_turkish_titles_finds_the_most_voted_of_them(turkish_engine, query):
+    assert turkish_engine.find_movie_id(query) == 120
+
+
+def test_the_start_of_a_turkish_title_finds_it(turkish_engine):
+    assert turkish_engine.find_movie_id("baslan") == 27205
+
+
+@pytest.mark.parametrize(
+    ("query", "movie_id"),
+    [
+        # "Hobbit: Beş Ordunun Savaşı" and "VOL-İ" are not a closer match for these.
+        ("hobbit", 49051),
+        ("bill vol", 24),
+        ("kill bill vol", 24),
+    ],
+)
+def test_a_query_inside_an_original_title_keeps_to_the_titles(turkish_engine, query, movie_id):
+    assert turkish_engine.find_movie_id(query) == movie_id
 
 
 def test_a_turkish_title_typed_without_its_accents_is_an_exact_match(turkish_engine):
