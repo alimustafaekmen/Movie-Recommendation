@@ -297,7 +297,7 @@ def test_erotic_shock_and_adult_films_are_left_out(change):
 
 def test_a_dark_subject_alone_leaves_no_film_out():
     # Such tags also mark well-known dramas, so only the tags of the genres themselves count.
-    dark = keywords("rape", "pornography", "eroticism", "prostitute")
+    dark = keywords("rape", "pornography", "porn industry", "eroticism", "prostitute")
 
     assert not fetch_catalogue.is_excluded({**TIDEKEEPER, **dark})
     assert not fetch_catalogue.is_excluded(TIDEKEEPER)

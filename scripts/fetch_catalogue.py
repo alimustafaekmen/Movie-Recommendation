@@ -47,15 +47,13 @@ PER_YEAR = 400
 KAGGLE_MOVIES_CSV = REPO / "dataset" / "tmdb_5000_movies.csv"
 OUT_DIR = REPO / "dataset" / "refreshed"
 # The catalogue is a showcase, so it leaves out the films TMDb tags as erotic, porn or shock
-# films; TMDb's adult flag misses them. Tags such as "rape" or "pornography" also mark
-# well-known dramas, so only the tags of these genres count.
+# films; TMDb's adult flag misses them. Tags such as "rape", "pornography" or "porn industry"
+# also mark well-known dramas such as Boogie Nights, so only the tags of these genres count.
 EXCLUDED_KEYWORDS = frozenset(
     {
-        "adult filmmaking",
         "erotic drama",
         "erotic fantasy",
         "erotic movie",
-        "porn industry",
         "porno",
         "sexploitation",
         "soft porn",
@@ -68,14 +66,15 @@ EXCLUDED_KEYWORDS = frozenset(
 # fmt: off
 EXCLUDED_IDS = frozenset({
     692, 979, 1378, 1631, 1836, 3134, 4241, 7090, 7295, 8675,
-    9539, 9696, 10068, 10358, 10842, 11845, 12228, 12517, 12703, 12838,
-    13429, 13461, 13492, 13702, 13797, 14125, 14758, 15356, 16363, 18167,
-    18392, 20712, 23966, 24593, 24836, 24922, 26715, 27274, 27297, 28005,
-    31022, 33380, 33431, 33560, 36253, 38410, 39857, 40185, 43947, 48266,
-    48636, 52462, 53064, 53932, 63197, 65599, 67911, 69778, 73861, 102840,
-    112160, 123229, 132030, 162396, 171424, 178862, 179538, 207768, 215743, 216015,
-    292431, 319314, 325848, 337167, 341174, 357096, 499726, 598133, 664413, 728949,
-    776797, 829557, 829560, 833326, 1252309, 1288059,
+    9539, 9696, 10068, 10358, 10367, 10842, 11845, 12228, 12517, 12703,
+    12838, 13009, 13429, 13461, 13492, 13702, 13797, 14125, 14758, 15276,
+    15356, 16363, 17124, 18167, 18392, 20712, 23966, 24593, 24836, 24922,
+    26715, 27274, 27297, 28005, 30785, 31022, 33380, 33431, 33560, 36253,
+    38410, 39857, 40185, 43947, 48266, 48636, 52462, 53064, 53932, 63197,
+    65599, 67911, 69778, 73861, 94901, 102840, 112160, 123229, 132030, 162396,
+    171424, 178862, 179538, 207768, 215743, 216015, 292431, 319314, 325848, 337167,
+    341174, 357096, 499726, 592695, 598133, 664413, 728949, 776797, 829557, 829560,
+    833326, 1087040, 1252309, 1288059,
 })
 # fmt: on
 # Films per /discover/movie page, set by TMDb.
