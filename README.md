@@ -97,7 +97,7 @@ Rating is divided by 10. Popularity is taken as log(1 + x), as in similar movies
 
 ### Title search
 
-An exact title match wins, ignoring case. Otherwise the app takes the closest title by fuzzy matching, which allows for typos. It uses thefuzz `WRatio` and needs a score of at least 75 out of 100. A title shorter than half the query only counts if the query contains all its words. So "Godfather 2" finds *The Godfather*, not *Her*. When several films share a title, the most-voted one wins. The refreshed catalogue also holds each film's Turkish title from TMDb, so a search for "baslangic" finds *Inception*, ignoring case and accents.
+An exact title match wins, ignoring case. Otherwise the app takes the closest title by fuzzy matching, which allows for typos. It uses thefuzz `WRatio` and needs a score of at least 75 out of 100. A title shorter than half the query only counts if the query contains all its words. So "Godfather 2" finds *The Godfather*, not *Her*. When several films share a title, the most-voted one wins. The refreshed catalogue also holds each film's Turkish title from TMDb, so a search for "baslangic" finds *Inception*, ignoring case, accents and apostrophes. A query that is part of an original title looks only at the titles, so "terminator 2" stays *Terminator 2: Judgment Day*. Otherwise a Turkish title that starts with the query wins, the most-voted one first, so "yuzuklerin efendisi" finds *The Fellowship of the Ring*.
 
 ### Languages
 
@@ -212,7 +212,7 @@ What the tests protect:
 - **Lists and evaluation:** the browser list store and the lists page (with `node:test`), and the metric helpers in `scripts/evaluate.py`.
 - **Languages:** every catalogue key has both languages with the same placeholders, and every key is used. A text in a template or a script that bypasses the catalogue fails a test. Pages, warnings, error pages and flash messages are checked in both languages, and so is the choice of language from the URL, the cookie and the browser.
 
-Without the Kaggle CSVs, pytest uses a 158-film sample in `tests/fixtures/` and skips the tests that need the full dataset. Its overviews, taglines and keywords are short hand-written texts, not TMDB's. pytest never reads the refreshed catalogue, even when `.env` sets `DATASET_DIR`. CI runs the same commands on every push and pull request. It fails below 95% line and branch coverage of `movierec/` and `app.py`. The sample run measures about 96%. CI also builds the Docker image and checks that the app runs as the non-root user.
+Without the Kaggle CSVs, pytest uses a 158-film sample in `tests/fixtures/` and skips the tests that need the full dataset. Its overviews, taglines and keywords are short hand-written texts, not TMDB's. pytest never reads the refreshed catalogue, even when `.env` sets `DATASET_DIR`. CI runs the same commands on every push and pull request. It fails below 95% line and branch coverage of `movierec/` and `app.py`. The sample run measures about 97%. CI also builds the Docker image and checks that the app runs as the non-root user.
 
 ## Configuration
 

@@ -97,7 +97,7 @@ Puan 10'a bölünür. Popülerlik, benzer filmlerdeki gibi log(1 + x) olarak al�
 
 ### Başlık araması
 
-Büyük küçük harf fark etmeksizin tam eşleşen başlık kazanır. Aksi halde uygulama, yazım hatalarına izin veren bulanık eşleştirmeyle en yakın başlığı seçer. Bunun için thefuzz `WRatio` kullanılır ve 100 üzerinden en az 75 puan gerekir. Aranan ifadenin yarısından kısa bir başlık, yalnızca ifade o başlığın bütün kelimelerini içeriyorsa sayılır. Bu yüzden "Godfather 2" araması *Her* değil *The Godfather* filmini bulur. Aynı adı taşıyan birden çok film varsa en çok oy alan seçilir. Yenilenmiş katalog her filmin TMDb'deki Türkçe adını da tutar, bu yüzden büyük küçük harf ve Türkçe karakterler fark etmeksizin "baslangic" araması da *Inception* filmini bulur.
+Büyük küçük harf fark etmeksizin tam eşleşen başlık kazanır. Aksi halde uygulama, yazım hatalarına izin veren bulanık eşleştirmeyle en yakın başlığı seçer. Bunun için thefuzz `WRatio` kullanılır ve 100 üzerinden en az 75 puan gerekir. Aranan ifadenin yarısından kısa bir başlık, yalnızca ifade o başlığın bütün kelimelerini içeriyorsa sayılır. Bu yüzden "Godfather 2" araması *Her* değil *The Godfather* filmini bulur. Aynı adı taşıyan birden çok film varsa en çok oy alan seçilir. Yenilenmiş katalog her filmin TMDb'deki Türkçe adını da tutar, bu yüzden büyük küçük harf, Türkçe karakterler ve kesme işareti fark etmeksizin "baslangic" araması da *Inception* filmini bulur. Özgün bir başlığın parçası olan arama yalnızca özgün başlıklara bakar, bu yüzden "terminator 2" yine *Terminator 2: Judgment Day* filmini bulur. Aksi halde aramayla başlayan Türkçe adlardan en çok oy alanı kazanır, bu yüzden "yuzuklerin efendisi" *The Fellowship of the Ring* filmini bulur.
 
 ### Diller
 
@@ -212,7 +212,7 @@ Testlerin koruduğu şeyler:
 - **Listeler ve değerlendirme:** tarayıcıdaki liste deposu ve listeler sayfası (`node:test` ile) ve `scripts/evaluate.py` içindeki ölçüm yardımcıları.
 - **Diller:** Katalogdaki her anahtarın iki dili ve aynı yer tutucuları vardır, her anahtar kullanılır. Bir şablonda ya da betikte kataloğu atlayan bir metin testi bozar. Sayfalar, uyarılar, hata sayfaları ve bilgi mesajları iki dilde de denetlenir; dilin adresten, çerezden ve tarayıcıdan seçilmesi de öyle.
 
-Kaggle CSV dosyaları yoksa pytest, `tests/fixtures/` içindeki 158 filmlik örneği kullanır ve tam veri seti gerektiren testleri atlar. Bu örnekteki özetler, sloganlar ve anahtar kelimeler TMDB'nin değil, elle yazılmış kısa metinlerdir. pytest, `.env` dosyası `DATASET_DIR` ayarlasa bile yenilenmiş kataloğu hiç okumaz. CI her push ve pull request'te aynı komutları çalıştırır. `movierec/` ve `app.py` için satır ve dal kapsamı %95'in altına düşerse başarısız olur. Örnek veriyle kapsam yaklaşık %96'dır. CI ayrıca Docker imajını derler ve uygulamanın yetkisiz kullanıcıyla çalıştığını kontrol eder.
+Kaggle CSV dosyaları yoksa pytest, `tests/fixtures/` içindeki 158 filmlik örneği kullanır ve tam veri seti gerektiren testleri atlar. Bu örnekteki özetler, sloganlar ve anahtar kelimeler TMDB'nin değil, elle yazılmış kısa metinlerdir. pytest, `.env` dosyası `DATASET_DIR` ayarlasa bile yenilenmiş kataloğu hiç okumaz. CI her push ve pull request'te aynı komutları çalıştırır. `movierec/` ve `app.py` için satır ve dal kapsamı %95'in altına düşerse başarısız olur. Örnek veriyle kapsam yaklaşık %97'dir. CI ayrıca Docker imajını derler ve uygulamanın yetkisiz kullanıcıyla çalıştığını kontrol eder.
 
 ## Yapılandırma
 
