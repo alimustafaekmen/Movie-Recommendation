@@ -140,19 +140,19 @@ What the numbers show and what they do not:
 - The hybrid trades a little agreement and about 37 percentage points of coverage for better-known films (median 1,350 votes against 191). Log scaling lowers that median on purpose. With linear scaling it is 1,553.
 - Most of the coverage gap comes from the 100-vote floor. Only 3,162 films (65.8%) have 100 votes or more, and the hybrid reaches 94% of them.
 
-On the refreshed catalogue fetched on 2026-10-24 (14,111 films, dataset median 534 votes), with `DATASET_DIR=dataset/refreshed python scripts/evaluate.py`:
+On the refreshed catalogue fetched on 2026-10-25 (13,967 films, dataset median 535 votes), with `DATASET_DIR=dataset/refreshed python scripts/evaluate.py`:
 
 | Method | Genre overlap | Same director | Shared lead actor | Series recall | Catalog coverage | Median votes |
 |---|---|---|---|---|---|---|
-| Pure cosine | 0.748 | 6.7% | 4.94% | 58.4% | 99.1% | 498 |
-| MovieRec (hybrid) | 0.757 | 5.7% | 4.58% | 54.2% | 83.1% | 2,599 |
+| Pure cosine | 0.747 | 6.7% | 4.97% | 58.4% | 99.1% | 500 |
+| MovieRec (hybrid) | 0.756 | 5.7% | 4.61% | 54.2% | 83.0% | 2,600 |
 | Most-voted baseline | 0.155 | 0.1% | 0.58% | 0.2% | 0.1% | 33,239 |
 
 These numbers cannot be reproduced without a TMDb API key, and they change with each refresh.
 
-- Coverage is higher here, because 13,419 films (95.1%) have 100 votes or more.
+- Coverage is higher here, because 13,284 films (95.1%) have 100 votes or more.
 - Median votes are higher because TMDb's vote counts today are much higher than in the 2016 Kaggle snapshot.
-- Series recall is lower, because 2,745 seeds have series films, so the title groups are bigger and noisier.
+- Series recall is lower, because 2,719 seeds have series films, so the title groups are bigger and noisier.
 
 ## Run locally
 
@@ -180,7 +180,7 @@ The dev server only listens on this computer (`HOST=127.0.0.1`). It uses port 50
 python scripts/fetch_catalogue.py
 ```
 
-The script keeps the Kaggle films and adds, for each release year since 1990, the 400 most-voted films that have at least 100 votes. It still needs the Kaggle files in `dataset/`, because it starts from their film ids. The run on 2026-10-24 wrote 14,111 films up to 2026 (28 MB) with about 14,800 requests in about 14 minutes. `--limit 50 --out /tmp/trial` makes a small trial run first without touching an existing catalogue. The files go to `dataset/refreshed/`, which git ignores. Set `DATASET_DIR=dataset/refreshed` in `.env` to use them. TMDb's terms allow keeping its data for at most 6 months, so run the script again at least every 6 months.
+The script keeps the Kaggle films and adds, for each release year since 1990, the 400 most-voted films that have at least 100 votes. It leaves out erotic, porn and shock films, found by TMDb's keyword tags and a short list of film ids. It still needs the Kaggle files in `dataset/`, because it starts from their film ids. The run on 2026-10-25 wrote 13,967 films up to 2026 (28 MB) with about 14,800 requests in about 12 minutes. `--limit 50 --out /tmp/trial` makes a small trial run first without touching an existing catalogue. The files go to `dataset/refreshed/`, which git ignores. Set `DATASET_DIR=dataset/refreshed` in `.env` to use them. TMDb's terms allow keeping its data for at most 6 months, so run the script again at least every 6 months.
 
 **Docker.** Put the Kaggle CSVs in `dataset/` first, and fetch the refreshed catalogue if you use it, because the image copies them in. An image built with them holds TMDb data, so never push it to a registry. Then `docker compose up --build` serves the app with gunicorn at http://localhost:5001. The container runs as a non-root user with a health check and no Linux capabilities. Its file system is read-only apart from an in-memory `/tmp`, and only this computer can reach it.
 
@@ -260,7 +260,7 @@ tests/                  pytest suite. tests/js/ holds the node:test suite
 ## Limitations
 
 - The catalogue is a snapshot. The Kaggle files end in late 2016. The refreshed catalogue ends on the day it was fetched, so films released after that are missing until the next fetch. Recommendations only come from the films loaded.
-- The films before 1990 are an uneven selection. They come only from the Kaggle set, which has only 32 of the 202 films from 1989 with 100 votes or more on TMDb. From 1990 on, each year has its 400 most-voted films with 100 votes or more. Fewer films reach 100 votes in the earlier years, so 1990 has only 204 films and 2003 has 397. 2026 has only 250 so far, because no more have reached 100 votes.
+- The films before 1990 are an uneven selection. They come only from the Kaggle set, which has only 32 of the 202 films from 1989 with 100 votes or more on TMDb. From 1990 on, each year has up to 400 of its most-voted films with 100 votes or more. Fewer films reach 100 votes in the earlier years, so 1990 has only 202 films and 2003 has 393. 2026 has only 249 so far, because few of its films have reached 100 votes yet.
 - Popularity is TMDb's trend score on the fetch day, not lasting fame. Films in cinemas on that day move up, and the lists change with each refresh. In the refreshed catalogue, 2025 and 2026 films are 4.6% of the films but get 9.3% of the places in similar-movie lists.
 - The refreshed catalogue needs your own TMDb API key. TMDb's terms allow keeping it for at most 6 months, so it must be fetched again at least that often.
 - Recommendations use content only and do not learn from users.
