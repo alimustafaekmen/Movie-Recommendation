@@ -140,19 +140,19 @@ Sayıların gösterdikleri ve göstermedikleri:
 - Hibrit, biraz uyumdan ve yaklaşık 37 puanlık kapsamdan vazgeçip daha tanınmış filmler önerir (191'e karşı ortanca 1.350 oy). Logaritmik ölçekleme bu ortancayı bilerek düşürür. Doğrusal ölçeklemeyle 1.553 olurdu.
 - Kapsam farkının büyük kısmı 100 oy sınırından gelir. Filmlerin yalnızca 3.162'sinin (%65,8) 100 ya da daha fazla oyu vardır ve hibrit bunların %94'üne ulaşır.
 
-2026-10-25'te çekilen yenilenmiş katalogda (13.967 film, veri setinin ortancası 535 oy), `DATASET_DIR=dataset/refreshed python scripts/evaluate.py` ile:
+2026-10-25'te çekilen yenilenmiş katalogda (13.969 film, veri setinin ortancası 536 oy), `DATASET_DIR=dataset/refreshed python scripts/evaluate.py` ile:
 
 | Yöntem | Tür örtüşmesi | Aynı yönetmen | Ortak başrol oyuncusu | Seri filmlerini bulma | Katalog kapsamı | Ortanca oy |
 |---|---|---|---|---|---|---|
 | Saf kosinüs | 0.747 | %6,7 | %4,97 | %58,4 | %99,1 | 500 |
-| MovieRec (hibrit) | 0.756 | %5,7 | %4,61 | %54,2 | %83,0 | 2.600 |
+| MovieRec (hibrit) | 0.756 | %5,7 | %4,61 | %54,1 | %83,2 | 2.622 |
 | En çok oy alanlar (taban çizgisi) | 0.155 | %0,1 | %0,58 | %0,2 | %0,1 | 33.239 |
 
 Bu sayılar TMDb API anahtarı olmadan yeniden üretilemez ve her yenilemede değişir.
 
-- Kapsam burada daha yüksektir, çünkü 13.967 filmin 13.284'ünün (%95,1) 100 ya da daha fazla oyu vardır.
+- Kapsam burada daha yüksektir, çünkü 13.969 filmin 13.286'sının (%95,1) 100 ya da daha fazla oyu vardır.
 - Ortanca oylar daha yüksektir, çünkü TMDb'deki oy sayıları bugün 2016 tarihli Kaggle verisindekinden çok daha fazladır.
-- Seri filmlerini bulma daha düşüktür, çünkü 2.719 başlangıç filminin seri filmi vardır, bu yüzden başlık grupları daha büyük ve daha gürültülüdür.
+- Seri filmlerini bulma daha düşüktür, çünkü 2.716 başlangıç filminin seri filmi vardır, bu yüzden başlık grupları daha büyük ve daha gürültülüdür.
 
 ## Yerelde çalıştırma
 
@@ -180,7 +180,7 @@ Geliştirme sunucusu yalnızca bu bilgisayardan erişilebilir (`HOST=127.0.0.1`)
 python scripts/fetch_catalogue.py
 ```
 
-Betik Kaggle filmlerini korur ve 1990'dan bu yana her yayın yılından, en az 100 oyu olan en çok oy almış 400 filmi ekler. Erotik, porno ve şok filmlerini dışarıda bırakır; bunları TMDb'nin anahtar kelime etiketlerinden ve kısa bir film numarası listesinden bulur. Yine de `dataset/` içindeki Kaggle dosyalarına ihtiyaç duyar, çünkü onların film numaralarından başlar. 2026-10-25'teki çalıştırma, 2026'ya kadar 13.967 film (28 MB) yazdı. Bunun için yaklaşık 14.800 istek attı ve yaklaşık 12 dakika sürdü. `--limit 50 --out /tmp/trial` mevcut kataloğa dokunmadan önce küçük bir deneme yapar. Dosyalar, git'in yok saydığı `dataset/refreshed/` klasörüne yazılır. Onları kullanmak için `.env` dosyasında `DATASET_DIR=dataset/refreshed` ayarlayın. TMDb'nin koşulları verisinin en fazla 6 ay saklanmasına izin verir, bu yüzden betiği en az 6 ayda bir yeniden çalıştırın.
+Betik Kaggle filmlerini korur ve 1990'dan bu yana her yayın yılından, en az 100 oyu olan en çok oy almış 400 filmi ekler. Erotik, porno ve şok filmlerini dışarıda bırakır; bunları TMDb'nin anahtar kelime etiketlerinden ve kısa bir film numarası listesinden bulur. Yine de `dataset/` içindeki Kaggle dosyalarına ihtiyaç duyar, çünkü onların film numaralarından başlar. 2026-10-25'teki çalıştırma, 2026'ya kadar 13.969 film (28 MB) yazdı. Bunun için yaklaşık 14.800 istek attı; bu istekler genellikle yaklaşık 15 dakika sürer. `--limit 50 --out /tmp/trial` mevcut kataloğa dokunmadan önce küçük bir deneme yapar. Dosyalar, git'in yok saydığı `dataset/refreshed/` klasörüne yazılır. Onları kullanmak için `.env` dosyasında `DATASET_DIR=dataset/refreshed` ayarlayın. TMDb'nin koşulları verisinin en fazla 6 ay saklanmasına izin verir, bu yüzden betiği en az 6 ayda bir yeniden çalıştırın.
 
 **Docker.** Önce Kaggle CSV dosyalarını `dataset/` klasörüne koyun, kullanıyorsanız yenilenmiş kataloğu da çekin, çünkü imaj onları içine kopyalar. Bu dosyalarla derlenen imaj TMDb verisi içerir, bu yüzden onu hiçbir registry'ye göndermeyin. Sonra `docker compose up --build` komutu uygulamayı gunicorn ile http://localhost:5001 adresinde açar. Konteyner yetkisiz bir kullanıcıyla, sağlık kontrolüyle ve Linux yetkileri olmadan çalışır. Dosya sistemi, bellekteki `/tmp` dışında salt okunurdur ve yalnızca bu bilgisayardan erişilebilir.
 
