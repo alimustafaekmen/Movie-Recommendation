@@ -2,7 +2,7 @@
 
 The films are the ids of the Kaggle set plus, for each release year from FIRST_YEAR on,
 the PER_YEAR most-voted films with at least MIN_VOTES_THRESHOLD votes, less the erotic, porn
-and shock films (EXCLUDED_KEYWORDS). Every film is fetched on the same day, so their vote
+and shock films (see is_excluded). Every film is fetched on the same day, so their vote
 counts and popularity can be compared. A full run makes about 15,000 requests and takes about
 15 minutes. It needs TMDB_API_KEY in .env.
 
@@ -204,7 +204,7 @@ def fetch_movies(client: Client, ids: list[int]) -> list[dict]:
 
 
 def is_excluded(movie: dict) -> bool:
-    """Return whether the catalogue leaves out a details answer (see EXCLUDED_KEYWORDS)."""
+    """Return whether a details answer is left out: adult, an EXCLUDED_KEYWORDS tag or an id."""
     if movie.get("adult") is True or tmdb.valid_id(movie.get("id")) in EXCLUDED_IDS:
         return True
     keywords = tmdb.records(tmdb.record(movie.get("keywords")).get("keywords"))
@@ -315,7 +315,7 @@ def main(argv=None) -> int:
     dropped = len(ids) - len(movies)
     print(
         f"Wrote {len(kept):,} films to {args.out}; {dropped:,} dropped (not on TMDb anymore), "
-        f"{len(movies) - len(kept):,} left out (EXCLUDED_KEYWORDS)."
+        f"{len(movies) - len(kept):,} left out (see is_excluded)."
     )
     return 0
 
