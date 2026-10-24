@@ -247,7 +247,7 @@ def _contrast(first, second):
         ("--color-text-muted", "--color-surface", 4.5),
         ("--color-text-muted", "--color-bg", 4.5),
         ("--color-text-muted", "--color-tag-bg", 4.5),
-        # The poster placeholders' "Poster Bulunamadı" sits on the quiet fill.
+        # The poster placeholders' "No poster" sits on the quiet fill.
         ("--color-text-muted", "--color-subtle", 4.5),
         ("--color-text-muted", "--color-accent-soft", 4.5),
         ("--color-accent", "--color-surface", 4.5),
@@ -388,7 +388,7 @@ def test_error_page_is_a_panel_with_a_home_button(client):
     [panel] = page.find(class_="error-panel")
     assert "panel" in panel.classes
     [home] = panel.find("a", "btn-primary", href="/")
-    assert home.text == "Ana Sayfaya Dön"
+    assert home.text == "Ana sayfaya dön"
 
 
 def test_skip_link_is_the_first_link_and_targets_main(pages):

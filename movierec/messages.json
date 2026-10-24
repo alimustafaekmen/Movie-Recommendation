@@ -20,31 +20,31 @@
     "tr": "Bilinmiyor"
   },
   "department.acting": {
-    "en": "Actor",
-    "tr": "Oyuncu"
+    "en": "Acting",
+    "tr": "Oyunculuk"
   },
   "department.art": {
-    "en": "Art director",
-    "tr": "Sanat Yönetmeni"
+    "en": "Art",
+    "tr": "Sanat yönetimi"
   },
   "department.camera": {
-    "en": "Cinematographer",
-    "tr": "Görüntü Yönetmeni"
+    "en": "Camera",
+    "tr": "Görüntü yönetimi"
   },
   "department.costume_make_up": {
     "en": "Costume and make-up",
-    "tr": "Kostüm ve Makyaj"
+    "tr": "Kostüm ve makyaj"
   },
   "department.crew": {
     "en": "Crew",
     "tr": "Ekip"
   },
   "department.directing": {
-    "en": "Director",
-    "tr": "Yönetmen"
+    "en": "Directing",
+    "tr": "Yönetmenlik"
   },
   "department.editing": {
-    "en": "Editor",
+    "en": "Editing",
     "tr": "Kurgu"
   },
   "department.lighting": {
@@ -52,8 +52,8 @@
     "tr": "Işık"
   },
   "department.production": {
-    "en": "Producer",
-    "tr": "Yapımcı"
+    "en": "Production",
+    "tr": "Yapım"
   },
   "department.sound": {
     "en": "Sound",
@@ -61,11 +61,11 @@
   },
   "department.visual_effects": {
     "en": "Visual effects",
-    "tr": "Görsel Efekt"
+    "tr": "Görsel efekt"
   },
   "department.writing": {
-    "en": "Writer",
-    "tr": "Senarist"
+    "en": "Writing",
+    "tr": "Senaryo"
   },
   "error.bad_request": {
     "en": "The request could not be processed. Please try again.",
@@ -77,7 +77,7 @@
   },
   "error.home": {
     "en": "Back to home",
-    "tr": "Ana Sayfaya Dön"
+    "tr": "Ana sayfaya dön"
   },
   "error.method_not_allowed": {
     "en": "This address cannot be used this way.",
@@ -133,11 +133,11 @@
   },
   "header.search_label": {
     "en": "Search films",
-    "tr": "Film Ara"
+    "tr": "Film ara"
   },
   "header.search_placeholder": {
     "en": "Search films...",
-    "tr": "Film Ara..."
+    "tr": "Film ara..."
   },
   "header.skip_link": {
     "en": "Skip to content",
@@ -169,7 +169,7 @@
   },
   "lists.favorites": {
     "en": "Films I like",
-    "tr": "Beğendiğim Filmler"
+    "tr": "Beğendiğim filmler"
   },
   "lists.favorites_empty": {
     "en": "You have not liked any films yet.",
@@ -177,7 +177,7 @@
   },
   "lists.heading": {
     "en": "My film lists",
-    "tr": "Kişisel Film Listelerim"
+    "tr": "Kişisel film listelerim"
   },
   "lists.load_error": {
     "en": "Your lists cannot be shown right now. Please reload the page.",
@@ -217,7 +217,7 @@
   },
   "lists.watchlist": {
     "en": "To watch later",
-    "tr": "Daha Sonra İzleyeceklerim"
+    "tr": "Daha sonra izleyeceklerim"
   },
   "lists.watchlist_empty": {
     "en": "Your watchlist has no films yet.",
@@ -229,11 +229,11 @@
   },
   "movie.cast": {
     "en": "Main cast",
-    "tr": "Başlıca Oyuncular"
+    "tr": "Başlıca oyuncular"
   },
   "movie.default_title": {
     "en": "Film details",
-    "tr": "Film Detayı"
+    "tr": "Film detayı"
   },
   "movie.directors.one": {
     "en": "Director",
@@ -249,7 +249,7 @@
   },
   "movie.in_watchlist": {
     "en": "On your watchlist",
-    "tr": "İzleme listende"
+    "tr": "İzleme listenizde"
   },
   "movie.like": {
     "en": "Like",
@@ -269,11 +269,11 @@
   },
   "movie.no_poster": {
     "en": "No poster",
-    "tr": "Poster Bulunamadı"
+    "tr": "Poster bulunamadı"
   },
   "movie.no_title": {
     "en": "No title",
-    "tr": "Başlık Yok"
+    "tr": "Başlık yok"
   },
   "movie.no_trailer": {
     "en": "No trailer was found for this film.",
@@ -293,7 +293,7 @@
   },
   "movie.similar": {
     "en": "Similar films",
-    "tr": "Benzer Filmler"
+    "tr": "Benzer filmler"
   },
   "movie.trailer": {
     "en": "Trailer",
@@ -329,11 +329,11 @@
   },
   "person.birthday": {
     "en": "Born",
-    "tr": "Doğum Tarihi"
+    "tr": "Doğum tarihi"
   },
   "person.deathday": {
     "en": "Died",
-    "tr": "Ölüm Tarihi"
+    "tr": "Ölüm tarihi"
   },
   "person.filmography": {
     "en": "Filmography",
@@ -341,7 +341,7 @@
   },
   "person.homepage": {
     "en": "Website",
-    "tr": "Web Sitesi"
+    "tr": "Web sitesi"
   },
   "person.known_for": {
     "en": "Known for: {label}",
@@ -361,7 +361,7 @@
   },
   "person.no_photo": {
     "en": "No photo",
-    "tr": "Fotoğraf Yok"
+    "tr": "Fotoğraf yok"
   },
   "person.not_found_actor": {
     "en": "No actor named '{name}' was found.",
@@ -377,7 +377,7 @@
   },
   "person.read_more": {
     "en": "Read more",
-    "tr": "Devamını Oku"
+    "tr": "Devamını oku"
   },
   "person.role_actor": {
     "en": "Actor",
@@ -544,15 +544,15 @@
     "tr": "Lütfen bir film adı girin."
   },
   "warning.invalid_number": {
-    "en": "The rating or year is not a valid number. Please use digits only.",
+    "en": "The rating or year is not a valid number. Please enter numbers only.",
     "tr": "Geçersiz puan veya yıl formatı girildi. Lütfen sadece sayı kullanın."
   },
   "warning.less_known": {
-    "en": "No film has enough votes; showing less-known films.",
+    "en": "No film has enough votes; showing lesser-known films.",
     "tr": "Yeterli oy sayısına sahip film bulunamadı; daha az bilinen filmler listeleniyor."
   },
   "warning.less_known_similar": {
-    "en": "We found no widely voted films similar to '{title}'. Showing less-known films instead.",
+    "en": "We found no widely voted films similar to '{title}'. Showing lesser-known films instead.",
     "tr": "'{title}' için çok fazla oy almış popüler benzer film bulamadık. Daha az bilinen filmleri listeliyoruz."
   },
   "warning.movie_not_found": {

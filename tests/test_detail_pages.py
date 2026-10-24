@@ -156,9 +156,9 @@ def test_movie_page_sections_are_h2_and_only_cards_have_h3(client, details, monk
         "Özet",
         "Türler",
         "Yönetmen",
-        "Başlıca Oyuncular",
+        "Başlıca oyuncular",
         "Fragman",
-        "Benzer Filmler",
+        "Benzer filmler",
     ]
     assert {tag.get("class") for tag in Page(body).all("h3")} == {"movie-card-title"}
 
@@ -226,7 +226,7 @@ def test_person_and_genre_links_keep_plus_signs_and_spaces(
 def test_movie_page_links_the_cast_list(client, details, monkeypatch):
     _patch_movie(details, monkeypatch, cast_list=CAST[:12], cast="Somebody Else")
 
-    section = _section(body_text(client.get("/movie/155")), "Başlıca Oyuncular")
+    section = _section(body_text(client.get("/movie/155")), "Başlıca oyuncular")
 
     assert texts(section, "a", "link") == CAST[:12]
 
@@ -241,7 +241,7 @@ def test_movie_page_genres_are_tags_and_people_are_plain_name_links(client, deta
     assert Page(_section(body, "Türler")).all("ul", **{"class": "tag-list"})
     for heading, names in (
         ("Yönetmen", movie["directors"]),
-        ("Başlıca Oyuncular", movie["cast_list"]),
+        ("Başlıca oyuncular", movie["cast_list"]),
     ):
         section = _section(body, heading)
         # Names in a row (base.css underlines them), not tags or pills.
@@ -254,13 +254,13 @@ def test_movie_page_without_cast_has_no_cast_section(client, details, monkeypatc
 
     page = Page(body_text(client.get("/movie/155")))
 
-    assert "Başlıca Oyuncular" not in texts(page, "h2")
+    assert "Başlıca oyuncular" not in texts(page, "h2")
 
 
 def test_similar_movies_use_the_shared_card_grid(client, details):
     similar = details.get_movie_details(155, "tr")["similar_movies"]
 
-    section = _section(body_text(client.get("/movie/155")), "Benzer Filmler")
+    section = _section(body_text(client.get("/movie/155")), "Benzer filmler")
     page = Page(section)
 
     assert page.all("ul", **GRID)
@@ -287,12 +287,12 @@ def test_person_page_role_comes_from_the_page_type(client, monkeypatch):
 
 
 def test_person_page_adds_a_different_known_for_label_as_a_second_line(client, monkeypatch):
-    _patch_person(monkeypatch, {**DIRECTOR, "known_for_label": "Senarist"})
+    _patch_person(monkeypatch, {**DIRECTOR, "known_for_label": "Senaryo"})
 
     body = body_text(client.get("/director/Christopher+Nolan"))
 
     assert texts(body, "p", "person-role") == ["Yönetmen"]
-    assert texts(body, "p", "person-known-for") == ["Tanındığı alan: Senarist"]
+    assert texts(body, "p", "person-known-for") == ["Tanındığı alan: Senaryo"]
 
 
 def test_person_page_without_a_known_for_label_shows_only_the_role(person_client):
@@ -361,7 +361,7 @@ def test_person_page_lists_the_known_dates_and_homepage(person_client, monkeypat
 
     body = body_text(person_client.get("/actor/Christian+Bale"))
 
-    assert texts(body, "dt") == ["Doğum Tarihi", "Ölüm Tarihi", "Web Sitesi"]
+    assert texts(body, "dt") == ["Doğum tarihi", "Ölüm tarihi", "Web sitesi"]
     assert texts(body, "dd") == [
         "30 Ocak 1974 (Haverfordwest, Wales, UK)",
         "01 Şubat 2050",
@@ -379,7 +379,7 @@ def test_person_page_shows_a_long_biography_in_full_behind_a_details_element(
     page = Page(body_text(person_client.get("/actor/Christian+Bale")))
 
     [details] = page.find("details")
-    assert texts(details, "summary") == ["Devamını Oku"]
+    assert texts(details, "summary") == ["Devamını oku"]
     assert details.text.endswith(BIOGRAPHY_TAIL)
     assert "Bruce Wayne" in page.text
 

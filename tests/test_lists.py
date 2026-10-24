@@ -38,8 +38,8 @@ def test_my_lists_renders_both_sections_empty(client):
 
     assert response.status_code == 200
     body = response.get_data(as_text=True)
-    assert "Beğendiğim Filmler" in body
-    assert "Daha Sonra İzleyeceklerim" in body
+    assert "Beğendiğim filmler" in body
+    assert "Daha sonra izleyeceklerim" in body
     assert "Henüz beğendiğiniz bir film bulunmuyor." in body
     assert "İzleme listenizde henüz bir film bulunmuyor." in body
     page = Page(body)
@@ -78,9 +78,9 @@ def test_my_lists_headings_are_one_h1_and_an_h2_per_list(client):
     [h1] = page.find("h1")
     assert "page-title" in h1.classes
     assert [(heading.tag, heading.text) for heading in headings] == [
-        ("h1", "Kişisel Film Listelerim"),
-        ("h2", "Beğendiğim Filmler"),
-        ("h2", "Daha Sonra İzleyeceklerim"),
+        ("h1", "Kişisel film listelerim"),
+        ("h2", "Beğendiğim filmler"),
+        ("h2", "Daha sonra izleyeceklerim"),
         ("h2", "Beğendiklerinize göre"),
     ]
     # Plain headings; my_lists.js adds only the collapse chevron.

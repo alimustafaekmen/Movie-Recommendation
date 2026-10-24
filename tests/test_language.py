@@ -242,7 +242,7 @@ def test_the_header_is_turkish_on_a_turkish_page(client):
         "Açık temaya geç",
     )
     [search] = page.find("input", name="search_query")
-    assert search.attrs["placeholder"] == "Film Ara..."
+    assert search.attrs["placeholder"] == "Film ara..."
 
 
 def test_a_flash_message_closes_with_a_button_named_in_the_page_language(client):

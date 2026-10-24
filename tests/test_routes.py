@@ -40,7 +40,7 @@ def test_unknown_path_returns_turkish_404(client):
 @pytest.mark.parametrize(
     ("lang", "heading", "message", "home"),
     [
-        ("tr", "Sayfa bulunamadı", "Aradığınız sayfa bulunamadı.", "Ana Sayfaya Dön"),
+        ("tr", "Sayfa bulunamadı", "Aradığınız sayfa bulunamadı.", "Ana sayfaya dön"),
         ("en", "Page not found", "The page you are looking for was not found.", "Back to home"),
     ],
 )

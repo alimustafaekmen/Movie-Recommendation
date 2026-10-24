@@ -274,7 +274,7 @@
     white-space: pre-line;
 }
 
-/* "Devamını Oku" reads like the name links. */
+/* "Read more" reads like the name links. */
 .person-biography summary {
     display: inline-block;
     margin-top: 0.5rem;

@@ -421,7 +421,7 @@ def test_find_person_prefers_the_requested_department(fake):
 
 @pytest.mark.parametrize(
     ("department", "label"),
-    [("Directing", "Yönetmen"), ("Costume & Make-Up", "Kostüm ve Makyaj")],
+    [("Directing", "Yönetmenlik"), ("Costume & Make-Up", "Kostüm ve makyaj")],
 )
 def test_person_known_for_another_department_gets_a_turkish_label(fake, department, label):
     fake.routes["/search/person"] = FakeResponse(PERSON_SEARCH)
@@ -1187,7 +1187,7 @@ def test_person_pages_name_dataset_films_by_their_dataset_title(fake, client):
 
 @pytest.mark.parametrize(
     ("person_type", "lang", "label"),
-    [("actor", "tr", "Yönetmen"), ("actor", "en", "Director"), ("director", "en", None)],
+    [("actor", "tr", "Yönetmenlik"), ("actor", "en", "Directing"), ("director", "en", None)],
 )
 def test_known_for_is_named_when_it_is_another_role(fake, person_type, lang, label):
     fake.routes["/search/person"] = FakeResponse({"results": [{"id": 3894}]})
