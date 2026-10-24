@@ -19,8 +19,8 @@ jobs:
         with:
           python-version: "3.12"
           cache: pip
-          cache-dependency-path: requirements*.lock
-      - run: pip install --require-hashes -r requirements-dev.lock
+          cache-dependency-path: requirements*.lock.txt
+      - run: pip install --require-hashes -r requirements-dev.lock.txt
       - run: ruff check .
       - run: ruff format --check .
       # The Kaggle CSVs are not in the repo, so the tests use tests/fixtures/dataset/.

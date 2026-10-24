@@ -14,14 +14,14 @@ def _pins(path):
     return {name.lower(): version for name, version in PIN.findall(text)}
 
 
-# A pin bumped in a .txt file without regenerating its lockfile (README, Dependencies)
-# would change nothing that CI or the Docker image installs.
+# A pin bumped in requirements.txt or requirements-dev.txt without regenerating its lockfile
+# (README, Dependencies) would change nothing that CI or the Docker image installs.
 @pytest.mark.parametrize(
     ("source", "lockfile"),
     [
-        ("requirements.txt", "requirements.lock"),
-        ("requirements-dev.txt", "requirements-dev.lock"),
-        ("requirements.txt", "requirements-dev.lock"),
+        ("requirements.txt", "requirements.lock.txt"),
+        ("requirements-dev.txt", "requirements-dev.lock.txt"),
+        ("requirements.txt", "requirements-dev.lock.txt"),
     ],
 )
 def test_every_pin_is_in_the_lockfile(source, lockfile):

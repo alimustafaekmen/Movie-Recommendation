@@ -166,7 +166,7 @@ Python 3.12 ve iki Kaggle CSV dosyası gerekir.
 
    ```bash
    python -m venv .venv && source .venv/bin/activate
-   pip install --require-hashes -r requirements.lock
+   pip install --require-hashes -r requirements.lock.txt
    python app.py
    ```
 
@@ -184,19 +184,21 @@ Betik Kaggle filmlerini korur ve 2016'dan bu yana her yayın yılından, en az 1
 
 **Docker.** Önce Kaggle CSV dosyalarını `dataset/` klasörüne koyun, kullanıyorsanız yenilenmiş kataloğu da çekin, çünkü imaj onları içine kopyalar. Bu dosyalarla derlenen imaj TMDb verisi içerir, bu yüzden onu hiçbir registry'ye göndermeyin. Sonra `docker compose up --build` komutu uygulamayı gunicorn ile http://localhost:5001 adresinde açar. Konteyner yetkisiz bir kullanıcıyla, sağlık kontrolüyle ve Linux yetkileri olmadan çalışır. Dosya sistemi, bellekteki `/tmp` dışında salt okunurdur ve yalnızca bu bilgisayardan erişilebilir.
 
-**Bağımlılıklar.** `requirements.txt` ve `requirements-dev.txt`, projenin doğrudan kullandığı paketleri kesin sürümleriyle listeler. `requirements.lock` ve `requirements-dev.lock` ise bağımlılıkları dahil her paketi hash değerleriyle sabitler; böylece pip, kilitlenenden farklı bir dosyayı reddeder. CI ve Docker imajı kurulumu bu kilit dosyalarından yapar. Bir `.txt` dosyası değiştikten sonra ikisini de [uv](https://docs.astral.sh/uv/) ile yeniden üretin:
+**Bağımlılıklar.** `requirements.txt` ve `requirements-dev.txt`, projenin doğrudan kullandığı paketleri kesin sürümleriyle listeler. CI ve Docker imajı kurulumu `requirements.lock.txt` ve `requirements-dev.lock.txt` dosyalarından yapar; bu kilit dosyaları bağımlılıkları dahil her paketi kesin sürümü ve hash değerleriyle sabitler. Bugün yapılan kurulumla iki yıl sonra yapılan kurulum aynı dosyaları alır ve pip, kilitlenenden farklı bir dosyayı reddeder. Adların `.txt` ile bitmesi, GitHub'ın kilit dosyalarını okuyup içlerindeki her paket için güvenlik uyarısı vermesini sağlar. `requirements.txt` veya `requirements-dev.txt` değiştikten sonra iki kilit dosyasını da [uv](https://docs.astral.sh/uv/) ile yeniden üretin:
 
 ```bash
-uv pip compile --universal --python-version 3.12 --generate-hashes --exclude-newer 14d requirements.txt -o requirements.lock
-uv pip compile --universal --python-version 3.12 --generate-hashes --exclude-newer 14d requirements-dev.txt -o requirements-dev.lock
+uv pip compile --universal --python-version 3.12 --generate-hashes --exclude-newer 14d requirements.txt -o requirements.lock.txt
+uv pip compile --universal --python-version 3.12 --generate-hashes --exclude-newer 14d requirements-dev.txt -o requirements-dev.lock.txt
 ```
 
 `--universal` her platformun hash değerlerini tutar, böylece aynı dosyalar macOS'ta ve Linux imajında çalışır. `--exclude-newer 14d` iki haftadan yeni sürümleri dışarıda bırakır.
 
+Dependabot yalnızca kilitli bir paketi veya sabitlenmiş bir GitHub Action'ı etkileyen bir güvenlik uyarısı yayımlandığında pull request açar; rutin sürüm yükseltmesi önermez. Böyle bir pull request'te CI başarısız olursa (genellikle düzeltme daha yeni bir bağımlılık istediği için pip kurulumu), iki kilit dosyasını da o dalda yukarıdaki komutlarla yeniden üretin. Güvenlik düzeltmesi çoğunlukla iki haftadan yenidir; bu yüzden orada `--exclude-newer 14d` seçeneğini çıkarın ve birleştirmeden önce düzeltilmiş sürümün iki kilit dosyasında da bulunduğunu kontrol edin. Büyük sürüm yükseltmeleri ile `Dockerfile` içindeki Python taban imajı ve pip sürümü elle güncellenir.
+
 ## Testler
 
 ```bash
-pip install --require-hashes -r requirements-dev.lock
+pip install --require-hashes -r requirements-dev.lock.txt
 ruff check . && ruff format --check .
 pytest --cov
 node --test "tests/js/*.test.mjs"

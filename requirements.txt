@@ -1,4 +1,4 @@
-# Packages the app imports, pinned exactly. requirements.lock pins their own dependencies
+# Packages the app imports, pinned exactly. requirements.lock.txt pins their own dependencies
 # too, with hashes; CI and the Docker image install from it. README shows how to regenerate it.
 
 # Web

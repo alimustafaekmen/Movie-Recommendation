@@ -1,36 +1,27 @@
-# Monthly, one grouped pull request per ecosystem. A release must be two weeks old first.
-# Security updates come separately, as soon as an advisory is published.
+# Security updates only: the project is not updated on a schedule. A limit of 0 turns off
+# version updates, and Dependabot opens a pull request only for a security advisory, one per
+# ecosystem. If CI fails on it (usually pip install, when the fix needs a newer dependency),
+# regenerate both lockfiles on its branch with the README commands (Dependencies) but without
+# --exclude-newer 14d, since the fix is usually younger than that, and check that both still
+# have the fixed version. Major upgrades are done by hand.
 version: 2
 updates:
-  # Bumps the exact pins in requirements*.txt; regenerate the lockfiles in the same pull
-  # request (README, Dependencies), or tests/test_requirements.py fails.
   - package-ecosystem: pip
     directory: /
     schedule:
       interval: monthly
-    cooldown:
-      default-days: 14
+    open-pull-requests-limit: 0
     groups:
-      pip:
+      pip-security:
+        applies-to: security-updates
         patterns: ["*"]
-
-  # CI runs Python 3.12, so the image only takes patch releases.
-  - package-ecosystem: docker
-    directory: /
-    schedule:
-      interval: monthly
-    cooldown:
-      default-days: 14
-    ignore:
-      - dependency-name: python
-        update-types: ["version-update:semver-major", "version-update:semver-minor"]
 
   - package-ecosystem: github-actions
     directory: /
     schedule:
       interval: monthly
-    cooldown:
-      default-days: 14
+    open-pull-requests-limit: 0
     groups:
-      actions:
+      actions-security:
+        applies-to: security-updates
         patterns: ["*"]
