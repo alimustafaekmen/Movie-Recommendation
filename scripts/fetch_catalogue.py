@@ -3,7 +3,7 @@
 The films are the ids of the Kaggle set plus, for each release year from FIRST_YEAR on,
 the PER_YEAR most-voted films with at least MIN_VOTES_THRESHOLD votes. Every film is
 fetched on the same day, so their vote counts and popularity can be compared. A full run
-makes about 9,000 requests and takes under 10 minutes. It needs TMDB_API_KEY in .env.
+makes about 15,000 requests and takes about 15 minutes. It needs TMDB_API_KEY in .env.
 
 The files land in dataset/refreshed/, which git ignores; DATASET_DIR=dataset/refreshed
 points the app at them. TMDb's terms allow keeping the data for at most 6 months, so run
