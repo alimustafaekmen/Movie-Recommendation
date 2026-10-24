@@ -36,11 +36,19 @@
         }
     });
 
+    // Text as the server compares Turkish titles (name_key in movierec/search_filters.py):
+    // no case, no accents, punctuation as spaces. "Başlangıç" -> "baslangic"; \u0131 is the
+    // dotless "ı", which has no accent to drop.
+    const fold = (text) => text.normalize('NFKD').replace(/\p{M}/gu, '').toLowerCase()
+        .replaceAll('\u0131', 'i').replace(/[^\p{L}\p{N}]+/gu, ' ').trim();
+
     // The suggestion lists are large, so each is fetched when one of its inputs is first focused.
     // A failed fetch (offline, an error status, a body that is not a list) is tried again on the
     // next focus; the suggestions are optional, so typing works without them meanwhile.
+    // A title whose film has a Turkish title comes as [title, Turkish title].
     document.querySelectorAll('datalist[data-src]').forEach((list) => {
         const inputs = document.querySelectorAll(`input[list="${list.id}"]`);
+        let turkishTitles = [];
         const listen = (on) => inputs.forEach((input) => {
             if (on) {
                 input.addEventListener('focus', load);
@@ -56,12 +64,39 @@
                 if (!Array.isArray(names)) {
                     throw new TypeError('Expected a list of names');
                 }
-                list.replaceChildren(...names.filter((name) => typeof name === 'string').map((name) => new Option(name)));
+                const options = [];
+                turkishTitles = [];
+                names.forEach((name) => {
+                    const [title, turkish] = Array.isArray(name) ? name : [name];
+                    if (typeof title !== 'string') {
+                        return;
+                    }
+                    const option = new Option(title);
+                    options.push(option);
+                    if (typeof turkish === 'string') {
+                        turkishTitles.push({ option, turkish, titleKey: fold(title), turkishKey: fold(turkish) });
+                    }
+                });
+                list.replaceChildren(...options);
             } catch {
                 listen(true);
             }
         }
         listen(true);
+
+        // The browser lists the options whose value or label holds the typed text. An option
+        // found by its Turkish title shows that title as its label, so the visitor sees why it
+        // is there; every other option shows its title alone.
+        inputs.forEach((input) => input.addEventListener('input', () => {
+            const typed = fold(input.value);
+            turkishTitles.forEach(({ option, turkish, titleKey, turkishKey }) => {
+                if (typed && turkishKey.includes(typed) && !titleKey.includes(typed)) {
+                    option.label = turkish;
+                } else {
+                    option.removeAttribute('label');
+                }
+            });
+        }));
     });
 
     // Tabs as in the WAI-ARIA tabs pattern: one tab stop, arrow keys, Home and End move

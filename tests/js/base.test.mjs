@@ -91,6 +91,10 @@ function loadPage({ found = {}, byId = {}, fetch = async () => ({ ok: false, sta
       constructor(text) {
         this.text = text;
       }
+
+      removeAttribute(name) {
+        delete this[name];
+      }
     },
     setTimeout: (fn, ms) => {
       timers.set(nextTimer, { fn, ms });
@@ -163,7 +167,12 @@ test('a failed suggestion fetch is tried again on the next focus', async () => {
 test('an error status or a body that is not a list of names is tried again', async () => {
   const unavailable = () => ({ ok: false, status: 503, json: async () => ({ status: 'error' }) });
   const notJson = () => ({ ok: true, status: 200, json: async () => JSON.parse('<!doctype html>') });
-  const page = suggestionPage([unavailable, notJson, ok({ status: 'error' }), ok(['Heat', 7, null, 'Alien'])]);
+  const page = suggestionPage([
+    unavailable,
+    notJson,
+    ok({ status: 'error' }),
+    ok(['Heat', 7, null, [8, 'Sekiz'], ['Alien', 9]]),
+  ]);
 
   for (let focus = 0; focus < 4; focus++) {
     page.inputs[0].dispatch('focus');
@@ -186,6 +195,31 @@ test('a focus while the suggestions load does not fetch them twice', async () =>
 
   assert.equal(page.requests.length, 1);
   assert.deepEqual(names(page.list), ['Heat']);
+});
+
+test('an option shows its Turkish title while only that title holds the typed text', async () => {
+  const page = suggestionPage([ok(['Heat', ['Inception', 'Başlangıç'], ['The Two Towers', 'İki Kule']])]);
+  page.inputs[0].dispatch('focus');
+  await settle();
+  const labels = () => page.list.childNodes.map((option) => option.label ?? null);
+  const type = (input, value) => {
+    input.value = value;
+    input.dispatch('input');
+  };
+
+  assert.deepEqual(names(page.list), ['Heat', 'Inception', 'The Two Towers']);
+  assert.deepEqual(labels(), [null, null, null]);
+
+  // Case and accents aside, as the server compares Turkish titles.
+  type(page.inputs[0], 'BAŞLAN');
+  assert.deepEqual(labels(), [null, 'Başlangıç', null]);
+  type(page.inputs[1], 'iki');
+  assert.deepEqual(labels(), [null, null, 'İki Kule']);
+  // The title holds the text itself, so the option needs no second name.
+  type(page.inputs[1], 'incep');
+  assert.deepEqual(labels(), [null, null, null]);
+  type(page.inputs[0], '');
+  assert.deepEqual(labels(), [null, null, null]);
 });
 
 // --- The home page's search forms ---
