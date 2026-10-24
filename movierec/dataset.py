@@ -22,8 +22,12 @@ MOVIE_COLUMNS = [
     "runtime",
 ]
 CREDIT_COLUMNS = ["movie_id", "cast", "crew"]
+# The Turkish title, when it differs from the title. Only the catalogue that
+# scripts/fetch_catalogue.py writes has it; without the column every film's is "".
+OPTIONAL_MOVIE_COLUMNS = ["title_tr"]
 # Stand-ins for empty cells: "[]" for the JSON list columns, "" for text.
 TEXT_DEFAULTS = {
+    "title_tr": "",
     "overview": "",
     "genres": "[]",
     "keywords": "[]",
@@ -47,7 +51,12 @@ def _read_csvs(movies_path: str, credits_path: str) -> tuple[pd.DataFrame, pd.Da
     if not os.path.exists(credits_path):
         raise FileNotFoundError(f"Credits CSV not found: {credits_path}")
 
-    movies = pd.read_csv(movies_path, usecols=MOVIE_COLUMNS)
+    header = pd.read_csv(movies_path, nrows=0).columns
+    optional = [column for column in OPTIONAL_MOVIE_COLUMNS if column in header]
+    movies = pd.read_csv(movies_path, usecols=MOVIE_COLUMNS + optional)
+    for column in OPTIONAL_MOVIE_COLUMNS:
+        if column not in movies:
+            movies[column] = ""
     credits = pd.read_csv(credits_path, usecols=CREDIT_COLUMNS)
     movies = _keep_numeric_ids(movies, "id")
     credits = _keep_numeric_ids(credits, "movie_id")
@@ -96,7 +105,7 @@ def _preprocess(movies: pd.DataFrame, credits: pd.DataFrame) -> pd.DataFrame:
     df["vote_count"] = pd.to_numeric(df["vote_count"], errors="coerce").fillna(0).astype(int)
     df["popularity"] = pd.to_numeric(df["popularity"], errors="coerce").fillna(0.0)
     df["runtime"] = pd.to_numeric(df["runtime"], errors="coerce").fillna(0).astype(int)
-    for column in ("title", "overview", "director", "tagline", "cast"):
+    for column in ("title", "title_tr", "overview", "director", "tagline", "cast"):
         df[column] = df[column].astype(str)
 
     return df.drop(columns=["crew"])

@@ -42,6 +42,12 @@ TIDEKEEPER = {
             {"id": 3, "name": "Sam Reyes", "job": "Director", "department": "Directing"},
         ],
     },
+    "translations": {
+        "translations": [
+            {"iso_639_1": "de", "data": {"title": "Die Uhr des Gezeitenwächters"}},
+            {"iso_639_1": "tr", "data": {"title": "Gelgit Bekçisinin Saati", "overview": ""}},
+        ]
+    },
 }
 # A new film whose page on TMDb is still mostly empty.
 PAPER_MOONS = {
@@ -57,6 +63,8 @@ PAPER_MOONS = {
     "genres": [],
     "keywords": {"keywords": []},
     "credits": {"cast": [], "crew": []},
+    # TMDb gives its Turkish title the same as the English one.
+    "translations": {"translations": [{"iso_639_1": "tr", "data": {"title": " paper MOONS "}}]},
 }
 
 
@@ -114,7 +122,7 @@ def test_a_details_answer_becomes_rows_of_the_kaggle_csvs():
     movie = fetch_catalogue.movie_row(TIDEKEEPER)
     credit = fetch_catalogue.credit_row(TIDEKEEPER)
 
-    assert list(movie) == MOVIE_COLUMNS
+    assert list(movie) == [*MOVIE_COLUMNS, "title_tr"]
     assert list(credit) == CREDIT_COLUMNS
     assert movie["id"] == credit["movie_id"] == 101
     # Kaggle stores genres, keywords, cast and crew as JSON lists of objects.
@@ -129,6 +137,25 @@ def test_a_details_answer_becomes_rows_of_the_kaggle_csvs():
         {"id": 1, "name": "Mira Holt", "job": "Director"},
         {"id": 3, "name": "Sam Reyes", "job": "Director"},
     ]
+    assert movie["title_tr"] == "Gelgit Bekçisinin Saati"
+
+
+@pytest.mark.parametrize(
+    "translations",
+    [
+        None,
+        {"translations": []},
+        {"translations": [{"iso_639_1": "de", "data": {"title": "Die Uhr"}}]},
+        {"translations": [{"iso_639_1": "tr", "data": {"title": ""}}]},
+        {"translations": [{"iso_639_1": "tr", "data": None}]},
+        {"translations": [{"iso_639_1": "tr", "data": {"title": "The Tidekeeper's Clock "}}]},
+        {"translations": "broken"},
+    ],
+)
+def test_the_turkish_title_is_kept_only_when_tmdb_has_a_different_one(translations):
+    movie = {**TIDEKEEPER, "translations": translations}
+
+    assert fetch_catalogue.movie_row(movie)["title_tr"] == ""
 
 
 def test_the_written_catalogue_loads_like_the_kaggle_files(tmp_path):
@@ -140,6 +167,7 @@ def test_the_written_catalogue_loads_like_the_kaggle_files(tmp_path):
     assert list(movies.index) == [101, 102]
     film = movies.loc[101]
     assert film["title"] == "The Tidekeeper's Clock"
+    assert film["title_tr"] == "Gelgit Bekçisinin Saati"
     assert film["overview"] == TIDEKEEPER["overview"]
     assert film["tagline"] == "Time turns with the tide."
     assert film["genre_list"] == ["Drama", "Science Fiction"]
@@ -152,6 +180,7 @@ def test_the_written_catalogue_loads_like_the_kaggle_files(tmp_path):
     assert (film["popularity"], film["runtime"]) == (33.5, 118)
     sparse = movies.loc[102]
     assert (sparse["year"], sparse["runtime"], sparse["tagline"]) == (0, 0, "")
+    assert sparse["title_tr"] == ""
     assert (sparse["genre_list"], sparse["directors"], sparse["cast"]) == ([], [], "")
     assert (out / "fetched_on.txt").read_text() == "2026-10-22\n"
     # Every file was renamed into place; no temp file is left.
@@ -238,7 +267,7 @@ def test_a_run_fetches_each_film_once_and_drops_the_ones_tmdb_no_longer_has(run,
     ]
     for _, params in movie_calls:
         assert params["language"] == "en-US"
-        assert params["append_to_response"] == "credits,keywords"
+        assert params["append_to_response"] == "credits,keywords,translations"
     out = tmp_path / "out"
     df = load_movies(str(out / "tmdb_5000_movies.csv"), str(out / "tmdb_5000_credits.csv"))
     assert df["id"].tolist() == [101, 102, 103]

@@ -46,7 +46,7 @@ KAGGLE_MOVIES_CSV = REPO / "dataset" / "tmdb_5000_movies.csv"
 OUT_DIR = REPO / "dataset" / "refreshed"
 # Films per /discover/movie page, set by TMDb.
 PAGE_SIZE = 20
-DETAILS_PARAMS = {"language": "en-US", "append_to_response": "credits,keywords"}
+DETAILS_PARAMS = {"language": "en-US", "append_to_response": "credits,keywords,translations"}
 WORKERS = 6
 # Across all workers; well under TMDb's limit of about 50 a second.
 REQUESTS_PER_SECOND = 20
@@ -175,8 +175,25 @@ def to_json(items: list[dict], keys: tuple[str, ...]) -> str:
     return json.dumps(kept, ensure_ascii=False, separators=(",", ":"))
 
 
+def turkish_title(movie: dict) -> str:
+    """Return the Turkish title of a details answer, or "" when TMDb has none or the same one."""
+    title = tmdb.text(movie.get("title"))
+    translations = tmdb.records(tmdb.record(movie.get("translations")).get("translations"))
+    for translation in translations:
+        if translation.get("iso_639_1") == "tr":
+            turkish = tmdb.text(tmdb.record(translation.get("data")).get("title")).strip()
+            if turkish.casefold() != title.strip().casefold():
+                return turkish
+            return ""
+    return ""
+
+
 def movie_row(movie: dict) -> dict:
-    """Return the movies-CSV row of a details answer with credits and keywords appended."""
+    """Return the movies-CSV row of a details answer with its appended fields.
+
+    The last column, title_tr, is not in the Kaggle files; movierec.dataset reads it when
+    it is there.
+    """
     keywords = tmdb.records(tmdb.record(movie.get("keywords")).get("keywords"))
     return {
         "id": movie.get("id"),
@@ -190,6 +207,7 @@ def movie_row(movie: dict) -> dict:
         "popularity": tmdb.number(movie.get("popularity")),
         "tagline": tmdb.text(movie.get("tagline")),
         "runtime": int(tmdb.number(movie.get("runtime"))),
+        "title_tr": turkish_title(movie),
     }
 
 
@@ -217,7 +235,9 @@ def write_atomic(path: Path, text: str) -> None:
 
 def write_catalogue(out: Path, movies: list[dict], fetched_on: date) -> None:
     """Write the movies and credits CSVs that movierec.dataset reads, and the fetch date."""
-    movies_df = pd.DataFrame([movie_row(movie) for movie in movies], columns=MOVIE_COLUMNS)
+    movies_df = pd.DataFrame(
+        [movie_row(movie) for movie in movies], columns=[*MOVIE_COLUMNS, "title_tr"]
+    )
     credits_df = pd.DataFrame([credit_row(movie) for movie in movies], columns=CREDIT_COLUMNS)
     out.mkdir(parents=True, exist_ok=True)
     write_atomic(out / "tmdb_5000_movies.csv", movies_df.to_csv(index=False, lineterminator="\n"))

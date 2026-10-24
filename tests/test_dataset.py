@@ -4,7 +4,7 @@ import pandas as pd
 import pytest
 from conftest import FIXTURE_DATASET_DIR, KAGGLE_DATASET_DIR
 
-from movierec.dataset import parse_name_list
+from movierec.dataset import load_movies, parse_name_list
 
 CREW = '[{"job": "Producer", "name": "A"}, {"job": "Director", "name": "B"}]'
 CO_DIRECTED = (
@@ -23,6 +23,16 @@ def test_parse_name_list():
 @pytest.mark.parametrize("raw", ["", "[]", None, math.nan, "{broken", '[{"job": "Director"}]'])
 def test_parse_name_list_empty_or_invalid(raw):
     assert parse_name_list(raw, job="Director") == []
+
+
+def test_a_catalogue_without_turkish_titles_reads_them_as_empty():
+    # Like the Kaggle files, the fixture has no title_tr column.
+    df = load_movies(
+        str(FIXTURE_DATASET_DIR / "tmdb_5000_movies.csv"),
+        str(FIXTURE_DATASET_DIR / "tmdb_5000_credits.csv"),
+    )
+
+    assert (df["title_tr"] == "").all()
 
 
 @pytest.mark.real_dataset
