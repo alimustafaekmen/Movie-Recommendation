@@ -97,7 +97,7 @@ Puan 10'a bölünür. Popülerlik, benzer filmlerdeki gibi log(1 + x) olarak al�
 
 ### Başlık araması
 
-Büyük küçük harf fark etmeksizin tam eşleşen başlık kazanır. Aksi halde uygulama, yazım hatalarına izin veren bulanık eşleştirmeyle en yakın başlığı seçer. Bunun için thefuzz `WRatio` kullanılır ve 100 üzerinden en az 75 puan gerekir. Aranan ifadenin yarısından kısa bir başlık, yalnızca ifade o başlığın bütün kelimelerini içeriyorsa sayılır. Bu yüzden "Godfather 2" araması *Her* değil *The Godfather* filmini bulur. Aynı adı taşıyan birden çok film varsa en çok oy alan seçilir.
+Büyük küçük harf fark etmeksizin tam eşleşen başlık kazanır. Aksi halde uygulama, yazım hatalarına izin veren bulanık eşleştirmeyle en yakın başlığı seçer. Bunun için thefuzz `WRatio` kullanılır ve 100 üzerinden en az 75 puan gerekir. Aranan ifadenin yarısından kısa bir başlık, yalnızca ifade o başlığın bütün kelimelerini içeriyorsa sayılır. Bu yüzden "Godfather 2" araması *Her* değil *The Godfather* filmini bulur. Aynı adı taşıyan birden çok film varsa en çok oy alan seçilir. Yenilenmiş katalog her filmin TMDb'deki Türkçe adını da tutar, bu yüzden büyük küçük harf ve Türkçe karakterler fark etmeksizin "baslangic" araması da *Inception* filmini bulur.
 
 ### Diller
 
@@ -140,17 +140,17 @@ Sayıların gösterdikleri ve göstermedikleri:
 - Hibrit, biraz uyumdan ve yaklaşık 37 puanlık kapsamdan vazgeçip daha tanınmış filmler önerir (191'e karşı ortanca 1.350 oy). Logaritmik ölçekleme bu ortancayı bilerek düşürür. Doğrusal ölçeklemeyle 1.553 olurdu.
 - Kapsam farkının büyük kısmı 100 oy sınırından gelir. Filmlerin yalnızca 3.162'sinin (%65,8) 100 ya da daha fazla oyu vardır ve hibrit bunların %94'üne ulaşır.
 
-2026-10-22'de çekilen yenilenmiş katalogda (8.966 film, veri setinin ortancası 780 oy), `DATASET_DIR=dataset/refreshed python scripts/evaluate.py` ile:
+2026-10-24'te çekilen yenilenmiş katalogda (8.968 film, veri setinin ortancası 780 oy), `DATASET_DIR=dataset/refreshed python scripts/evaluate.py` ile:
 
 | Yöntem | Tür örtüşmesi | Aynı yönetmen | Ortak başrol oyuncusu | Seri filmlerini bulma | Katalog kapsamı | Ortanca oy |
 |---|---|---|---|---|---|---|
-| Saf kosinüs | 0.758 | %5,5 | %3,68 | %64,8 | %99,3 | 764 |
-| MovieRec (hibrit) | 0.761 | %5,0 | %3,66 | %62,0 | %81,4 | 3.593 |
-| En çok oy alanlar (taban çizgisi) | 0.160 | %0,1 | %0,71 | %0,4 | %0,1 | 33.218 |
+| Saf kosinüs | 0.757 | %5,5 | %3,68 | %64,7 | %99,3 | 764 |
+| MovieRec (hibrit) | 0.760 | %4,9 | %3,66 | %61,9 | %81,4 | 3.593 |
+| En çok oy alanlar (taban çizgisi) | 0.160 | %0,1 | %0,71 | %0,4 | %0,1 | 33.239 |
 
 Bu sayılar TMDb API anahtarı olmadan yeniden üretilemez ve her yenilemede değişir.
 
-- Kapsam burada daha yüksektir, çünkü 8.966 filmin 8.274'ünün (%92,3) 100 ya da daha fazla oyu vardır.
+- Kapsam burada daha yüksektir, çünkü 8.968 filmin 8.276'sının (%92,3) 100 ya da daha fazla oyu vardır.
 - Ortanca oylar daha yüksektir, çünkü TMDb'deki oy sayıları bugün 2016 tarihli Kaggle verisindekinden çok daha fazladır.
 - Seri filmlerini bulma daha düşüktür, çünkü 1.362 başlangıç filminin seri filmi vardır, bu yüzden başlık grupları daha büyük ve daha gürültülüdür.
 
@@ -180,7 +180,7 @@ Geliştirme sunucusu yalnızca bu bilgisayardan erişilebilir (`HOST=127.0.0.1`)
 python scripts/fetch_catalogue.py
 ```
 
-Betik Kaggle filmlerini korur ve 2016'dan bu yana her yayın yılından, en az 100 oyu olan en çok oy almış 400 filmi ekler. Yine de `dataset/` içindeki Kaggle dosyalarına ihtiyaç duyar, çünkü onların film numaralarından başlar. 2026-10-22'deki çalıştırma, 2026'ya kadar 8.966 film (18 MB) yazdı. Bunun için yaklaşık 9.200 istek attı ve yaklaşık 8 dakika sürdü. `--limit 50 --out /tmp/trial` mevcut kataloğa dokunmadan önce küçük bir deneme yapar. Dosyalar, git'in yok saydığı `dataset/refreshed/` klasörüne yazılır. Onları kullanmak için `.env` dosyasında `DATASET_DIR=dataset/refreshed` ayarlayın. TMDb'nin koşulları verisinin en fazla 6 ay saklanmasına izin verir, bu yüzden betiği en az 6 ayda bir yeniden çalıştırın.
+Betik Kaggle filmlerini korur ve 2016'dan bu yana her yayın yılından, en az 100 oyu olan en çok oy almış 400 filmi ekler. Yine de `dataset/` içindeki Kaggle dosyalarına ihtiyaç duyar, çünkü onların film numaralarından başlar. 2026-10-24'teki çalıştırma, 2026'ya kadar 8.968 film (18 MB) yazdı. Bunun için yaklaşık 9.200 istek attı ve yaklaşık 8 dakika sürdü. `--limit 50 --out /tmp/trial` mevcut kataloğa dokunmadan önce küçük bir deneme yapar. Dosyalar, git'in yok saydığı `dataset/refreshed/` klasörüne yazılır. Onları kullanmak için `.env` dosyasında `DATASET_DIR=dataset/refreshed` ayarlayın. TMDb'nin koşulları verisinin en fazla 6 ay saklanmasına izin verir, bu yüzden betiği en az 6 ayda bir yeniden çalıştırın.
 
 **Docker.** Önce Kaggle CSV dosyalarını `dataset/` klasörüne koyun, kullanıyorsanız yenilenmiş kataloğu da çekin, çünkü imaj onları içine kopyalar. Bu dosyalarla derlenen imaj TMDb verisi içerir, bu yüzden onu hiçbir registry'ye göndermeyin. Sonra `docker compose up --build` komutu uygulamayı gunicorn ile http://localhost:5001 adresinde açar. Konteyner yetkisiz bir kullanıcıyla, sağlık kontrolüyle ve Linux yetkileri olmadan çalışır. Dosya sistemi, bellekteki `/tmp` dışında salt okunurdur ve yalnızca bu bilgisayardan erişilebilir.
 
@@ -260,8 +260,8 @@ tests/                  pytest testleri. tests/js/ içinde node:test testleri va
 ## Sınırlamalar
 
 - Katalog bir anlık görüntüdür. Kaggle dosyaları 2016 sonunda biter. Yenilenmiş katalog çekildiği günde biter, bu yüzden o günden sonra çıkan filmler bir sonraki çekime kadar yer almaz. Öneriler yalnızca yüklenen filmlerden gelir.
-- 2016 öncesindeki filmler dengesiz bir seçkidir. Yalnızca Kaggle veri setinden gelirler ve bu set, TMDb'de 2015'in en çok oy alan 400 filminin yalnızca 134'ünü içerir. 2016'dan itibaren her yılın en çok oy alan 400 filmi vardır, ama 2026'da şimdilik yalnızca 248 film vardır, çünkü 100 oya ulaşan film henüz bu kadardır.
-- Popülerlik, TMDb'nin çekim günündeki ilgiyi ölçen değeridir, kalıcı ünü göstermez. O gün sinemada olan filmler öne çıkar ve listeler her yenilemede değişir. Yenilenmiş katalogda 2025 ve 2026 filmleri filmlerin %7,2'sidir, ama benzer film listelerindeki yerlerin %11,8'ini alır.
+- 2016 öncesindeki filmler dengesiz bir seçkidir. Yalnızca Kaggle veri setinden gelirler ve bu set, TMDb'de 2015'in en çok oy alan 400 filminin yalnızca 134'ünü içerir. 2016'dan itibaren her yılın en çok oy alan 400 filmi vardır, ama 2026'da şimdilik yalnızca 250 film vardır, çünkü 100 oya ulaşan film henüz bu kadardır.
+- Popülerlik, TMDb'nin çekim günündeki ilgiyi ölçen değeridir, kalıcı ünü göstermez. O gün sinemada olan filmler öne çıkar ve listeler her yenilemede değişir. Yenilenmiş katalogda 2025 ve 2026 filmleri filmlerin %7,2'sidir, ama benzer film listelerindeki yerlerin %12,3'ünü alır.
 - Yenilenmiş katalog için kendi TMDb API anahtarınız gerekir. TMDb'nin koşulları onun en fazla 6 ay saklanmasına izin verir, bu yüzden en az bu sıklıkla yeniden çekilmesi gerekir.
 - Öneriler yalnızca içeriğe dayanır, kullanıcılardan öğrenmez.
 - Bilgisi az olan filmler, çoğunlukla aynı türden filmlerin listesini alır. Casablanca'ya II. Dünya Savaşı filmleri yerine romantik filmler, Forrest Gump'a romantik komediler gelir.

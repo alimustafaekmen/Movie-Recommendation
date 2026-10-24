@@ -97,7 +97,7 @@ Rating is divided by 10. Popularity is taken as log(1 + x), as in similar movies
 
 ### Title search
 
-An exact title match wins, ignoring case. Otherwise the app takes the closest title by fuzzy matching, which allows for typos. It uses thefuzz `WRatio` and needs a score of at least 75 out of 100. A title shorter than half the query only counts if the query contains all its words. So "Godfather 2" finds *The Godfather*, not *Her*. When several films share a title, the most-voted one wins.
+An exact title match wins, ignoring case. Otherwise the app takes the closest title by fuzzy matching, which allows for typos. It uses thefuzz `WRatio` and needs a score of at least 75 out of 100. A title shorter than half the query only counts if the query contains all its words. So "Godfather 2" finds *The Godfather*, not *Her*. When several films share a title, the most-voted one wins. The refreshed catalogue also holds each film's Turkish title from TMDb, so a search for "baslangic" finds *Inception*, ignoring case and accents.
 
 ### Languages
 
@@ -140,17 +140,17 @@ What the numbers show and what they do not:
 - The hybrid trades a little agreement and about 37 percentage points of coverage for better-known films (median 1,350 votes against 191). Log scaling lowers that median on purpose. With linear scaling it is 1,553.
 - Most of the coverage gap comes from the 100-vote floor. Only 3,162 films (65.8%) have 100 votes or more, and the hybrid reaches 94% of them.
 
-On the refreshed catalogue fetched on 2026-10-22 (8,966 films, dataset median 780 votes), with `DATASET_DIR=dataset/refreshed python scripts/evaluate.py`:
+On the refreshed catalogue fetched on 2026-10-24 (8,968 films, dataset median 780 votes), with `DATASET_DIR=dataset/refreshed python scripts/evaluate.py`:
 
 | Method | Genre overlap | Same director | Shared lead actor | Series recall | Catalog coverage | Median votes |
 |---|---|---|---|---|---|---|
-| Pure cosine | 0.758 | 5.5% | 3.68% | 64.8% | 99.3% | 764 |
-| MovieRec (hybrid) | 0.761 | 5.0% | 3.66% | 62.0% | 81.4% | 3,593 |
-| Most-voted baseline | 0.160 | 0.1% | 0.71% | 0.4% | 0.1% | 33,218 |
+| Pure cosine | 0.757 | 5.5% | 3.68% | 64.7% | 99.3% | 764 |
+| MovieRec (hybrid) | 0.760 | 4.9% | 3.66% | 61.9% | 81.4% | 3,593 |
+| Most-voted baseline | 0.160 | 0.1% | 0.71% | 0.4% | 0.1% | 33,239 |
 
 These numbers cannot be reproduced without a TMDb API key, and they change with each refresh.
 
-- Coverage is higher here, because 8,274 films (92.3%) have 100 votes or more.
+- Coverage is higher here, because 8,276 films (92.3%) have 100 votes or more.
 - Median votes are higher because TMDb's vote counts today are much higher than in the 2016 Kaggle snapshot.
 - Series recall is lower, because 1,362 seeds have series films, so the title groups are bigger and noisier.
 
@@ -180,7 +180,7 @@ The dev server only listens on this computer (`HOST=127.0.0.1`). It uses port 50
 python scripts/fetch_catalogue.py
 ```
 
-The script keeps the Kaggle films and adds, for each release year since 2016, the 400 most-voted films that have at least 100 votes. It still needs the Kaggle files in `dataset/`, because it starts from their film ids. The run on 2026-10-22 wrote 8,966 films up to 2026 (18 MB) with about 9,200 requests in about 8 minutes. `--limit 50 --out /tmp/trial` makes a small trial run first without touching an existing catalogue. The files go to `dataset/refreshed/`, which git ignores. Set `DATASET_DIR=dataset/refreshed` in `.env` to use them. TMDb's terms allow keeping its data for at most 6 months, so run the script again at least every 6 months.
+The script keeps the Kaggle films and adds, for each release year since 2016, the 400 most-voted films that have at least 100 votes. It still needs the Kaggle files in `dataset/`, because it starts from their film ids. The run on 2026-10-24 wrote 8,968 films up to 2026 (18 MB) with about 9,200 requests in about 8 minutes. `--limit 50 --out /tmp/trial` makes a small trial run first without touching an existing catalogue. The files go to `dataset/refreshed/`, which git ignores. Set `DATASET_DIR=dataset/refreshed` in `.env` to use them. TMDb's terms allow keeping its data for at most 6 months, so run the script again at least every 6 months.
 
 **Docker.** Put the Kaggle CSVs in `dataset/` first, and fetch the refreshed catalogue if you use it, because the image copies them in. An image built with them holds TMDb data, so never push it to a registry. Then `docker compose up --build` serves the app with gunicorn at http://localhost:5001. The container runs as a non-root user with a health check and no Linux capabilities. Its file system is read-only apart from an in-memory `/tmp`, and only this computer can reach it.
 
@@ -260,8 +260,8 @@ tests/                  pytest suite. tests/js/ holds the node:test suite
 ## Limitations
 
 - The catalogue is a snapshot. The Kaggle files end in late 2016. The refreshed catalogue ends on the day it was fetched, so films released after that are missing until the next fetch. Recommendations only come from the films loaded.
-- The films before 2016 are an uneven selection. They come only from the Kaggle set, which has only 134 of TMDb's 400 most-voted 2015 films. From 2016 on, each year has its 400 most-voted films, but 2026 has only 248 so far, because no more have reached 100 votes.
-- Popularity is TMDb's trend score on the fetch day, not lasting fame. Films in cinemas on that day move up, and the lists change with each refresh. In the refreshed catalogue, 2025 and 2026 films are 7.2% of the films but get 11.8% of the places in similar-movie lists.
+- The films before 2016 are an uneven selection. They come only from the Kaggle set, which has only 134 of TMDb's 400 most-voted 2015 films. From 2016 on, each year has its 400 most-voted films, but 2026 has only 250 so far, because no more have reached 100 votes.
+- Popularity is TMDb's trend score on the fetch day, not lasting fame. Films in cinemas on that day move up, and the lists change with each refresh. In the refreshed catalogue, 2025 and 2026 films are 7.2% of the films but get 12.3% of the places in similar-movie lists.
 - The refreshed catalogue needs your own TMDb API key. TMDb's terms allow keeping it for at most 6 months, so it must be fetched again at least that often.
 - Recommendations use content only and do not learn from users.
 - Films with thin metadata get lists that mostly share their genres. Casablanca gets romances, not WWII films. Forrest Gump gets romantic comedies.
