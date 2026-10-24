@@ -33,8 +33,9 @@ def _log_request(response):
     if request.path.startswith("/static/") or request.path == "/health":
         return response
     elapsed_ms = (perf_counter() - g.start_time) * 1000
+    # %r: a decoded %0A in the address would otherwise start a fake log line.
     logger.info(
-        "%s %s %s (%.0f ms)",
+        "%s %r %s (%.0f ms)",
         request.method,
         request.full_path.rstrip("?"),
         response.status_code,

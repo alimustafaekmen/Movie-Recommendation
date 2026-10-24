@@ -118,4 +118,19 @@ def test_the_dev_server_logs_page_requests_only(app_module, caplog, path, logged
         app_module._start_timer()
         app_module._log_request(Response(status=200))
 
-    assert (f"GET {path} 200" in caplog.text) is logged
+    assert (f"GET '{path}' 200" in caplog.text) is logged
+
+
+def test_the_dev_server_logs_a_request_on_one_line(app_module, caplog):
+    # %0A in the address is a line break in request.path; printed as is, it would fake a
+    # second log line.
+    with (
+        app_module.app.test_request_context("/movie/1%0AGET /admin 200"),
+        caplog.at_level(logging.INFO),
+    ):
+        app_module._start_timer()
+        app_module._log_request(Response(status=200))
+
+    [record] = caplog.records
+    assert "\n" not in record.getMessage()
+    assert "GET '/movie/1\\nGET /admin 200' 200" in record.getMessage()
