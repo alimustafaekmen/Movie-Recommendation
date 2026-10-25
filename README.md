@@ -18,10 +18,10 @@ The demo is a static copy with results computed in advance. Its person pages hav
 ## Screenshots
 
 <p>
-  <a href="screenshots/home.jpg"><img src="screenshots/home.jpg" alt="Home page" width="49%"></a>
-  <a href="screenshots/similar-movies.jpg"><img src="screenshots/similar-movies.jpg" alt="Films similar to Inception, in English" width="49%"></a>
-  <a href="screenshots/movie-page-dark.jpg"><img src="screenshots/movie-page-dark.jpg" alt="Movie page in the dark theme" width="49%"></a>
-  <a href="screenshots/my-lists.jpg"><img src="screenshots/my-lists.jpg" alt="Suggestions based on the favourites" width="49%"></a>
+  <a href="screenshots/en/home.jpg"><img src="screenshots/en/home.jpg" alt="Home page" width="49%"></a>
+  <a href="screenshots/en/similar-movies.jpg"><img src="screenshots/en/similar-movies.jpg" alt="Films similar to Inception" width="49%"></a>
+  <a href="screenshots/en/movie-page-dark.jpg"><img src="screenshots/en/movie-page-dark.jpg" alt="Movie page in the dark theme" width="49%"></a>
+  <a href="screenshots/en/my-lists.jpg"><img src="screenshots/en/my-lists.jpg" alt="Suggestions based on the favourites" width="49%"></a>
 </p>
 
 ## Features
