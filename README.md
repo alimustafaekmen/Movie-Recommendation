@@ -271,6 +271,7 @@ tests/                  pytest suite. tests/js/ holds the node:test suite
 - Filter search scales vote count linearly, unlike similar movies.
 - Biographies come from TMDb in the page's language only. A person without a Turkish biography gets a "no biography" note on the Turkish page.
 - The lists need JavaScript. They belong to one browser on one device and disappear when its site data is cleared.
+- The app is made to run on your own computer. To put it on the internet, run it behind a reverse proxy such as nginx or Caddy that buffers whole requests and limits requests per visitor. Without one, a few slow connections can hold all of gunicorn's threads, and anyone can use up your TMDb key's quota.
 
 ## License and credits
 

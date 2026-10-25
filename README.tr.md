@@ -271,6 +271,7 @@ tests/                  pytest testleri. tests/js/ içinde node:test testleri va
 - Filtreli arama, benzer filmlerden farklı olarak oy sayısını doğrusal ölçekler.
 - Biyografiler TMDb'den yalnızca sayfanın dilinde gelir. Türkçe biyografisi olmayan bir kişinin Türkçe sayfasında biyografi yerine bunu belirten bir not görünür.
 - Listeler JavaScript gerektirir. Tek bir cihazdaki tek bir tarayıcıya aittir ve site verileri silinince kaybolur.
+- Uygulama kendi bilgisayarınızda çalışmak için yapılmıştır. İnternete açmak için onu, istekleri tamamen alıp ileten ve ziyaretçi başına istek sayısını sınırlayan nginx ya da Caddy gibi bir ters vekil sunucunun (reverse proxy) arkasında çalıştırın. Bu olmadan birkaç yavaş bağlantı gunicorn'un tüm iş parçacıklarını meşgul edebilir ve herkes TMDb anahtarınızın kotasını tüketebilir.
 
 ## Lisans ve kaynaklar
 
