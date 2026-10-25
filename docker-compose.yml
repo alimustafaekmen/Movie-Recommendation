@@ -5,7 +5,10 @@ services:
     build: .
     container_name: movierec
     restart: unless-stopped
-    # Only this computer can reach the app; a reverse proxy would publish it further.
+    # Only this computer can reach the app. Publishing it further needs a reverse proxy
+    # (nginx, Caddy) that reads whole requests before passing them on, since four clients
+    # that never finish their headers hold all of gunicorn's threads, and that limits
+    # requests per IP to /api/, /movie/, /actor/ and /director/, which call TMDb on your key.
     ports:
       - "127.0.0.1:5001:5001"
     # Without a .env the app still starts: no TMDb data, and a random key for the session.
