@@ -1,4 +1,5 @@
-"""The lockfiles match the exact pins in the requirements files they were made from."""
+"""The lockfiles match the exact pins in the requirements files they were made from, and the
+Docker image installs nothing whose hash is unchecked."""
 
 import re
 
@@ -29,3 +30,14 @@ def test_every_pin_is_in_the_lockfile(source, lockfile):
 
     for name, version in _pins(source).items():
         assert locked.get(name) == version, name
+
+
+def test_every_pip_install_in_the_dockerfile_checks_hashes():
+    # The build runs as root, so one unchecked download could change everything it installs.
+    lines = (REPO / "Dockerfile").read_text(encoding="utf-8").splitlines()
+    instructions = "\n".join(line for line in lines if not line.lstrip().startswith("#"))
+    installs = re.findall(r"pip install [^&\n]*", instructions.replace("\\\n", " "))
+
+    assert installs
+    for install in installs:
+        assert "--require-hashes" in install, install

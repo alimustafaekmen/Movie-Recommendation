@@ -9,9 +9,12 @@ ENV PYTHONDONTWRITEBYTECODE=1 \
 WORKDIR /app
 
 # Dependencies first, so a code change does not reinstall them. The pip that comes with the
-# base image has known advisories, so a newer pinned pip installs them.
+# base image has known advisories, so a newer pinned pip installs them. The build runs as
+# root, so every download, that pip included, is checked against its hash.
 COPY requirements.lock.txt .
-RUN pip install pip==26.2.1 \
+RUN echo 'pip==26.2.2 --hash=sha256:fd7f4dfa8190e014013b9f08f3e973f4e4c26ffd179a204895533a7254813a70' > /tmp/pip.txt \
+    && pip install --require-hashes -r /tmp/pip.txt \
+    && rm /tmp/pip.txt \
     && pip install --require-hashes -r requirements.lock.txt
 
 # The code and the dataset CSVs stay owned by root: the app only reads them, so its user
