@@ -268,7 +268,7 @@ tests/                  pytest testleri. tests/js/ içinde node:test testleri va
 - Bazı seriler yalnızca başlıklarıyla birbirine bağlıdır. Saw'un listesinde altı devam filminin hiçbiri yoktur.
 - Tanınmış filmler bilerek öne çıkarılır, bu yüzden listeler Kaggle kataloğunun yalnızca yaklaşık %62'sine (yenilenmiş kataloğun %83'üne) ulaşır.
 - İngilizce olmayan filmlere nadiren kendi dillerinde öneri gelir. İngilizce olmayan 298 filmde önerilerin %2,9'u filmin özgün diliyle aynı dildedir.
-- Filtreli arama, benzer filmlerden farklı olarak oy sayısını hâlâ doğrusal ölçekler.
+- Filtreli arama, benzer filmlerden farklı olarak oy sayısını doğrusal ölçekler.
 - Biyografiler TMDb'den yalnızca sayfanın dilinde gelir. Türkçe biyografisi olmayan bir kişinin Türkçe sayfasında biyografi yerine bunu belirten bir not görünür.
 - Listeler JavaScript gerektirir. Tek bir cihazdaki tek bir tarayıcıya aittir ve site verileri silinince kaybolur.
 

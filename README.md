@@ -268,7 +268,7 @@ tests/                  pytest suite. tests/js/ holds the node:test suite
 - Some series are linked only by their titles. Saw's list has none of its six sequels.
 - Well-known films are favoured on purpose, so the lists reach only about 62% of the Kaggle catalogue (83% of the refreshed one).
 - Non-English films rarely get picks in their own language. For the 298 non-English films, 2.9% of the picks share the film's original language.
-- Filter search still scales vote count linearly, unlike similar movies.
+- Filter search scales vote count linearly, unlike similar movies.
 - Biographies come from TMDb in the page's language only. A person without a Turkish biography gets a "no biography" note on the Turkish page.
 - The lists need JavaScript. They belong to one browser on one device and disappear when its site data is cleared.
 
