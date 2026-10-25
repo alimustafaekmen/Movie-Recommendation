@@ -99,6 +99,18 @@ def test_an_invalid_port_stops_the_dev_server_with_a_clear_message():
     assert "PORT must be a number from 1 to 65535, not 'abc'" in result.stderr
 
 
+# Werkzeug's debugger runs Python for whoever opens an error page; only its PIN guards it.
+@pytest.mark.parametrize("host", ["0.0.0.0", "192.0.2.10", "::"])
+def test_debug_mode_is_refused_on_an_address_other_computers_can_reach(host):
+    result = _run(
+        "import runpy; runpy.run_path('app.py', run_name='__main__')", HOST=host, FLASK_DEBUG="1"
+    )
+
+    assert result.returncode == 1
+    assert "Traceback" not in result.stderr
+    assert "FLASK_DEBUG=1 only works with HOST=127.0.0.1" in result.stderr
+
+
 @pytest.mark.parametrize("raw", ["0", "70000", "-1", "5001.0", "٥٠٠١", "5 001"])
 def test_port_must_be_a_plain_number_in_range(app_module, raw):
     with pytest.raises(SystemExit, match="PORT must be a number from 1 to 65535"):

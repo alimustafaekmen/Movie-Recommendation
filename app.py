@@ -48,6 +48,10 @@ if __name__ == "__main__":
     host = os.getenv("HOST", "127.0.0.1")
     port = _port(os.getenv("PORT", "").strip() or "5001")
     debug = os.getenv("FLASK_DEBUG") == "1"
+    # The debugger runs Python for whoever opens an error page, and its trusted-host check
+    # reads the Host header a client sets, so only this computer may reach it.
+    if debug and host not in ("127.0.0.1", "localhost", "::1"):
+        sys.exit("FLASK_DEBUG=1 only works with HOST=127.0.0.1")
     # Werkzeug logs every request (static files included) with its own timestamp and colour
     # codes, and Flask prints a banner; the two hooks above log page requests instead.
     logging.getLogger("werkzeug").setLevel(logging.WARNING)
