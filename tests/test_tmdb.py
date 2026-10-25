@@ -263,17 +263,17 @@ def test_poster_is_cached_only_after_an_answer(fake, cold_details, monkeypatch):
 
 
 def test_missing_poster_is_cached_after_not_found(fake, cold_details):
-    assert cold_details.get_movie_poster_url(424242, "tr") is None
-    assert cold_details.get_movie_poster_url(424242, "tr") is None
-    assert fake.paths == ["/movie/424242"]
+    assert cold_details.get_movie_poster_url(155, "tr") is None
+    assert cold_details.get_movie_poster_url(155, "tr") is None
+    assert fake.paths == ["/movie/155"]
 
 
 def test_poster_cache_holds_the_whole_refreshed_catalogue_in_both_languages(fake, cold_details):
     # The refreshed catalogue has about 14,000 films.
-    _poster_routes(fake, [1])
+    _poster_routes(fake, [155])
     cold_details.poster_cache.update((f"filler-{n}", None) for n in range(29999))
 
-    assert cold_details.get_movie_poster_url(1, "tr") == _poster(1)
+    assert cold_details.get_movie_poster_url(155, "tr") == _poster(155)
     assert len(cold_details.poster_cache) == 30000 == POSTER_CACHE_LIMIT
 
 
@@ -299,44 +299,46 @@ def test_result_posters_are_fetched_in_parallel_in_card_order(slow, cold_details
     assert sorted(slow.paths) == sorted(f"/movie/{movie_id}" for movie_id in ids)
 
 
-def test_add_posters_fetches_each_uncached_id_once(fake, cold_details):
-    _poster_routes(fake, [1, 2])
-    cold_details.poster_cache.update({(3, "tr"): "/cached.jpg", (4, "tr"): None})
-    cards = [{"id": 1}, {"id": 3}, {"id": 1}, {"id": 4}, {"id": 2}]
+def test_add_posters_fetches_each_uncached_id_once(fake, cold_details, engine):
+    first, second, cached, no_poster = list(engine.row_of)[:4]
+    _poster_routes(fake, [first, second])
+    cold_details.poster_cache.update({(cached, "tr"): "/cached.jpg", (no_poster, "tr"): None})
+    cards = [{"id": movie_id} for movie_id in (first, cached, first, no_poster, second)]
 
     cold_details.add_posters(cards, "tr")
 
     assert [card["poster_url"] for card in cards] == [
-        _poster(1),
+        _poster(first),
         "https://image.tmdb.org/t/p/w342/cached.jpg",
-        _poster(1),
+        _poster(first),
         None,
-        _poster(2),
+        _poster(second),
     ]
-    assert sorted(fake.paths) == ["/movie/1", "/movie/2"]
+    assert sorted(fake.paths) == sorted([f"/movie/{first}", f"/movie/{second}"])
     assert cold_details.poster_cache == {
-        (1, "tr"): "/1.jpg",
-        (2, "tr"): "/2.jpg",
-        (3, "tr"): "/cached.jpg",
-        (4, "tr"): None,
+        (first, "tr"): f"/{first}.jpg",
+        (second, "tr"): f"/{second}.jpg",
+        (cached, "tr"): "/cached.jpg",
+        (no_poster, "tr"): None,
     }
 
 
-def test_one_failed_poster_lookup_leaves_the_others(fake, cold_details):
-    ids = list(range(1, 16))
+def test_one_failed_poster_lookup_leaves_the_others(fake, cold_details, engine):
+    ids = list(engine.row_of)[:15]
+    broken, missing = ids[6], ids[8]
     _poster_routes(fake, ids)
-    fake.routes["/movie/7"] = InvalidJsonResponse()
-    del fake.routes["/movie/9"]
+    fake.routes[f"/movie/{broken}"] = InvalidJsonResponse()
+    del fake.routes[f"/movie/{missing}"]
     cards = [{"id": movie_id} for movie_id in ids]
 
     cold_details.add_posters(cards, "tr")
 
     assert [card["poster_url"] for card in cards] == [
-        None if movie_id in (7, 9) else _poster(movie_id) for movie_id in ids
+        None if movie_id in (broken, missing) else _poster(movie_id) for movie_id in ids
     ]
     # A 404 is an answer (no poster); the broken one is tried again next time.
-    assert cold_details.poster_cache[(9, "tr")] is None
-    assert (7, "tr") not in cold_details.poster_cache
+    assert cold_details.poster_cache[(missing, "tr")] is None
+    assert (broken, "tr") not in cold_details.poster_cache
 
 
 def test_poster_lookups_stop_once_tmdb_fails(fake, cold_details):
@@ -1046,13 +1048,13 @@ def test_a_fetched_poster_is_used_even_when_the_cache_is_emptied_meanwhile(
     )
 
 
-def test_a_slow_tmdb_delays_the_posters_not_the_page(fake, cold_details, monkeypatch):
+def test_a_slow_tmdb_delays_the_posters_not_the_page(fake, cold_details, engine, monkeypatch):
     from movierec import movie_details as details_module
 
     slow = SlowSession(1.0)
     monkeypatch.setattr(tmdb, "_session", slow)
     monkeypatch.setattr(details_module, "POSTER_WAIT_SECONDS", 0.1)
-    ids = list(range(1, 13))
+    ids = list(engine.row_of)[:12]
     _poster_routes(slow, ids)
     cards = [{"id": movie_id} for movie_id in ids]
 
@@ -1064,9 +1066,9 @@ def test_a_slow_tmdb_delays_the_posters_not_the_page(fake, cold_details, monkeyp
     # The lookups under way still fill the cache for the next page; the queued ones are
     # dropped instead of piling more work on a slow TMDb.
     time.sleep(1.5)
-    assert sorted(cold_details.poster_cache) == [
+    assert sorted(cold_details.poster_cache) == sorted(
         (movie_id, "tr") for movie_id in ids[:POSTER_WORKERS]
-    ]
+    )
     assert len(slow.calls) == POSTER_WORKERS
 
 

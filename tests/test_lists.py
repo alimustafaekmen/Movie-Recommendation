@@ -239,6 +239,24 @@ def test_api_movies_looks_up_at_most_20_ids_outside_the_dataset(client, fake, co
     ]
 
 
+def test_ids_outside_the_dataset_never_push_catalogue_posters_out(client, fake, cold_details):
+    # Any visitor can send any id; a full poster cache is emptied, so random ids must not
+    # count towards it.
+    from movierec.movie_details import POSTER_CACHE_LIMIT
+
+    cold_details.poster_cache[(155, "tr")] = "/dk.jpg"
+    cold_details.poster_cache.update((f"filler-{n}", None) for n in range(POSTER_CACHE_LIMIT - 1))
+    unknown = list(range(900001, 900021))
+    for movie_id in unknown:
+        fake.routes[f"/movie/{movie_id}"] = FakeResponse({**TMDB_ONLY, "id": movie_id})
+
+    cards = _cards(client, ",".join(map(str, unknown)))
+    client.get("/movie/900001")
+
+    assert [card["id"] for card in cards] == unknown
+    assert cold_details.poster_cache[(155, "tr")] == "/dk.jpg"
+
+
 def test_api_movies_remembers_cards_and_unknown_ids_outside_the_dataset(client, fake, cold_details):
     fake.routes["/movie/999001"] = FakeResponse({**TMDB_ONLY, "poster_path": None})
 

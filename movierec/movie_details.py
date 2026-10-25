@@ -115,7 +115,7 @@ class MovieDetails:
     def _fetch_movie(
         self, movie_id: int, lang: str, *, strict: bool = False, **params
     ) -> dict | None:
-        """GET /movie/{id} in lang and remember its poster path; None if unavailable.
+        """GET /movie/{id} in lang and remember a dataset film's poster path; None if unavailable.
 
         strict raises TmdbUnavailableError instead when a configured TMDb fails.
         """
@@ -126,7 +126,11 @@ class MovieDetails:
                 raise
             return None
         # Only an actual answer is cached, so a network blip does not hide a poster
-        # until the next restart.
+        # until the next restart. Only dataset films are cached: any visitor can send any
+        # id, and random ones would otherwise fill the cache and empty it of the catalogue.
+        # Films outside the dataset have the list card cache.
+        if movie_id not in self.engine.row_of:
+            return data
         cache_key = (movie_id, lang)
         is_new_entry = cache_key not in self.poster_cache
         if is_new_entry and len(self.poster_cache) >= POSTER_CACHE_LIMIT:
