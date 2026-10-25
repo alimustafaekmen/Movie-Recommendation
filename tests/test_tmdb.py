@@ -250,6 +250,16 @@ def test_movie_details_during_an_outage_degrade_with_a_single_call(fake, cold_de
     assert fake.paths == ["/movie/155"]
 
 
+def test_urllib3_warnings_whose_url_holds_the_key_stay_out_of_the_log(caplog):
+    # urllib3 also warns with the full URL, api_key included, e.g. on a malformed header.
+    url = f"https://api.themoviedb.org/3/movie/1?api_key={FAKE_TMDB_KEY}"
+
+    with caplog.at_level(logging.DEBUG):
+        logging.getLogger("urllib3.connection").warning("Failed to parse headers (url=%s)", url)
+
+    assert FAKE_TMDB_KEY not in caplog.text
+
+
 def test_poster_is_cached_only_after_an_answer(fake, cold_details, monkeypatch):
     fake.routes["/movie/155"] = [requests.ConnectionError(), FakeResponse(DARK_KNIGHT_TR)]
 

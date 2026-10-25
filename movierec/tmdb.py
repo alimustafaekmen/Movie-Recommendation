@@ -11,8 +11,9 @@ from requests.adapters import HTTPAdapter
 from movierec.config import TMDB_API_BASE_URL, TMDB_API_KEY, TMDB_IMAGE_BASE_URL
 
 logger = logging.getLogger(__name__)
-# urllib3 logs request URLs, query string and api_key included, at DEBUG level.
-logging.getLogger("urllib3").setLevel(logging.WARNING)
+# urllib3 logs request URLs, query string and api_key included, at DEBUG level and in some
+# warnings, such as one about a malformed header.
+logging.getLogger("urllib3").setLevel(logging.ERROR)
 
 # A page makes several calls, so a stalled TMDb must fail fast. 3.05 is just over TCP's 3 s
 # retransmission window, as the requests docs advise for connect timeouts.
