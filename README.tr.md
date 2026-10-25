@@ -19,7 +19,7 @@ Demo, sonuçları önceden hesaplanmış statik bir kopyadır. Kişi sayfaların
 
 <p>
   <a href="screenshots/home.jpg"><img src="screenshots/home.jpg" alt="Ana sayfa" width="49%"></a>
-  <a href="screenshots/similar-movies.jpg"><img src="screenshots/similar-movies.jpg" alt="Inception için benzer filmler" width="49%"></a>
+  <a href="screenshots/similar-movies.jpg"><img src="screenshots/similar-movies.jpg" alt="Inception için benzer filmler, İngilizce" width="49%"></a>
   <a href="screenshots/movie-page-dark.jpg"><img src="screenshots/movie-page-dark.jpg" alt="Koyu temada film sayfası" width="49%"></a>
   <a href="screenshots/my-lists.jpg"><img src="screenshots/my-lists.jpg" alt="Beğenilere göre öneriler" width="49%"></a>
 </p>
