@@ -28,7 +28,7 @@ import numpy as np
 import pandas as pd
 
 REPO = Path(__file__).resolve().parents[1]
-METHODS = ("Pure cosine", "MovieRec (hybrid)", "Most-voted baseline")
+METHODS = ("Pure cosine", "MovieRec (re-ranked)", "Most-voted baseline")
 LEAD_ACTORS = 3
 SERIES_MIN_VOTES = 100  # Same floor as MIN_VOTES_THRESHOLD: lists rarely show films below it.
 SEQUEL_MARKS = {"ii", "iii", "iv", "v", "vi", "vii", "viii", "part"}
@@ -146,7 +146,7 @@ def evaluate(engine) -> dict:
 
 
 def _load():
-    # Same offline conditions as tests/snapshot_engine.py.
+    # Offline: no TMDb key, so the engine uses the dataset alone.
     os.environ["TMDB_API_KEY"] = ""
     sys.path.insert(0, str(REPO))
     from movierec.config import CREDITS_CSV, MOVIES_CSV
