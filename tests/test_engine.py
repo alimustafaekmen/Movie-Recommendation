@@ -390,6 +390,16 @@ def test_fuzzy_director_resolves(engine, query, director):
     assert warnings == [message("warning.director_fuzzy", query=query, name=director)]
 
 
+@pytest.mark.parametrize(
+    "query", ["Alfonso Cuaron", "ALFONSO CUARÓN", "alejandro gonzalez-inarritu"]
+)
+def test_a_director_typed_without_accents_or_punctuation_is_exact(engine, query):
+    results, warnings = engine.recommend_by_features(director_query=query)
+
+    assert results
+    assert warnings == []
+
+
 @pytest.mark.parametrize("query", ["Zzqx Qwerty", "John Smith"])
 def test_unknown_director_returns_nothing(engine, query):
     results, warnings = engine.recommend_by_features(

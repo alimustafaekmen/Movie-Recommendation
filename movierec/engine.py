@@ -83,6 +83,9 @@ class RecommendationEngine:
         self.all_movie_titles = sorted(df["title"].dropna().unique().tolist())
         self.title_suggestions = self._title_suggestions(df)
         self.all_director_names = sorted(df["directors"].explode().dropna().unique().tolist())
+        self._directors_by_key: dict[str, str] = {}
+        for name in self.all_director_names:
+            self._directors_by_key.setdefault(title_key(name), name)
         well_voted = df[df["vote_count"] >= MIN_VOTES_THRESHOLD]
         by_votes = well_voted.sort_values("vote_count", ascending=False, kind="stable")
         self._most_voted_movies = by_votes.head(POPULAR_CARD_COUNT)
@@ -417,6 +420,10 @@ class RecommendationEngine:
         for name in self.all_director_names:
             if name.casefold() == wanted:
                 return name, None
+        # "Alfonso Cuaron" names Alfonso Cuarón exactly; accents and punctuation do not count.
+        exact = self._directors_by_key.get(title_key(query))
+        if exact is not None:
+            return exact, None
         closest = self._find_best_match(query, self.all_director_names)
         if closest is not None and is_plausible_name(query, closest):
             return closest, message("warning.director_fuzzy", query=query, name=closest)
