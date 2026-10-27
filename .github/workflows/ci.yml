@@ -18,8 +18,8 @@ jobs:
         with:
           python-version: "3.12"
           cache: pip
-          cache-dependency-path: requirements*.lock.txt
-      - run: pip install --require-hashes -r requirements-dev.lock.txt
+          cache-dependency-path: requirements.lock.txt
+      - run: pip install --require-hashes -r requirements.lock.txt
       - run: ruff check .
       - run: ruff format --check .
       # Runs on tests/fixtures/dataset/; fails below the coverage in pyproject.toml.

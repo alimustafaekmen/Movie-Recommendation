@@ -1,9 +1,8 @@
-"""The lockfiles match the exact pins in the requirements files they were made from, and the
-Docker image installs nothing whose hash is unchecked."""
+"""The lockfile matches the exact pins in requirements.txt, and the Docker image installs
+nothing whose hash is unchecked."""
 
 import re
 
-import pytest
 from conftest import REPO
 
 PIN = re.compile(r"^([A-Za-z0-9._-]+)==(\S+)", re.MULTILINE)
@@ -15,20 +14,12 @@ def _pins(path):
     return {name.lower(): version for name, version in PIN.findall(text)}
 
 
-# A pin bumped in requirements.txt or requirements-dev.txt without regenerating its lockfile
-# (README, Dependencies) would change nothing that CI or the Docker image installs.
-@pytest.mark.parametrize(
-    ("source", "lockfile"),
-    [
-        ("requirements.txt", "requirements.lock.txt"),
-        ("requirements-dev.txt", "requirements-dev.lock.txt"),
-        ("requirements.txt", "requirements-dev.lock.txt"),
-    ],
-)
-def test_every_pin_is_in_the_lockfile(source, lockfile):
-    locked = _pins(lockfile)
+# A pin bumped in requirements.txt without regenerating the lockfile (README, Dependencies)
+# would change nothing that CI or the Docker image installs.
+def test_every_pin_is_in_the_lockfile():
+    locked = _pins("requirements.lock.txt")
 
-    for name, version in _pins(source).items():
+    for name, version in _pins("requirements.txt").items():
         assert locked.get(name) == version, name
 
 
