@@ -40,8 +40,8 @@ def test_a_browser_that_asks_for_no_language_gets_english(browser):
     assert _lang(browser.get("/")) == "en"
 
 
-# The first of Turkish or English in the browser's list wins; Werkzeug reads the list in
-# falling q order.
+# The first of Turkish or English in the browser's list wins, read in falling q order, with
+# regional tags counting as their language.
 @pytest.mark.parametrize(
     ("accept_language", "lang"),
     [
@@ -53,6 +53,10 @@ def test_a_browser_that_asks_for_no_language_gets_english(browser):
         ("de-DE,tr;q=0.5", "tr"),
         ("de-DE,en;q=0.7,tr;q=0.5", "en"),
         ("tr;q=0.5,en;q=0.8", "en"),
+        ("tr-TR,en;q=0.9", "tr"),
+        ("en-GB,tr;q=0.9", "en"),
+        ("tr_TR", "tr"),
+        ("tr;q=0,en;q=0.1", "en"),
         # A wildcard is no choice of Turkish.
         ("*", "en"),
         ("", "en"),

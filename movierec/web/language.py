@@ -26,9 +26,13 @@ def _pick_language() -> str:
     for value in (request.args.get("lang"), request.cookies.get(COOKIE_NAME)):
         if value in LANGUAGES:
             return value
-    # The first of the two in the browser's list, read in falling q order; a wildcard gives
-    # the first of LANGUAGES, English.
-    return request.accept_languages.best_match(LANGUAGES, default=DEFAULT_LANGUAGE)
+    # The first entry whose language is Turkish or English, in falling q order. best_match
+    # would prefer a later exact "en" over a regional "tr-TR". A wildcard is no choice.
+    for value, quality in request.accept_languages:
+        language = value.replace("_", "-").split("-")[0].casefold()
+        if quality > 0 and language in LANGUAGES:
+            return language
+    return DEFAULT_LANGUAGE
 
 
 def remember_language(response):
