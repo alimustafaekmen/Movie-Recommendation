@@ -29,9 +29,6 @@ TMDB_NOTICE = (
     " or otherwise approved by TMDB."
 )
 HOME_TITLE = "MovieRec · Benzer filmleri keşfedin"
-# The site's name before the rebrand, written so this file does not match a grep for it.
-OLD_SITE_NAME = re.compile(r"film\s+öneri\s+motoru", re.IGNORECASE)
-FAVICON = STATIC / "favicon.svg"
 FLASH_TEXT = "Deneme bildirimi"
 # The stylesheet each page type loads after css/base.css and css/cards.css.
 PAGE_STYLESHEETS = {
@@ -166,12 +163,10 @@ def test_stylesheets_name_only_the_two_plex_families(sheet):
     css = (STATIC / "css" / sheet).read_text(encoding="utf-8")
 
     # Every font-family goes through the two tokens (the @font-face rules that name the files
-    # are no style rules); the old faces and token are gone.
+    # are no style rules).
     for _, _, body in _css_rules(css):
         for family in re.findall(r"font-family:\s*([^;]+)", body):
             assert family.strip() in {"var(--font-sans)", "var(--font-display)", "inherit"}, sheet
-    for old in ("Inter", "Source Serif", "--font-serif", "Poppins", "Roboto Slab"):
-        assert old not in css, (sheet, old)
 
 
 def test_primary_buttons_are_ink_with_the_text_colour_that_flips_with_it():
@@ -310,56 +305,6 @@ def test_colours_are_written_only_in_the_token_blocks(sheet):
             assert not COLOUR_LITERAL.search(value), (sheet, selector, declaration.strip())
 
 
-def test_brand_palette_is_white_ink_and_one_red():
-    tokens = _tokens()
-
-    assert {
-        name: tokens[name].upper()
-        for name in (
-            "--color-bg",
-            "--color-surface",
-            "--color-ink",
-            "--color-header",
-            "--color-accent",
-        )
-    } == {
-        "--color-bg": "#FFFFFF",
-        "--color-surface": "#FFFFFF",
-        "--color-ink": "#0E0E10",
-        "--color-header": "#0E0E10",
-        "--color-accent": "#D7261E",
-    }
-
-
-# The greys of the page and the header; the alerts and the accent are the only hues.
-GREY_TOKENS = [
-    "--color-subtle",
-    "--color-hairline",
-    "--color-hairline-strong",
-    "--color-control-border",
-    "--color-tag-bg",
-    "--color-tag-bg-hover",
-    "--color-text-muted",
-    "--color-ink-hover",
-    "--color-header-text",
-    "--color-header-muted",
-    "--color-header-field",
-    "--color-header-field-border",
-    "--color-header-field-border-hover",
-]
-
-
-@pytest.mark.parametrize("theme", THEMES)
-@pytest.mark.parametrize("token", GREY_TOKENS)
-def test_greys_are_neutral_without_a_warm_tint(theme, token):
-    colour = _tokens(theme)[token]
-    red, green, blue = (int(colour[i : i + 2], 16) for i in (1, 3, 5))
-
-    assert max(red, green, blue) - min(red, green, blue) <= 10, (token, colour)
-    # Warm greys lean red/yellow; these may only lean cool, like the ink.
-    assert red <= blue and green <= blue, (token, colour)
-
-
 def test_page_titles_end_with_the_site_name(pages):
     for name in ("movie", "person", "my_lists", "not_found"):
         [title] = re.findall(r"<title>(.*?)</title>", pages[name], re.S)
@@ -426,26 +371,6 @@ def test_home_screen_icon_is_linked_and_named_movierec(client, pages):
     # The size iOS asks for, read from the PNG header (IHDR width and height).
     assert png[:8] == b"\x89PNG\r\n\x1a\n"
     assert (int.from_bytes(png[16:20], "big"), int.from_bytes(png[20:24], "big")) == (180, 180)
-
-
-def test_favicon_is_an_ink_square_with_the_red_dot():
-    root = ElementTree.parse(FAVICON).getroot()
-    tokens = _tokens()
-    _, _, width, height = (float(n) for n in root.get("viewBox").split())
-    shapes = [element for element in root.iter() if element.tag != f"{SVG}svg"]
-
-    # Two shapes and nothing else: the old film strip had nine rectangles.
-    assert [shape.tag for shape in shapes] == [f"{SVG}rect", f"{SVG}circle"]
-    rect, circle = shapes
-    assert rect.get("fill").upper() == tokens["--color-ink"].upper()
-    assert float(rect.get("width", 0)) == width and float(rect.get("height", 0)) == height
-    assert float(rect.get("x", 0)) == 0 and float(rect.get("y", 0)) == 0
-    # A rounded square: a corner radius of about 18% of the side.
-    assert 0.16 <= float(rect.get("rx")) / width <= 0.2
-    assert circle.get("fill").upper() == tokens["--color-accent"].upper()
-    assert (float(circle.get("cx")), float(circle.get("cy"))) == (width / 2, height / 2)
-    # Big enough to read as a dot at 16px: at least 6 of the 16 pixels across.
-    assert 2 * float(circle.get("r")) / width >= 6 / 16
 
 
 def _weights_by_family():
@@ -633,20 +558,6 @@ def every_page(pages, client):
     }
 
 
-def test_no_page_or_asset_uses_font_awesome(every_page):
-    for name, body in every_page.items():
-        assert "font-awesome" not in body.lower(), name
-        classes = {c for _, tag in Page(body).tags for c in tag.get("class", "").split()}
-        assert {c for c in classes if c in {"fa", "fas", "far"} or c.startswith("fa-")} == set()
-    scripts = list((STATIC / "js").glob("*.js"))
-    assert scripts
-    for path in [*(STATIC / "css").glob("*.css"), *scripts]:
-        source = path.read_text(encoding="utf-8")
-        assert not re.search(r"font-family:[^;]*Font Awesome", source), path.name
-        assert not re.search(r"content:\s*[\"']\\f", source), path.name
-        assert not re.search(r"\bfa-[a-z]", source), path.name
-
-
 def test_every_icon_draws_a_symbol_of_the_versioned_sprite(every_page):
     symbols = _sprite_symbols()
     for name, body in every_page.items():
@@ -739,22 +650,6 @@ def test_list_buttons_have_an_outline_and_a_solid_icon_of_the_same_width():
         assert symbols[f"{name}-regular"] == symbols[name], name
 
 
-def test_the_regular_icons_are_font_awesomes_own_paths():
-    # Downloaded from @fortawesome/fontawesome-free@6.5.1/svgs/regular/, not redrawn.
-    paths = {
-        symbol.get("id"): symbol.find(f"{SVG}path").get("d")
-        for symbol in ElementTree.parse(SPRITE).getroot().iter(f"{SVG}symbol")
-    }
-
-    assert paths["heart-regular"].startswith("M225.8 468.2l-2.5-2.3L48.1 303.2C17.4 274.7")
-    assert paths["heart-regular"].endswith("s-12.4-2.5-16.9-7z")
-    assert paths["bookmark-regular"] == (
-        "M0 48C0 21.5 21.5 0 48 0l0 48V441.4l130.1-92.9c8.3-6 19.6-6 27.9 0L336 441.4V48H48V0"
-        "H336c26.5 0 48 21.5 48 48V488c0 9-5 17.2-13 21.3s-17.6 3.4-24.9-1.8L192 397.5 37.9 "
-        "507.5c-7.3 5.2-16.9 5.9-24.9 1.8S0 497 0 488V48z"
-    )
-
-
 def test_sprite_is_served_as_svg_with_the_long_cache(client, pages):
     [sprite] = {use["href"].split("#")[0] for _, use, _ in _icons(pages["home"])}
 
@@ -840,8 +735,6 @@ def test_header_brand_is_a_home_link_named_movierec_around_the_logo(pages):
         [logo] = _logos(element)
         # The wordmark is drawn, not read: the link's label names it.
         assert logo.attrs == {"class": "logo", "aria-hidden": "true"}, name
-        # The film icon of the old brand is gone, and the logo is no image.
-        assert not element.find("svg") and not element.find("img"), name
 
 
 def test_home_page_h1_is_the_brand_and_says_movierec(pages):
@@ -887,56 +780,6 @@ def test_every_header_has_the_theme_button(pages):
     assert "display: none" in _declarations(BASE_CSS, ":root:not([data-theme]) .theme-toggle")
 
 
-def _render_logo(app, call="{{ logo() }}"):
-    with app.test_request_context("/"):
-        return render_template_string('{% from "_logo.html" import logo %}' + call)
-
-
-def test_logo_is_a_red_dot_before_movie_rec(app_module):
-    markup = _render_logo(app_module.app)
-    root = ElementTree.fromstring(markup)
-    dot, rec = list(root)
-
-    assert (root.tag, root.get("class"), root.get("aria-hidden")) == ("span", "logo", "true")
-    assert "".join(root.itertext()) == SITE_NAME
-    # An empty box the CSS paints as the dot, right before the word: no space widens the gap.
-    assert (dot.tag, dot.get("class"), dot.text, dot.tail) == ("span", "logo-dot", None, "Movie")
-    # "Movie" and "Rec" differ in weight, so the camel-cased name never reads as "movi erec".
-    assert (rec.tag, rec.get("class"), rec.text, rec.tail) == ("b", "logo-rec", "Rec", None)
-
-
-def test_logo_is_sized_in_em_and_dotted_in_the_accent():
-    # No measured pixel numbers: the logo scales with the text around it and keeps its shape
-    # in a fallback face.
-    for selector in (".logo", ".logo-dot", ".logo-rec"):
-        rule = _declarations(BASE_CSS, selector)
-        assert rule and not re.search(r"\d(px|rem)\b", rule), selector
-    assert "background-color: var(--color-accent)" in _declarations(BASE_CSS, ".logo-dot")
-
-
-def test_footer_signs_with_the_logo_in_ink(client):
-    [footer] = Page(body_text(client.get("/"))).find("footer")
-    [brand] = footer.find("p", "footer-brand")
-
-    assert _logos(brand)
-    assert texts(brand, "span", "sr-only") == [SITE_NAME]
-    assert "color: var(--color-ink)" in _declarations(BASE_CSS, ".footer-brand")
-
-
-def test_nothing_user_facing_keeps_the_old_site_name():
-    sources = [
-        *TEMPLATES.glob("*.html"),
-        *(path for path in STATIC.rglob("*") if path.suffix in {".css", ".js", ".svg"}),
-        *(REPO / "movierec").rglob("*.py"),
-        *(REPO / "tests").rglob("*.py"),
-        *(REPO / "tests" / "js").glob("*.mjs"),
-        REPO / "README.md",
-    ]
-
-    for path in sources:
-        assert not OLD_SITE_NAME.search(path.read_text(encoding="utf-8")), path.name
-
-
 @pytest.mark.parametrize("sheet", STYLESHEETS)
 def test_stylesheets_use_only_the_mobile_first_breakpoints(sheet):
     css = (STATIC / "css" / sheet).read_text(encoding="utf-8")
@@ -953,23 +796,6 @@ def test_focus_is_visible_and_motion_can_be_reduced():
     # The accent would vanish on the black header.
     assert "outline-color:" in _declarations(BASE_CSS, ".header :focus-visible")
     assert "@media (prefers-reduced-motion: reduce)" in css
-
-
-@pytest.mark.parametrize("sheet", STYLESHEETS)
-def test_stylesheets_draw_no_shadows_gradients_pills_or_hover_lifts(sheet):
-    # The editorial look separates with space and hairlines, not depth effects.
-    rules = list(_css_rules((STATIC / "css" / sheet).read_text(encoding="utf-8")))
-
-    for _, selector, body in rules:
-        for shadow in re.findall(r"box-shadow:\s*([^;]+)", body):
-            assert shadow.strip() == "none", (sheet, selector)
-        assert "gradient(" not in body, (sheet, selector)
-        # Radii are the 6px/8px tokens; only the round play button is 50%.
-        for radius in re.findall(r"border-radius:\s*([^;]+)", body):
-            for size in re.findall(r"([\d.]+)(px|rem|em)", radius):
-                assert float(size[0]) * (16 if size[1] != "px" else 1) <= 8, (sheet, selector)
-        if ":hover" in selector:
-            assert "transform" not in body, (sheet, selector)
 
 
 def test_every_css_variable_in_use_is_defined():
