@@ -11,26 +11,18 @@ from movierec.i18n import TMDB_LANGUAGES, format_runtime
 
 logger = logging.getLogger(__name__)
 
-# Any visitor can make the app look up arbitrary ids, so the poster cache is emptied once it
-# holds this many posters; that is simpler than LRU, and the whole catalogue still fits in both
-# languages (Kaggle's 4,803 films or the about 14,000 of a refreshed one).
+# Visitors choose the ids, so this caps the cache; the whole catalogue fits in both languages.
 POSTER_CACHE_LIMIT = 30000
-# List cards of films outside the dataset, emptied the same way. The ids are the visitor's
-# choice, so without it every list request would repeat its TMDb lookups.
+# List cards of films outside the dataset, emptied the same way.
 LIST_CARD_CACHE_LIMIT = 2000
-# Uncached posters are fetched this many at a time. The pool is shared by all requests, so
-# this caps the lookups in flight however many pages load at once: at 16 in parallel, TMDb
-# answered several times slower.
+# Shared by all requests, so it caps TMDb lookups in flight; at 16, TMDb answered slower.
 POSTER_WORKERS = 8
-# A page waits this long for its posters. A slow TMDb leaves the rest as placeholders; the
-# lookups under way still fill the cache for the next visit.
+# Posters still missing after this show as placeholders; their lookups still fill the cache.
 POSTER_WAIT_SECONDS = 5.0
 CAST_LIST_LIMIT = 12
-# The dataset joins cast names with ", ", which some names also contain ("Sammy Davis, Jr.").
+# Cast names are joined with ", ", which some names contain ("Sammy Davis, Jr.").
 _NAME_SUFFIXES = {"Jr.", "Jr", "Sr.", "Sr"}
-# Marks a poster cache miss. None is a cached "no poster"; one dict.get(key, _UNCACHED)
-# tells the two apart in a single step, so a concurrent clear() cannot fall between a
-# membership check and a read.
+# Sentinel: None = no poster, _UNCACHED = not fetched yet.
 _UNCACHED = object()
 
 
@@ -45,12 +37,9 @@ class MovieDetails:
         self.engine = engine
         # TMDb poster path (None when the film has none) per (movie id, language).
         self.poster_cache: dict[tuple[int, str], str | None] = {}
-        # List card per (movie id, language) of films outside the dataset; None when TMDb
-        # answered that it does not know the id or gave no title.
+        # List card per (movie id, language) of films outside the dataset; None if TMDb has none.
         self.list_card_cache: dict[tuple[int, str], dict | None] = {}
-        # Threads start on first use, so an app without a TMDb key never creates any, and none
-        # exist before gunicorn forks its worker. At exit Python joins them; each lookup is
-        # bounded by tmdb's connect and read timeouts and stops at once during the cooldown.
+        # Threads start on first use, so none exist before gunicorn forks its worker.
         self._poster_pool = ThreadPoolExecutor(
             max_workers=POSTER_WORKERS, thread_name_prefix="poster"
         )
@@ -65,9 +54,7 @@ class MovieDetails:
         """Return the poster path per movie id; uncached ones are fetched in parallel."""
         if not tmdb.is_configured():
             return {}
-        # Start from the cache; _UNCACHED marks the ids still to fetch. Fetched paths are
-        # returned directly, not read back from the cache, which a concurrent lookup may
-        # empty at any time.
+        # Fetched paths are returned directly: a concurrent lookup may empty the cache.
         poster_paths = {
             movie_id: self.poster_cache.get((movie_id, lang), _UNCACHED) for movie_id in movie_ids
         }
@@ -79,10 +66,9 @@ class MovieDetails:
                 )
         done, late = wait(futures.values(), timeout=POSTER_WAIT_SECONDS)
         for future in late:
-            # Only a lookup that has not started is cancelled: no more work for a slow TMDb.
+            # Cancels only lookups not yet started.
             future.cancel()
         for movie_id, future in futures.items():
-            # A lookup that did not finish in time leaves the card a placeholder.
             poster_paths[movie_id] = future.result() if future in done else None
         return poster_paths
 
@@ -105,8 +91,7 @@ class MovieDetails:
             movie_id = int(movie_id)
         except (ValueError, TypeError):
             return None
-        # Like prefetch_posters, a fetched path is used directly: a concurrent request may
-        # empty the cache right after it is written.
+        # A fetched path is used directly: a concurrent request may empty the cache.
         path = self.poster_cache.get((movie_id, lang), _UNCACHED)
         if path is _UNCACHED:
             path = self._fetch_poster_path(movie_id, lang)
@@ -125,10 +110,7 @@ class MovieDetails:
             if strict and tmdb.is_configured():
                 raise
             return None
-        # Only an actual answer is cached, so a network blip does not hide a poster
-        # until the next restart. Only dataset films are cached: any visitor can send any
-        # id, and random ones would otherwise fill the cache and empty it of the catalogue.
-        # Films outside the dataset have the list card cache.
+        # Cache only real answers, and only for dataset films, so random ids cannot evict them.
         if movie_id not in self.engine.row_of:
             return data
         cache_key = (movie_id, lang)

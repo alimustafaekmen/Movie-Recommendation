@@ -1,4 +1,4 @@
-# Pinned to a patch release, so a rebuild gets the same interpreter; CI also runs Python 3.12.
+# Pinned to a patch release, so rebuilds get the same interpreter.
 FROM python:3.12.15-slim-trixie
 
 ENV PYTHONDONTWRITEBYTECODE=1 \
@@ -8,17 +8,15 @@ ENV PYTHONDONTWRITEBYTECODE=1 \
 
 WORKDIR /app
 
-# Dependencies first, so a code change does not reinstall them. The pip that comes with the
-# base image has known advisories, so a newer pinned pip installs them. The build runs as
-# root, so every download, that pip included, is checked against its hash.
+# Dependencies first, for layer caching. The base image's pip has advisories, so a pinned
+# newer pip is used; every download is hash-checked because the build runs as root.
 COPY requirements.lock.txt .
 RUN echo 'pip==26.2.2 --hash=sha256:fd7f4dfa8190e014013b9f08f3e973f4e4c26ffd179a204895533a7254813a70' > /tmp/pip.txt \
     && pip install --require-hashes -r /tmp/pip.txt \
     && rm /tmp/pip.txt \
     && pip install --require-hashes -r requirements.lock.txt
 
-# The code and the dataset CSVs stay owned by root: the app only reads them, so its user
-# cannot change them. The user has no home directory, as nothing the app runs writes one.
+# Files stay owned by root, so the app user cannot change them.
 COPY . .
 RUN useradd --system --no-create-home appuser
 USER appuser

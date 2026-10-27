@@ -20,8 +20,7 @@ source = ["movierec", "app"]
 branch = true
 
 [tool.coverage.report]
-# Line and branch coverage of the fixture-dataset run (CI has no Kaggle CSVs), rounded down,
-# minus 1.
+# Coverage of the fixture-dataset run, rounded down, minus 1.
 fail_under = 95
 exclude_also = ["if __name__ == .__main__.:"]
 show_missing = true

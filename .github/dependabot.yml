@@ -1,9 +1,5 @@
-# Security updates only: the project is not updated on a schedule. A limit of 0 turns off
-# version updates, and Dependabot opens a pull request only for a security advisory, one per
-# ecosystem. If CI fails on it (usually pip install, when the fix needs a newer dependency),
-# regenerate both lockfiles on its branch with the README commands (Dependencies) but without
-# --exclude-newer 14d, since the fix is usually younger than that, and check that both still
-# have the fixed version. Major upgrades are done by hand.
+# Security updates only; no scheduled version bumps.
+# If CI fails on its PR, rerun the README lockfile command without --exclude-newer 14d.
 version: 2
 updates:
   - package-ecosystem: pip

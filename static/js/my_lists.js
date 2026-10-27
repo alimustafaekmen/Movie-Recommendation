@@ -1,22 +1,16 @@
-// The my lists page: the ids come from this browser's storage, the cards from /api/movies and
-// the films like the favourites from /api/recommendations. The status texts come from the page
-// (data-not-saved, data-load-failed, data-some-failed), in its language.
+// The my lists page: ids from browser storage, cards from /api/movies, picks from
+// /api/recommendations. Status texts come from the page's data attributes.
 import { openListStore, watchLists } from './list_store.js';
 
 // The most ids /api/recommendations reads per list.
 const MAX_IDS_PER_REQUEST = 100;
-// /api/movies looks up at most this many ids outside the dataset (MAX_TMDB_LOOKUPS), so chunks
-// of this size never lose one.
+// Matches MAX_TMDB_LOOKUPS in /api/movies, so no id in a chunk is dropped.
 const MAX_CARD_IDS_PER_REQUEST = 20;
 
-// Plain code-point order, so the lists sort the same whatever the browser's language.
+// Code-point order, so the sort does not depend on the browser's language.
 const byTitle = (a, b) => (a.title < b.title ? -1 : a.title > b.title ? 1 : 0);
 
-/**
- * What the page shows for the stored lists (arrays of ids) once their cards (a Map by id) have
- * loaded: each list's cards in title order, and the status line. messages holds the page's texts
- * notSaved and someFailed.
- */
+/** Each list's cards in title order, and the status line (messages: notSaved, someFailed). */
 export function describeLists(lists, cards, persistent, messages) {
     const sections = lists.map((ids) => ids.map((id) => cards.get(id)).filter(Boolean).sort(byTitle));
     // /api/movies leaves out ids it could not resolve, e.g. during a TMDb outage.
@@ -30,9 +24,8 @@ const isCard = (card) =>
     typeof card === 'object' && card !== null && Number.isInteger(card.id) && typeof card.title === 'string';
 
 /**
- * The cards (a Map by id) for the ids from the cards URL, MAX_CARD_IDS_PER_REQUEST ids per request.
- * A request that fails (network, error status, a body that is not a JSON list) only loses its
- * own cards and sets failed; malformed cards are left out like ids the server could not resolve.
+ * The cards (a Map by id) for the ids, in chunks; a failed chunk only loses its own cards and
+ * sets failed. Malformed cards are left out.
  */
 export async function fetchCards(url, ids) {
     const cards = new Map();
@@ -58,11 +51,7 @@ export async function fetchCards(url, ids) {
     return { cards, failed };
 }
 
-/**
- * The cards from the recommendations URL for the favourites and watchlist, of which it sends the
- * first MAX_IDS_PER_REQUEST ids each. No favourites asks for nothing; a failed request gives no
- * cards, so the section stays hidden.
- */
+/** Recommended cards for the lists; none without favourites or when the request fails. */
 export async function fetchRecommendations(url, favorites, watchlist) {
     if (!favorites.length) {
         return [];
@@ -82,17 +71,13 @@ export async function fetchRecommendations(url, favorites, watchlist) {
     }
 }
 
-/**
- * The recommended cards to show, in the server's order: none without favourites, and never a
- * film on a list, as the server only reads the first MAX_IDS_PER_REQUEST ids of each.
- */
+/** Recommended cards not on a list: the server reads only the first ids of each list. */
 export function recommendationsToShow(favorites, watchlist, cards) {
     const listed = new Set([...favorites, ...watchlist]);
     return favorites.length ? cards.filter((card) => !listed.has(card.id)) : [];
 }
 
-/** A rating such as 8.2 as '8,2' or '8.2' in the page's language (lang), as the format_rating
- * filter shows it; no rating gives ''. */
+/** A rating as format_rating shows it: '8,2' or '8.2' by lang, '' when there is none. */
 export function formatRating(value, lang) {
     if (typeof value !== 'number' || !Number.isFinite(value) || !value) {
         return '';
@@ -100,10 +85,7 @@ export function formatRating(value, lang) {
     return value.toLocaleString(lang, { minimumFractionDigits: 1, maximumFractionDigits: 1 });
 }
 
-/**
- * A movie page URL from the page's data-movie-url, the server's URL for id 0: the id takes the
- * place of that 0 (the last digit), so the routes stay the server's business.
- */
+/** A movie page URL: the id replaces the 0 of data-movie-url, so the server owns the routes. */
 export function movieHref(movieUrl, id) {
     return movieUrl.replace(/0(?=\D*$)/, String(id));
 }
@@ -154,9 +136,7 @@ function renderCard(template, card, movieUrl) {
     return item;
 }
 
-// A list with movies gets its heading text wrapped in the collapse button that base.js
-// handles for every page, with the chevron from the page's template after the text; a list that
-// is empty again gets its plain heading back.
+// A list with movies gets a collapse button (handled by base.js) around its heading.
 function setToggle(section, grid, on) {
     const heading = section.querySelector('h2');
     const button = heading.querySelector('.list-toggle');
@@ -175,9 +155,8 @@ function setToggle(section, grid, on) {
     }
 }
 
-// One list: the empty message when nothing is stored, else a placeholder per stored film while
-// its cards load (cards is null), else the loaded cards. Only stored ids decide emptiness, so a
-// list whose films fail to load is never shown as empty. A list the visitor folded stays folded.
+// One list: placeholders while cards is null. Only stored ids decide emptiness, so a list
+// whose films fail to load never shows as empty.
 function showList(section, count, cards, template, movieUrl) {
     const grid = section.querySelector('.movie-grid');
     section.querySelector('.empty-list').hidden = count > 0;
@@ -207,8 +186,7 @@ function main() {
     const recommendations = page.querySelector('.recommendations');
     let recommendationRuns = 0;
 
-    // The section keeps its cards until the new ones arrive, so a list change does not make it
-    // blink; it hides when there is nothing to show.
+    // Keeps the old cards until new ones arrive, so a list change does not blink.
     async function showRecommendations(favorites, watchlist) {
         const run = ++recommendationRuns;
         const cards = await fetchRecommendations(recommendationsUrl, favorites, watchlist);
@@ -251,7 +229,7 @@ function main() {
 
     render();
     watchLists(render);
-    // The module is running, so base.js need not say that the page failed to load.
+    // Tells base.js the module loaded.
     status.removeAttribute('data-load-error');
 }
 

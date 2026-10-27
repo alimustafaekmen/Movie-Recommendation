@@ -5,8 +5,7 @@ on: [push, pull_request]
 permissions:
   contents: read
 
-# Actions are pinned to a commit, so a moved tag cannot change what runs; the comment names
-# the release.
+# Actions are pinned to a commit, so a moved tag cannot change what runs.
 jobs:
   test:
     runs-on: ubuntu-latest
@@ -23,13 +22,11 @@ jobs:
       - run: pip install --require-hashes -r requirements-dev.lock.txt
       - run: ruff check .
       - run: ruff format --check .
-      # The Kaggle CSVs are not in the repo, so the tests use tests/fixtures/dataset/.
-      # Fails below the line and branch coverage set in pyproject.toml.
+      # Runs on tests/fixtures/dataset/; fails below the coverage in pyproject.toml.
       - run: pytest -q --cov
-      # The node tests need no packages, so there is nothing to cache.
       - uses: actions/setup-node@949feb2413d6458794dcd2491c4babbbce0c15c1 # v7.1.0
         with:
-          node-version: 24
+          node-version-file: .node-version
       - run: node --test "tests/js/*.test.mjs"
 
   docker:
@@ -40,8 +37,7 @@ jobs:
         with:
           persist-credentials: false
       - run: docker build -t movierec .
-      # The image is built without the Kaggle CSVs; the fixture dataset stands in for them.
-      # The hardening flags match docker-compose.yml.
+      # The fixture dataset stands in for the Kaggle CSVs; flags match docker-compose.yml.
       - run: >-
           docker run -d --name movierec -p 5001:5001
           --read-only --tmpfs /tmp --cap-drop ALL --security-opt no-new-privileges

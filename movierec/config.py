@@ -9,7 +9,7 @@ from dotenv import load_dotenv
 BASE_DIR = Path(__file__).resolve().parent.parent
 load_dotenv(BASE_DIR / ".env")
 
-# Values shipped in .env.example and older versions of this file; never treat them as real keys.
+# Placeholder values, never real keys.
 _PLACEHOLDER_SECRET_KEYS = {"", "your_secret_key_here", "dev_secret_key_!@#$"}
 _PLACEHOLDER_TMDB_KEYS = {"", "your_api_key", "your_tmdb_api_key"}
 
@@ -35,8 +35,7 @@ TMDB_API_KEY = _resolve_tmdb_key(os.getenv("TMDB_API_KEY"))
 TMDB_IMAGE_BASE_URL = "https://image.tmdb.org/t/p/"
 TMDB_API_BASE_URL = "https://api.themoviedb.org/3"
 
-# Files. DATASET_DIR holds the TMDB 5000 CSVs; the app writes no files. A relative path is
-# read from the repo folder, so it works whatever folder the app is started from.
+# A relative DATASET_DIR is read from the repo folder, whatever the working directory.
 DATASET_DIR = str(BASE_DIR / (os.getenv("DATASET_DIR") or "dataset"))
 MOVIES_CSV = os.path.join(DATASET_DIR, "tmdb_5000_movies.csv")
 CREDITS_CSV = os.path.join(DATASET_DIR, "tmdb_5000_credits.csv")
@@ -53,8 +52,7 @@ VOTE_AVERAGE_WEIGHT = 0.20
 VOTE_COUNT_WEIGHT = 0.10
 POPULARITY_WEIGHT = 0.20
 
-# Content-similarity weights of the TF-IDF blocks; each block is L2-normalised first, so
-# a block's share of the cosine grows with the square of its weight.
+# TF-IDF block weights; blocks are L2-normalised, so a block's share grows with weight squared.
 TFIDF_GENRE_WEIGHT = 0.3
 TFIDF_DIRECTOR_WEIGHT = 0.2
 TFIDF_KEYWORD_WEIGHT = 0.4

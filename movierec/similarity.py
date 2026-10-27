@@ -35,13 +35,10 @@ def build_tfidf_matrix(df: pd.DataFrame) -> sparse.csr_matrix:
     overview_and_tagline = df["overview"] + " " + df["tagline"]
     # (vectorizer, column, weight) for each block of features.
     blocks = (
-        # genre_list and directors hold a list of names per film. analyzer=list hands that list
-        # over unchanged as the film's tokens, so "Science Fiction" and "Christopher Nolan" are
-        # one feature each and co-directors stay separate features.
+        # analyzer=list keeps each name whole: "Science Fiction" is one feature.
         (TfidfVectorizer(analyzer=list), df["genre_list"], TFIDF_GENRE_WEIGHT),
         (TfidfVectorizer(analyzer=list), df["directors"], TFIDF_DIRECTOR_WEIGHT),
-        # Words, not whole phrases: over half of the keyword phrases belong to a single
-        # film, while their words ("toy", "superhero") are shared.
+        # Words, not phrases: most keyword phrases belong to one film, their words do not.
         (TfidfVectorizer(stop_words="english"), df["keywords"], TFIDF_KEYWORD_WEIGHT),
         (
             TfidfVectorizer(stop_words="english", max_features=TFIDF_MAX_FEATURES),
@@ -51,12 +48,10 @@ def build_tfidf_matrix(df: pd.DataFrame) -> sparse.csr_matrix:
     )
     weighted_blocks = []
     for vectorizer, column, weight in blocks:
-        # Scale each film's row of this block to length 1, then weight the block.
         block = normalize(vectorizer.fit_transform(column))
         weighted_blocks.append(block * weight)
-    # Side by side: one row per film, every block's features as columns.
     matrix = sparse.hstack(weighted_blocks, format="csr")
-    # Normalising the stacked rows makes plain dot products equal sklearn's cosine_similarity.
+    # Unit rows, so a plain dot product is the cosine similarity.
     return normalize(matrix)
 
 
@@ -76,13 +71,11 @@ def hybrid_score(
     The weights come from movierec.config; the arrays describe one candidate pool and the
     maxima are taken over it.
     """
-    # Raw cosines in a pool span roughly 0.13-0.24 for a typical film; unscaled, the similarity
-    # weight would lose to popularity and votes, and blockbusters would outrank close matches.
+    # Raw cosines span about 0.13-0.24; unscaled, blockbusters would outrank close matches.
     largest_similarity = max(similarity.max(initial=0.0), 1e-9)  # 1e-9: a pool of zeros
     similarity_term = similarity / largest_similarity * SIMILARITY_WEIGHT
     rating_term = vote_average / RATING_MAX * VOTE_AVERAGE_WEIGHT
-    # Vote counts and popularity are heavy-tailed; scaled linearly, one blockbuster in the
-    # pool would push every other candidate's term to about 0.
+    # Log scale: linearly, one blockbuster would push every other term to about 0.
     log_votes = np.log1p(vote_count)
     largest_log_votes = max(log_votes.max(initial=0.0), 1.0)
     votes_term = log_votes / largest_log_votes * VOTE_COUNT_WEIGHT
@@ -103,9 +96,8 @@ def feature_score(df: pd.DataFrame) -> pd.Series:
     """
     max_votes = max(df["vote_count"].max(), 1.0)
     rating_term = df["vote_average"] / RATING_MAX * FEATURE_RATING_WEIGHT
-    # Popularity is a trend score: scaled linearly, the one film trending most in the results
-    # gets the whole weight and the rest about 0. Vote counts stay linear, as log scaling
-    # them also lifts new films with few votes.
+    # Log popularity, so one trending film does not take the whole weight; vote counts stay
+    # linear so new films with few votes are not lifted.
     log_popularity = np.log1p(df["popularity"])
     largest_log_popularity = max(log_popularity.max(), 1.0)
     popularity_term = log_popularity / largest_log_popularity * FEATURE_POPULARITY_WEIGHT
