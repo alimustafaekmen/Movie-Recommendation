@@ -527,8 +527,7 @@ a:hover {
 }
 
 /* Facts in a row (year · runtime · ★ 8,2), separated by middle dots. Each child is an item;
-   the dot is drawn before every item after the first, and screen readers skip it. Markup that
-   writes its own aria-hidden separators gets no extra dots. */
+   the dot is drawn before every item after the first, and screen readers skip it. */
 .meta-line {
     display: flex;
     flex-wrap: wrap;
@@ -539,15 +538,11 @@ a:hover {
     list-style: none;
 }
 
-.meta-line > :not([aria-hidden="true"]) + :not([aria-hidden="true"])::before {
+.meta-line > * + *::before {
     content: "\00B7";
     content: "\00B7" / "";
     margin-inline: 0.5em;
     color: var(--color-text-muted);
-}
-
-.meta-line > [aria-hidden="true"] {
-    margin-inline: 0.5em;
 }
 
 /* "★ 8,2": the star in the rating colour, the number in ink. */
