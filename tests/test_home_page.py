@@ -545,35 +545,8 @@ def test_search_buttons_have_a_spinner_icon_ready(client):
     assert re.fullmatch(r"v=[0-9a-f]{12}", href.query)
 
 
-@pytest.mark.parametrize(
-    ("url", "target"),
-    [
-        ("/?genre=Action", "/?tur=Action"),
-        ("/?genre=Science%20Fiction", "/?tur=Science+Fiction"),
-        ("/?genre=Action&n=5", "/?tur=Action&n=5"),
-        ("/genre/Action", "/?tur=Action"),
-        # Older links spelled spaces as "+".
-        ("/genre/Science+Fiction", "/?tur=Science+Fiction"),
-        ("/genre/Science%20Fiction", "/?tur=Science+Fiction"),
-    ],
-)
-def test_old_genre_links_redirect_permanently_to_the_filter_search(client, url, target):
-    response = client.get(url)
-
-    assert response.status_code == 301
-    assert response.headers["Location"] == target
-
-
-def test_an_empty_old_genre_parameter_is_ignored(client):
-    response = client.get("/?genre=")
-
-    assert response.status_code == 200
-    assert "Popüler filmler" in body_text(response)
-
-
-@pytest.mark.parametrize("url", ["/?tur=Science+Fiction", "/genre/Science%20Fiction"])
-def test_a_genre_link_lists_only_that_genre(client, engine, url):
-    ids = _card_ids(Page(body_text(client.get(url, follow_redirects=True))))
+def test_a_genre_link_lists_only_that_genre(client, engine):
+    ids = _card_ids(Page(body_text(client.get("/?tur=Science+Fiction"))))
 
     assert ids
     genres = engine.movies_df.set_index("id").loc[ids, "genre_list"]

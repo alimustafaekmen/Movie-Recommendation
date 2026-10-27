@@ -1,8 +1,6 @@
 // Favourites and watchlist, kept in this browser's localStorage; the server stores no lists.
 // Each list is stored as a JSON array of movie ids, newest first, under its own key.
 const LIST_NAMES = ['favorites', 'watchlist'];
-// Earlier versions of the site used this key prefix; createListStore moves those lists.
-const OLD_KEY_PREFIX = 'film-oneri:';
 // The server's movie id range (MAX_MOVIE_ID in movierec/web/__init__.py).
 const MAX_MOVIE_ID = 2147483647;
 
@@ -59,35 +57,8 @@ export function createListStore(storage) {
         }
     }
 
-    // An old key's ids join the list after its own, without duplicates. The old key goes only
-    // once the merged list is saved, so a failing storage loses nothing and the next visit tries
-    // again.
-    function migrate(name) {
-        const ids = read(name);
-        const oldKey = OLD_KEY_PREFIX + name;
-        let old = null;
-        if (persistent) {
-            try {
-                old = storage.getItem(oldKey);
-            } catch {
-                persistent = false;
-            }
-        }
-        if (old === null) {
-            return;
-        }
-        write(name, [...new Set([...ids, ...parse(old)])]);
-        if (persistent) {
-            try {
-                storage.removeItem(oldKey);
-            } catch {
-                // The merge repeats without duplicates on the next visit.
-            }
-        }
-    }
-
     // Both lists are read once, so memory holds them if storage fails later.
-    LIST_NAMES.forEach(migrate);
+    LIST_NAMES.forEach(read);
 
     return {
         get persistent() {

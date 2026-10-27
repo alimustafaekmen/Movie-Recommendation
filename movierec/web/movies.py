@@ -2,7 +2,6 @@
 
 import datetime
 import logging
-from urllib.parse import urlencode
 
 from flask import Blueprint, abort, flash, jsonify, redirect, render_template, request, url_for
 
@@ -159,20 +158,6 @@ def _more_url(form: dict, num: int, has_more: bool) -> str | None:
     return url_for("movies.home", **query, n=next_num, _anchor=first_new_card)
 
 
-def _legacy_genre_redirect(args):
-    """Older pages linked genres as /?genre=<name>; the same search is now ?tur=<name>."""
-    pairs = []
-    for key, value in args.items(multi=True):
-        if key == "genre":
-            # An empty ?genre= named no genre; leave it out.
-            if not value:
-                continue
-            key = "tur"
-        pairs.append((key, value))
-    home_url = url_for("movies.home")
-    return redirect(f"{home_url}?{urlencode(pairs)}", 301)
-
-
 @bp.route("/")
 def home():
     """Home page: popular movies, or the results of a ?film= or filter search."""
@@ -182,9 +167,6 @@ def home():
         return render_template("error.html", code=503, message=text), 503
 
     args = request.args
-    if any(args.getlist("genre")):
-        return _legacy_genre_redirect(args)
-
     num = clamp_count(args.get("n"))
     # One result past num tells whether a "more" link would show anything new.
     search = _search(engine, args, num + 1)
@@ -224,13 +206,6 @@ def movie_detail(movie_id: int):
     if movie_data is None:
         abort(404)
     return render_template("movie_detail.html", movie=movie_data)
-
-
-@bp.route("/genre/<path:genre_name>")
-def genre(genre_name: str):
-    """Pretty URL for a one-genre filter search."""
-    # Older links spelled spaces as "+" (/genre/Science+Fiction); no genre name has a "+".
-    return redirect(url_for("movies.home", tur=genre_name.replace("+", " ")), 301)
 
 
 def _render_person_page(name: str, person_type: str, not_found_key: str):

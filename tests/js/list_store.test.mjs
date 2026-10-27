@@ -163,71 +163,6 @@ test('invalid ids and unknown lists are rejected', () => {
   assert.deepEqual(store.list('favorites'), []);
 });
 
-// --- Lists saved by earlier versions of the site under the old "film-oneri:" keys ---
-test('lists under the old keys move to the new keys', () => {
-  const storage = memoryStorage({ 'film-oneri:favorites': '[3,1,2]', 'film-oneri:watchlist': '[9]' });
-  const store = createListStore(storage);
-
-  assert.deepEqual(store.list('favorites'), [3, 1, 2]);
-  assert.deepEqual(store.list('watchlist'), [9]);
-  assert.equal(store.persistent, true);
-  assert.equal(storage.getItem('movierec:favorites'), '[3,1,2]');
-  assert.equal(storage.getItem('movierec:watchlist'), '[9]');
-  assert.deepEqual(storage.keys().sort(), ['movierec:favorites', 'movierec:watchlist']);
-});
-
-test('an old list joins a new one after its own ids, in order and without duplicates', () => {
-  // E.g. a tab still running the old script kept writing the old key after the move.
-  const storage = memoryStorage({ 'movierec:favorites': '[5,1]', 'film-oneri:favorites': '[1,7,5,8,7]' });
-  const store = createListStore(storage);
-
-  assert.deepEqual(store.list('favorites'), [5, 1, 7, 8]);
-  assert.equal(storage.getItem('movierec:favorites'), '[5,1,7,8]');
-  assert.equal(storage.getItem('film-oneri:favorites'), null);
-  assert.deepEqual(store.list('watchlist'), []);
-});
-
-test('a corrupt old list is dropped and the new one is kept', () => {
-  const storage = memoryStorage({ 'movierec:watchlist': '[4]', 'film-oneri:watchlist': '{not json' });
-  const store = createListStore(storage);
-
-  assert.deepEqual(store.list('watchlist'), [4]);
-  assert.equal(storage.getItem('film-oneri:watchlist'), null);
-});
-
-test('an old list that cannot be saved under the new key stays where it was', () => {
-  const storage = memoryStorage({ 'film-oneri:favorites': '[1,2]' }, { failOn: ['setItem'] });
-  const store = createListStore(storage);
-
-  // This page still shows it; the next visit tries the move again.
-  assert.deepEqual(store.list('favorites'), [1, 2]);
-  assert.equal(store.persistent, false);
-  assert.equal(storage.getItem('film-oneri:favorites'), '[1,2]');
-  assert.equal(storage.getItem('movierec:favorites'), null);
-});
-
-test('an old key that cannot be removed is merged again without duplicates', () => {
-  const storage = memoryStorage({ 'film-oneri:favorites': '[1,2]' }, { failOn: ['removeItem'] });
-
-  const first = createListStore(storage);
-  first.toggle('favorites', 3);
-  const second = createListStore(storage);
-
-  assert.equal(first.persistent, true);
-  assert.deepEqual(second.list('favorites'), [3, 1, 2]);
-  assert.equal(storage.getItem('movierec:favorites'), '[3,1,2]');
-});
-
-test('a storage that cannot be read moves nothing and keeps the lists in memory', () => {
-  const storage = memoryStorage({ 'film-oneri:favorites': '[1]' }, { failOn: ['getItem'] });
-  const store = createListStore(storage);
-
-  assert.equal(store.persistent, false);
-  assert.deepEqual(store.list('favorites'), []);
-  assert.equal(store.toggle('favorites', 2), true);
-  assert.deepEqual(store.list('favorites'), [2]);
-});
-
 // --- Changes made outside this page ---
 const storageEvent = (key) => Object.assign(new Event('storage'), { key });
 const pageshowEvent = (persisted) => Object.assign(new Event('pageshow'), { persisted });
@@ -242,7 +177,6 @@ test('a list change in another tab calls back; other keys do not', () => {
   assert.equal(calls, 2);
 
   target.dispatchEvent(storageEvent('movierec:theme'));
-  target.dispatchEvent(storageEvent('film-oneri:favorites'));
   assert.equal(calls, 2);
 
   // Another tab cleared the storage.
