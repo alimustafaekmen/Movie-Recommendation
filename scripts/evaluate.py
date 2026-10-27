@@ -38,13 +38,13 @@ STEM_STOP_WORDS |= {"me", "i", "you", "is"}
 
 
 def jaccard(a: set, b: set) -> float:
-    """|a & b| / |a | b|; 0 when both are empty."""
+    """Return the Jaccard index |a & b| / |a | b|; 0 when both are empty."""
     union = a | b
     return len(a & b) / len(union) if union else 0.0
 
 
 def title_stem(title: str) -> str | None:
-    """Series key of a title: "Star Trek II: The Wrath of Khan" -> "star trek"; None if generic."""
+    """Return the series key of a title ("Star Trek II: ..." -> "star trek"); None if generic."""
     words = re.findall(r"[a-z0-9']+", title.lower().split(":")[0])
     if words and words[0] in ("the", "a", "an"):
         words = words[1:]
@@ -57,7 +57,7 @@ def title_stem(title: str) -> str | None:
 
 
 def series_siblings(df: pd.DataFrame) -> dict:
-    """{row: rows of the other films in its series with enough votes}, by title stem.
+    """Return {row: rows of its series siblings}, grouped by title stem.
 
     df: engine.movies_df.
     """
@@ -81,7 +81,7 @@ def series_siblings(df: pd.DataFrame) -> dict:
 
 
 def metrics(df: pd.DataFrame, recommendations: dict) -> dict:
-    """The six columns for {seed row: recommended rows}.
+    """Return the six columns for {seed row: recommended rows}.
 
     df: engine.movies_df.
     """
@@ -116,7 +116,7 @@ def metrics(df: pd.DataFrame, recommendations: dict) -> dict:
 
 
 def evaluate(engine) -> dict:
-    """{method: metrics} with every dataset row as a seed."""
+    """Return {method: metrics} with every dataset row as a seed."""
     # Imported here: _load puts the repo on sys.path first.
     from movierec.engine import DETAIL_SIMILAR_COUNT
 
@@ -146,7 +146,7 @@ def evaluate(engine) -> dict:
 
 
 def _load():
-    # Offline: no TMDb key, so the engine uses the dataset alone.
+    # Offline: load_dotenv keeps this empty key, so no .env key reaches the run.
     os.environ["TMDB_API_KEY"] = ""
     sys.path.insert(0, str(REPO))
     from movierec.config import CREDITS_CSV, MOVIES_CSV

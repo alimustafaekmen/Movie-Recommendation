@@ -560,7 +560,7 @@ a:hover {
     color: var(--color-rating);
 }
 
-/* A plain white box with a hairline border: search panel, empty states, the error box. */
+/* A plain surface box with a hairline border: search panel, empty states, the error box. */
 .panel {
     padding: 1.25rem;
     background-color: var(--color-surface);
@@ -631,7 +631,7 @@ a:hover {
 }
 
 /* --- Header --- */
-/* Phones: the brand, an icon-only "Listelerim", the language switch and the theme button share
+/* Phones: the brand, an icon-only "My lists", the language switch and the theme button share
    the first row, close together so that they fit at 320px; the search takes the second (the
    home page hides it, its own search panel is right below). From 600px the nav shows its label;
    from 900px everything fits on one row. The header is dark in both themes, so its native parts
@@ -662,8 +662,8 @@ a:hover {
     color: var(--color-header-text-hover);
 }
 
-/* The logo sets the size. A flex box, so the home page's h1 and the span of other pages are
-   both exactly one line of the logo high. */
+/* The logo's size. A flex box, so the home page's h1 and the span of other pages are both
+   exactly one line of the logo high. */
 .site-title {
     display: flex;
     font-size: 1.375rem;
@@ -674,7 +674,7 @@ a:hover {
     flex: none;
 }
 
-/* "Listelerim" is a ghost text link and the theme button an icon-only ghost button. Phones
+/* "My lists" is a ghost text link and the theme button an icon-only ghost button. Phones
    draw both as icons with a 44px touch target; from 600px they match the 40px search field.
    The current page gets brighter text and a short accent rule below, which also shows on
    phones where only the icon is drawn. */
@@ -717,8 +717,7 @@ a:hover {
 }
 
 /* "TR" and "EN" as two short ghost links, as tall as the buttons beside them. The page's
-   language is drawn bright and bold; the rule reads <html lang>, not aria-current, so it is
-   right from the first paint. */
+   language (<html lang>) is drawn bright and bold. */
 .lang-switch {
     display: flex;
     flex: none;

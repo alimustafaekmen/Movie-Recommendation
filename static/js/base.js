@@ -3,7 +3,8 @@
     // Well past the slowest results page; TMDb timeouts bound the poster requests.
     const LOADING_RESET_MS = 20000;
 
-    // The cookie now holds ?lang=; dropping it keeps a reload or bookmark from resetting it.
+    // The server keeps ?lang= in a cookie; dropping it from the address keeps a reload or
+    // bookmark from overriding a later choice.
     const pageUrl = new URL(window.location.href);
     if (pageUrl.searchParams.has('lang')) {
         pageUrl.searchParams.delete('lang');

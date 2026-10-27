@@ -98,7 +98,8 @@ def test_movie_page_meta_uses_turkish_number_formats(client, details, monkeypatc
 
     [meta] = texts(body_text(client.get("/movie/155")), "ul", "movie-detail-meta")
 
-    # "2008 · 2 sa 32 dk · ★ 8,3/10 · 12.002 oy": the dots are CSS, so not in the text.
+    # Shown as "2008 · 2 sa 32 dk · ★ 8,3/10 · 12.002 oy": the dots are CSS and the star an
+    # icon, so neither is in the text; "Puan:" is for screen readers.
     assert meta == "2008 2 sa 32 dk Puan: 8,3 /10 12.002 oy"
 
 

@@ -63,7 +63,7 @@ FEATURE_RATING_WEIGHT = 0.40
 FEATURE_POPULARITY_WEIGHT = 0.45
 FEATURE_VOTE_COUNT_WEIGHT = 0.15
 
-# thefuzz score (0-100) a title must reach to count as a match.
+# thefuzz score (0-100) a title or director name must reach to count as a match.
 FUZZY_SCORE_CUTOFF = 75
 
 # Flask

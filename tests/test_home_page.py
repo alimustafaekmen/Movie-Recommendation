@@ -92,7 +92,7 @@ def test_search_forms_are_get_forms_with_one_input_per_field(client):
     assert "required" in film
     [director] = page.all("input", name="yonetmen")
     assert director["list"] == "director-names"
-    # The only select left is the rating threshold; films and directors are typed.
+    # The rating threshold is the only select; films and directors are typed.
     assert [select["name"] for select in page.all("select")] == ["min_puan"]
     # The result count is the "more" link's business, not a form field.
     assert not [tag for _, tag in page.tags if tag.get("name") == "n"]
@@ -228,7 +228,7 @@ def test_genre_shortcuts_are_tags(client, engine):
     tags = [link for link in page.all("a") if "tag" in _classes(link)]
     assert len(tags) == len(engine.all_genres)
     assert all(link["href"].startswith("/?tur=") for link in tags)
-    # The chips of the old design are gone.
+    # Tags are the only genre style: no element has a chip class.
     assert not [c for _, attrs in page.tags for c in _classes(attrs) if "chip" in c]
 
 
@@ -460,7 +460,7 @@ def test_more_link_is_left_out_when_every_result_is_shown(client):
 
 
 def test_more_link_is_left_out_when_exactly_twelve_results_match(client):
-    # Joel Coen has exactly 12 films with 100 or more votes, in the dataset and the fixture.
+    # Joel Coen has exactly 12 films with 100 or more votes, in the Kaggle CSVs and the fixture.
     _, page = _get(client, "/?yonetmen=Joel+Coen")
 
     assert len(_card_ids(page)) == 12

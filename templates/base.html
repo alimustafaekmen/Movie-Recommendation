@@ -26,7 +26,7 @@
     <a class="skip-link" href="#main-content">{{ t('header.skip_link') }}</a>
     <header class="header">
         <div class="container header-bar">
-            {# The home page's title is its h1; every other page has its own. #}
+            {# The brand is the home page's h1; every other page has its own. #}
             {% set brand_tag = 'h1' if brand_heading else 'span' %}
             {# The logo is drawn, not read: the label names the link and the hidden text the h1. #}
             <a href="{{ url_for('movies.home') }}" class="header-brand" aria-label="MovieRec">

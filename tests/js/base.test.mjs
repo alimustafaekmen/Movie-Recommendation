@@ -346,7 +346,7 @@ test('a status still marked when the page is parsed shows its load error', () =>
 test('the ?lang= of the language switch leaves the address bar; the rest of the URL stays', () => {
   const { window } = loadPage({ href: 'http://localhost/?tur=Action&lang=en&tur=Drama#sonuc-13' });
 
-  // The server stored the choice; an old ?lang= in the history must not store it again.
+  // The server stored the choice; a reload or bookmark of this URL must not override a later one.
   assert.deepEqual(window.history.replaced, [
     { state: { scroll: 1 }, url: 'http://localhost/?tur=Action&tur=Drama#sonuc-13' },
   ]);

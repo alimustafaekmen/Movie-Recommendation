@@ -61,7 +61,7 @@
     color: var(--color-text-muted);
 }
 
-/* --- "Aramayı düzenle": folds the panel on phone result pages --- */
+/* --- "Edit search": folds the panel on phone result pages --- */
 /* A disclosure row: the label on the left, the chevron on the right. */
 .search-toggle {
     width: 100%;
@@ -272,7 +272,7 @@
     }
 }
 
-/* "Daha fazla göster" jumps to the first new card; keep it clear of the window edge. */
+/* "Show more" jumps to the first new card; keep it clear of the window edge. */
 .home-section .movie-grid > li {
     scroll-margin-top: 1rem;
 }

@@ -1,4 +1,4 @@
-"""Content-based movie recommendations over the TMDB 5000 dataset, computed offline."""
+"""Content-based movie recommendations from the dataset alone; the engine never calls TMDb."""
 
 import logging
 import re
@@ -42,10 +42,11 @@ MIN_QUERY_LENGTH = 2
 # this many similar films of each.
 MAX_FAVOURITES_USED = 20
 FAVOURITE_NEIGHBOURS = MAX_RECOMMENDATION_COUNT
-# Re-ranking looks a little past the longest list we serve. The pool does not depend on the
-# requested count, so every list is a prefix of the MAX_RECOMMENDATION_COUNT list.
+# Re-ranking reads about three times the longest list we serve. The pool does not depend on
+# the requested count, so every list is a prefix of the MAX_RECOMMENDATION_COUNT list.
 NEIGHBOUR_POOL_SIZE = 3 * MAX_RECOMMENDATION_COUNT + 1
-# A run of digits or of letters is one word of a title: "Alien³" has "alien" and "3".
+# A run of digits or of letters is one word of a title key: "Alien³" (key "alien3") has
+# "alien" and "3".
 _WORD = re.compile(r"\d+|[^\W\d_]+")
 
 
@@ -152,11 +153,11 @@ class RecommendationEngine:
     ) -> tuple[list[str], tuple[int, int, int]] | None:
         """Return (titles, rank) for the fuzzy matches that hold the most query words, or None.
 
-        When they hold every word of the query, the query names part of those titles
-        ("john wick 2" in John Wick: Chapter 2, not John Wick), so they are returned, the ones
-        that start with the query if any, and the caller takes the most-voted film. Otherwise
-        only the closest one is. rank is (words held, WRatio, token_sort_ratio), so the
-        matches of two lists compare as tuples.
+        When they hold every query word, the query names part of each title ("john wick 2"
+        is in John Wick: Chapter 2, not John Wick), so all of them are returned (only those
+        that start with the query, if any) and the caller takes the most-voted film.
+        Otherwise only the closest one is. rank is (words held, WRatio, token_sort_ratio), so
+        the ranks of two lists compare as tuples.
         """
         matches = self._fuzzy_matches(query, titles)
         if not matches:
@@ -312,6 +313,7 @@ class RecommendationEngine:
 
         Each favourite's similar list gives the film at 0-based rank r a score of 1 / (r + 1);
         the scores add up over the favourites, and ties keep the order films first appear in.
+        At most DETAIL_SIMILAR_COUNT ids are returned.
         """
         # Favourites outside the dataset have no similar list; of the rest, the first
         # MAX_FAVOURITES_USED count.

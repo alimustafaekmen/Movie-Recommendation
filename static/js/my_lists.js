@@ -2,9 +2,9 @@
 // /api/recommendations. Status texts come from the page's data attributes.
 import { openListStore, watchLists } from './list_store.js';
 
-// The most ids /api/recommendations reads per list.
+// MAX_IDS_PER_REQUEST in movierec/web/lists.py: the most ids /api/recommendations reads per list.
 const MAX_IDS_PER_REQUEST = 100;
-// Matches MAX_TMDB_LOOKUPS in /api/movies, so no id in a chunk is dropped.
+// Matches MAX_TMDB_LOOKUPS in movierec/web/lists.py, so /api/movies drops no id of a chunk.
 const MAX_CARD_IDS_PER_REQUEST = 20;
 
 // Code-point order, so the sort does not depend on the browser's language.
@@ -77,7 +77,7 @@ export function recommendationsToShow(favorites, watchlist, cards) {
     return favorites.length ? cards.filter((card) => !listed.has(card.id)) : [];
 }
 
-/** A rating as format_rating shows it: '8,2' or '8.2' by lang, '' when there is none. */
+/** A rating as format_rating (movierec/i18n.py) shows it: '8,2' or '8.2' by lang, '' when none. */
 export function formatRating(value, lang) {
     if (typeof value !== 'number' || !Number.isFinite(value) || !value) {
         return '';

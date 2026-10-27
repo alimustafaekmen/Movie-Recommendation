@@ -7,7 +7,8 @@ from movierec.i18n import message
 
 # Titles that the yearly lists of the refreshed catalogue add next to better-known films, with
 # made-up vote counts in the same order. catalogue_engine gives them to fixture films, whose
-# ids keep their credits; the fixture's E.T., The Empire Strikes Back and Thor stay.
+# ids keep their credits; the fixture's E.T., The Empire Strikes Back, Thor and The Imitation
+# Game stay.
 CATALOGUE_TITLES = {
     "John Wick": 2100,
     "John Wick: Chapter 2": 1400,
@@ -125,8 +126,8 @@ def test_short_title_with_extra_words(engine, query, movie_id):
     [("Godfather 2", 238), ("Godfather II", 240), ("Hangover 2", 45243)],
 )
 def test_sequel_query_does_not_match_a_short_unrelated_title(engine, query, movie_id):
-    # WRatio gave "Her" (inside "godfather") and "2 Fast 2 Furious" (first of the tied "2"
-    # titles) 90 and 86.
+    # WRatio alone scores "Her" (inside "godfather") and "2 Fast 2 Furious" (first of the
+    # tied "2" titles) 90 and 86.
     assert engine.find_movie_id(query) == movie_id
 
 
@@ -204,7 +205,8 @@ def test_the_start_of_a_turkish_title_finds_it(turkish_engine):
 @pytest.mark.parametrize(
     ("query", "movie_id"),
     [
-        # "Hobbit: Beş Ordunun Savaşı" and "VOL-İ" score higher, but these are typed titles.
+        # The Turkish titles "Hobbit: Beş Ordunun Savaşı" and "VOL-İ" score higher, but each
+        # query is inside an original title, so it is that title being typed.
         ("hobbit", 49051),
         ("bill vol", 24),
         ("kill bill vol", 24),
@@ -478,13 +480,14 @@ def test_every_count_is_a_prefix_of_the_full_list(engine, movie_id):
 
 @pytest.mark.real_dataset
 def test_toy_story_neighbours_are_not_matched_on_a_character_name(engine):
-    # The 40 Year Old Virgin used to rank fifth only because both overviews mention "Andy".
+    # Both overviews mention "Andy"; a shared character name alone must not make The 40 Year
+    # Old Virgin a neighbour.
     assert 6957 not in engine.similar_movie_ids(862)
 
 
 @pytest.mark.real_dataset
 def test_dark_knight_keeps_the_earlier_batman_films_near_the_top(engine):
-    # Too much director weight let Inception and Scarface push these down to #10-11.
+    # With too much director weight, Inception and Scarface push these down the list.
     top = engine.similar_movie_ids(155, 6)
 
     assert {364, 414} <= set(top)  # Batman Returns, Batman Forever

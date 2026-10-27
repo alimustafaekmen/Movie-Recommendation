@@ -162,8 +162,8 @@ def test_page_titles_use_the_condensed_display_face_and_everything_else_is_sans(
 def test_stylesheets_name_only_the_two_plex_families(sheet):
     css = (STATIC / "css" / sheet).read_text(encoding="utf-8")
 
-    # Every font-family goes through the two tokens (the @font-face rules that name the files
-    # are no style rules).
+    # Every font-family goes through the two tokens; _css_rules skips the @font-face rules,
+    # which name the font files.
     for _, _, body in _css_rules(css):
         for family in re.findall(r"font-family:\s*([^;]+)", body):
             assert family.strip() in {"var(--font-sans)", "var(--font-display)", "inherit"}, sheet
@@ -374,8 +374,11 @@ def test_home_screen_icon_is_linked_and_named_movierec(client, pages):
 
 
 def _weights_by_family():
-    """{token: font weights} of the stylesheets: rules that set var(--font-display) count
-    for the display face, every other font-weight for the text face."""
+    """{token: font weights} the stylesheets use.
+
+    Weights in rules that set var(--font-display) count for the display face, every other
+    font-weight for the text face.
+    """
     weights = {"--font-sans": {"400"}, "--font-display": set()}
     for sheet in (STATIC / "css").glob("*.css"):
         for _, selector, body in _css_rules(sheet.read_text(encoding="utf-8")):
@@ -451,7 +454,7 @@ def test_every_font_weight_has_the_turkish_letters(char):
 
 
 def test_headings_and_bold_text_use_a_loaded_weight():
-    # Browsers draw h1-h3 and strong at 700, which is not loaded and would be faked.
+    # Browsers draw h1-h3, strong and b at 700, which is not loaded and would be faked.
     for selector in ("h1", "h2", "h3", "strong", "b"):
         assert "font-weight: 600" in _declarations(BASE_CSS, selector), selector
 
@@ -514,7 +517,7 @@ def test_asset_version_follows_the_file_content(tmp_path):
     assert before["js/b.js"] == after["js/b.js"]
 
 
-# --- Icons: a local SVG sprite with the Font Awesome Free paths, not the icon font ---
+# --- Icons: a local SVG sprite with the Font Awesome Free paths ---
 def _sprite_symbols():
     """{id: viewBox} of every <symbol> in static/icons.svg."""
     root = ElementTree.parse(SPRITE).getroot()
@@ -618,8 +621,10 @@ def test_icon_macro_takes_extra_classes_and_refuses_unknown_names(app_module):
 
 
 def _icons_in_use():
-    """Icon names the templates draw with icon('...') and the scripts swap in ({icon: '...'}
-    and {activeIcon: '...'} in movie_detail.js)."""
+    """Icon names the templates draw with icon('...') and the scripts swap in.
+
+    The scripts name them as {icon: '...'} and {activeIcon: '...'} (movie_detail.js).
+    """
     templates = " ".join(path.read_text(encoding="utf-8") for path in TEMPLATES.glob("*.html"))
     script_paths = list((STATIC / "js").glob("*.js"))
     assert script_paths

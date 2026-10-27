@@ -1,7 +1,7 @@
 """Genre names: English values in data and URLs, shown as they are or with a Turkish label."""
 
 # 'Foreign' and 'TV Movie' describe where a film comes from rather than what it is,
-# and only a handful of dataset films carry them, so they are not offered as filters.
+# and only a handful of dataset films carry them, so they are neither filters nor badges.
 EXCLUDED_GENRES = frozenset({"foreign", "tv movie"})
 
 GENRE_LABELS_TR = {

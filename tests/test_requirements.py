@@ -14,8 +14,8 @@ def _pins(path):
     return {name.lower(): version for name, version in PIN.findall(text)}
 
 
-# A pin bumped in requirements.txt without regenerating the lockfile (README, Dependencies)
-# would change nothing that CI or the Docker image installs.
+# A pin bumped in requirements.txt without regenerating the lockfile (see the README's
+# Dependencies section) would change nothing that CI or the Docker image installs.
 def test_every_pin_is_in_the_lockfile():
     locked = _pins("requirements.lock.txt")
 

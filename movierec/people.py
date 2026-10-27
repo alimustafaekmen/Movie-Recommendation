@@ -141,7 +141,7 @@ def _format_credits(movie_credits: dict, person_type: str) -> list[dict]:
         # A card needs an id to link to.
         if not tmdb.valid_id(credit.get("id")):
             continue
-        # Credits without a poster render as empty cards.
+        # A credit without a poster would be an empty card.
         if not tmdb.image_url(credit.get("poster_path"), "w342"):
             continue
         if is_director and credit.get("job") != "Director":

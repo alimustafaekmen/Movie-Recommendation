@@ -40,16 +40,16 @@
     <noscript><p class="list-status">{{ t('lists.need_js') }}</p></noscript>
     {{ list_section(t('lists.favorites'), "favorites", t('lists.favorites_empty'), t('movie.like')) }}
     {{ list_section(t('lists.watchlist'), "watchlist", t('lists.watchlist_empty'), t('movie.add_watchlist')) }}
-    {# Last on the page, so nothing moves when my_lists.js shows it: only once the favourites
-       give it films. #}
+    {# Last on the page, so nothing moves when my_lists.js shows it once the favourites give
+       it films. #}
     <section class="list-section recommendations" hidden>
         <h2 class="section-title">{{ t('lists.recommendations') }}</h2>
         <p class="recommendations-hint">{{ t('lists.recommendations_hint') }}</p>
         <ul class="movie-grid" id="recommendations-grid"></ul>
     </section>
 
-    {# The markup of _movie_card.html. my_lists.js clones it twice: with only the placeholder
-       poster while a film loads, then with either the poster or the placeholder. #}
+    {# The markup of _movie_card.html. my_lists.js clones it for each card: with only the
+       placeholder poster while a film loads, then with either the poster or the placeholder. #}
     <template id="movie-card-template">
         <li>
             <a class="movie-card">

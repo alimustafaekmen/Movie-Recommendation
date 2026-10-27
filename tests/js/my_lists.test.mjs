@@ -226,7 +226,7 @@ test('recommendations are asked for with the first 100 ids of each list and show
 });
 
 test('films already on a list are never recommended', () => {
-  // The server reads only the first 100 ids of a list, so the page leaves out the others.
+  // The server reads only the first 100 ids of each list, so the page drops listed films itself.
   const cards = [card(1, 'Heat'), card(2, 'Alien'), card(3, 'Zodiac')];
 
   assert.deepEqual(recommendationsToShow([2], [3], cards).map((c) => c.id), [1]);

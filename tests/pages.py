@@ -57,8 +57,10 @@ class Element:
                 yield from child.descendants()
 
     def find(self, tag=None, class_=None, **attrs):
-        """Every element inside with this tag, this class among its classes and these
-        attribute values (underscores in names stand for dashes), in document order."""
+        """Every element inside with this tag, class and attribute values, in document order.
+
+        Underscores in attribute names stand for dashes; a trailing one is dropped (for_).
+        """
         return _matching(self.descendants(), tag, class_, attrs)
 
 

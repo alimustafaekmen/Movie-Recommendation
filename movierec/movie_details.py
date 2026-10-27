@@ -11,9 +11,10 @@ from movierec.i18n import TMDB_LANGUAGES, format_runtime
 
 logger = logging.getLogger(__name__)
 
-# Visitors choose the ids, so this caps the cache; the whole catalogue fits in both languages.
+# Both caches are emptied once full. Only dataset films have their poster cached, so the
+# whole catalogue fits in both languages.
 POSTER_CACHE_LIMIT = 30000
-# List cards of films outside the dataset, emptied the same way.
+# List cards of films outside the dataset, whose ids visitors choose.
 LIST_CARD_CACHE_LIMIT = 2000
 # Shared by all requests, so it caps TMDb lookups in flight; at 16, TMDb answered slower.
 POSTER_WORKERS = 8
@@ -45,7 +46,7 @@ class MovieDetails:
         )
 
     def add_posters(self, cards: list[dict], lang: str) -> None:
-        """Fill in the poster URL of result cards from the engine, which works offline."""
+        """Set poster_url on the engine's result cards; None without a poster or TMDb."""
         poster_paths = self.prefetch_posters([card["id"] for card in cards], lang)
         for card in cards:
             card["poster_url"] = tmdb.image_url(poster_paths.get(card["id"]), "w342")
@@ -84,7 +85,7 @@ class MovieDetails:
     def get_movie_poster_url(
         self, movie_id: int | str, lang: str, size: str = "w342"
     ) -> str | None:
-        """Return the TMDb poster URL for a movie; the poster path is cached per id and language."""
+        """Return the TMDb poster URL for a movie; a dataset film's path is cached per language."""
         if not tmdb.is_configured():
             return None
         try:
@@ -223,7 +224,7 @@ class MovieDetails:
             "cast_list": actors[:CAST_LIST_LIMIT],
             "director": directors[0] if directors else "",
             "directors": directors,
-            # TMDb's details endpoint has no keywords; the field only exists for the template.
+            # TMDb's details endpoint has no keywords; "" keeps the keys of a dataset film.
             "keywords": "",
             "runtime": data.get("runtime"),
         }

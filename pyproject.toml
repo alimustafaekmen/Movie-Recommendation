@@ -20,7 +20,7 @@ source = ["movierec", "app"]
 branch = true
 
 [tool.coverage.report]
-# Coverage of the fixture-dataset run, rounded down, minus 1.
+# A floor a little below the coverage of the fixture-dataset run.
 fail_under = 95
 exclude_also = ["if __name__ == .__main__.:"]
 show_missing = true

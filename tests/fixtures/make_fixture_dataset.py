@@ -1,12 +1,13 @@
 """Write the small TMDB dataset in tests/fixtures/dataset/ from the full Kaggle CSVs.
 
 The fixture lets the test suite run in CI, where the 46 MB dataset/ files are not available.
-It holds the movies the tests refer to, every film of the directors they search for, and the
-most-voted films, so similarity and filter tests have neighbours to rank. Ids, titles, dates,
-genres, numbers and credits come from the Kaggle rows; credits are cut down to what the app
-reads. The overviews, taglines and keywords are not TMDB's: the public fixture has short
-synthetic ones, written by hand, which this script keeps. A film new to the fixture gets
-none, and its title is printed so they can be written. Regenerate after changing REQUIRED_IDS:
+It holds the movies the tests refer to, every film of the directors they search for, a few
+low-vote films and the most-voted films, so similarity and filter tests have neighbours to
+rank. Ids, titles, dates, genres, numbers and credits come from the Kaggle rows; credits are
+cut down to what the app reads. The overviews, taglines and keywords are not TMDB's: the
+fixture has short synthetic ones, written by hand, which this script keeps. A film new to the
+fixture gets none, and its title is printed so they can be written. Regenerate after changing
+REQUIRED_IDS:
 
     python tests/fixtures/make_fixture_dataset.py
 """
@@ -27,7 +28,7 @@ TARGET = Path(__file__).resolve().parent / "dataset"
 
 # Movies the tests name: Avatar, The Dark Knight, Batman (1989 and 1966), Toy Story, Titanic,
 # The Godfather, Forrest Gump, Pulp Fiction, The Matrix, Inception, Interstellar, The Avengers,
-# Alien, Alien3, both films titled The Host, No Country for Old Men, Batman Returns,
+# Alien, Alien³, both films titled The Host, No Country for Old Men, Batman Returns,
 # Despicable Me 2, and Megamind (the most-voted film that is both Science Fiction and Animation).
 REQUIRED_IDS = [
     19995, 155, 268, 2661, 862, 597, 238, 13, 680, 603, 27205, 157336, 24428, 348, 8077, 72710,

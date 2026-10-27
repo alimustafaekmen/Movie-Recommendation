@@ -55,9 +55,8 @@ def parse_number(
     """Parse a form value, accepting a Turkish decimal comma ('7,5').
 
     Returns None for non-numeric, non-finite or out-of-range input; ``cast`` (int or
-    float) is applied before the range check, so int truncates like JS Math.trunc.
+    float) is applied before the range check, so int truncates toward zero.
     """
-    # Turkish forms write a decimal comma: "7,5" means 7.5.
     text = str(value).strip().replace(",", ".")
     try:
         number = float(text)

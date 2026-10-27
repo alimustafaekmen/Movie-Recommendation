@@ -69,5 +69,5 @@ def test_evaluate_on_the_fixture_dataset():
         assert 0 <= row["Series recall"] <= 1
         assert 0 < row["Catalog coverage"] <= 1
         assert row["Median votes"] >= 0
-    # Every seed gets the same 12 most-voted films, give or take itself.
+    # Every seed gets the 12 most-voted films other than itself: 13 films in all.
     assert results["Most-voted baseline"]["Catalog coverage"] == 13 / len(engine.movies_df)

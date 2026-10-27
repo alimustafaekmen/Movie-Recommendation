@@ -25,10 +25,11 @@ RATING_MAX = 10.0
 
 
 def build_tfidf_matrix(df: pd.DataFrame) -> sparse.csr_matrix:
-    """Return one L2-normalised, field-weighted TF-IDF row per movie (about 2.5 MB in all).
+    """Return one L2-normalised, field-weighted TF-IDF row per movie.
 
     Genres, directors, keywords and overview + tagline each get their own vectorizer, so a
     long overview cannot drown out the metadata and its character names carry less weight.
+    The matrix is about 2.5 MB for the Kaggle files.
 
     df: the movies table built by dataset.load_movies, one row per film.
     """

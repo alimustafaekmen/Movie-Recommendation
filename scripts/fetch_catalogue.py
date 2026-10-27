@@ -231,7 +231,7 @@ def turkish_title(movie: dict) -> str:
 
 
 def movie_row(movie: dict) -> dict:
-    """Return the movies-CSV row of a details answer with its appended fields.
+    """Return the movies-CSV row of a details answer.
 
     The last column, title_tr, is not in the Kaggle files; movierec.dataset reads it when
     it is there.

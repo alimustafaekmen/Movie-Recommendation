@@ -70,7 +70,7 @@ def api_movies():
 
 @bp.route("/api/recommendations")
 def api_recommendations():
-    """Cards of films like ?favorites= that are on neither list; each list counts 100 ids."""
+    """Cards of films like ?favorites= that are on neither ?favorites= nor ?watchlist=."""
     engine = get_engine()
     if engine is None:
         abort(503)

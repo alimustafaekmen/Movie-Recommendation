@@ -205,7 +205,7 @@ def _handle_http_error(error):
 
 
 def _register_template_helpers(app: Flask) -> None:
-    """Give templates asset_url(), icon_view_box(), current_year, lang, t() and the formats."""
+    """Give templates asset_url(), icon_view_box(), current_year, lang, the texts and formats."""
     # Hashed once at startup: static files only change with a deploy, which restarts the app.
     asset_versions = build_asset_versions(app.static_folder)
     # Read once for the same reason. templates/_icon.html puts the symbol's viewBox on each

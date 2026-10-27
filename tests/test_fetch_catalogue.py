@@ -209,7 +209,7 @@ def test_discover_takes_a_years_most_voted_films_page_by_page():
 
 
 def test_discover_keeps_to_the_vote_floor_and_stops_at_the_last_page():
-    # An answer that ignores vote_count.gte still yields only films above the floor.
+    # An answer that ignores vote_count.gte still yields only films at or above the floor.
     films = [
         {"id": 1, "vote_count": 300},
         {"id": 2, "vote_count": MIN_VOTES_THRESHOLD},

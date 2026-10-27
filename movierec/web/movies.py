@@ -111,7 +111,7 @@ def _filter_search(engine: RecommendationEngine, args, num: int) -> dict:
     # The engine searched a reversed year range in order; the page shows it that way too.
     if YEARS_SWAPPED_WARNING in warnings:
         filters["min_yil"], filters["max_yil"] = filters["max_yil"], filters["min_yil"]
-    # tur first: the "more" link keeps /?tur=…&n=24
+    # tur first, so the "more" link reads /?tur=…&n=24.
     form = {"tur": genres}
     form.update(filters)
     return {

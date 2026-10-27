@@ -17,7 +17,7 @@ app = create_app()
 
 
 def _port(raw: str) -> int:
-    """The PORT setting; an invalid one stops the dev server with a clear message."""
+    """Return the PORT setting as an int; an invalid one stops the dev server with a message."""
     if not re.fullmatch(r"[0-9]{1,5}", raw) or not 1 <= int(raw) <= 65535:
         sys.exit(f"PORT must be a number from 1 to 65535, not {raw!r}")
     return int(raw)

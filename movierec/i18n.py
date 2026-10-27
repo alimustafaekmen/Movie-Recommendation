@@ -1,8 +1,8 @@
 """Turkish and English: the message catalogue and the date, number and runtime formats.
 
-Every text the pages show is a key of movierec/messages.json, which holds it in both
-languages with {name} placeholders. The functions here take the language, so they need no
-Flask.
+Every interface text the pages show is a key of movierec/messages.json, which holds it in
+both languages with {name} placeholders. The functions here take the language, so they need
+no Flask.
 """
 
 import datetime
@@ -12,7 +12,7 @@ from decimal import ROUND_HALF_UP, Decimal
 from pathlib import Path
 
 # English first: Werkzeug's best_match gives a wildcard (Accept-Language: *) or a tie to the
-# first language, and a browser that asks for neither language gets English.
+# first language. A browser that asks for neither gets DEFAULT_LANGUAGE.
 LANGUAGES = ("en", "tr")
 DEFAULT_LANGUAGE = "en"
 # The language parameter of TMDb requests.

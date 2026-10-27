@@ -5,16 +5,17 @@ import { openListStore, watchLists } from './list_store.js';
 
 // The label alone says the state, so screen readers and sighted visitors get the same signal;
 // the page writes both labels on each button (data-label, data-active-label) in its language.
-// The icon follows it: Font Awesome's outline (regular) shape while off, the solid one while on;
-// both are symbols of static/icons.svg.
+// The icon follows: the outline symbol of static/icons.svg while off, the solid one while on.
 export const TOGGLES = [
     { selector: '.btn-like', list: 'favorites', activeClass: 'liked', icon: 'heart-regular', activeIcon: 'heart' },
     { selector: '.btn-watchlist', list: 'watchlist', activeClass: 'added', icon: 'bookmark-regular', activeIcon: 'bookmark' },
 ];
 const PLAYER_PERMISSIONS = 'accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture; web-share';
 
-/** The label and the sprite icon a toggle shows while on (active) or off; labels is the button's
- * dataset, with label and activeLabel. */
+/**
+ * The label and the sprite icon a toggle shows while on (active) or off; labels is the button's
+ * dataset, with label and activeLabel.
+ */
 export function toggleView(toggle, labels, active) {
     return active
         ? { label: labels.activeLabel, icon: toggle.activeIcon }
